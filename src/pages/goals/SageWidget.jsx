@@ -37,7 +37,7 @@ function SageFab({ open, onClick }) {
 
 /* ── Sage chat body rendered inside the ChatOverlay panel. When `goal` is passed
       (goal detail page), Sage is scoped to that goal; otherwise it's portfolio-wide. ── */
-function SageChat({ goal }) {
+export function SageChat({ goal }) {
   const greeting = goal
     ? `Hi, I'm Sage. Ask me about “${goal.name}”: what's driving it, what to do next, or why a number moved.`
     : "Hi, I'm Sage. Ask me what's wasting spend, where you're leaving demos on the table, or which goal to open first.";

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   X, Target, CheckCircle, ClockCounterClockwise, Play, CircleNotch, CaretRight, CaretDown, Lightning, Sliders,
   DotsThree, XCircle, ArrowSquareOut, Lightbulb, Eye, Clock, Flag, Pulse, FlowArrow, MagnifyingGlass, Plus, Trash,
-  Sparkle, PaperPlaneRight, Funnel, Info, Warning,
+  Sparkle, PaperPlaneRight, Funnel, Info, Warning, ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Tooltip } from "@/ui";
@@ -14,6 +14,9 @@ import { Button as PvButton } from "@/ui";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../api";
 import { cn } from "../../utils/cn";
 import { RecommendationDetail } from "./RecommendationDrawer";
+import { SageChat } from "./SageWidget";
+import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
+import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
@@ -88,17 +91,13 @@ const INSIGHT_COLOR = {
 function InsightCard({ kind, color, icon: Icon, value, desc, foot, footIcon: FootIcon, onClick }) {
   const c = INSIGHT_COLOR[color] || INSIGHT_COLOR.blue;
   return (
-    <div className="flex flex-col h-full bg-white border border-grey-100/50 rounded-lg px-4 py-3.5 dropshadow-card">
+    <div className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-lg px-4 py-3.5">
       <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{kind}</span>
       <div className="flex items-center gap-1.5 mb-1.5">
         {Icon && <Icon size={16} className={c.txt} />}
         <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)]">{value}</span>
       </div>
-      <p className="text-[12px] text-[var(--text-secondary)] leading-snug mb-3">{desc}</p>
-      <div className="flex items-center gap-1.5 mt-auto pt-2.5 border-t border-[var(--color-grey-100)]">
-        {FootIcon && <FootIcon size={13} className="text-[var(--text-muted)] shrink-0" />}
-        <span className="text-[12px] text-[var(--text-muted)] truncate">{foot}</span>
-      </div>
+      <p className="text-[12px] text-[var(--text-secondary)] leading-snug">{desc}</p>
     </div>
   );
 }
@@ -398,45 +397,225 @@ function ConfigModal({ onClose }) {
   );
 }
 
-/* ── Recommendations tab: master list (left) + detail (right) ── */
-/* Item styled like a Workbook action card: icon frame + content, radius-4 card,
-   hover → primary-50, active → primary-50 + primary-500 border + soft shadow. */
-function RecListItem({ item, selected, onClick }) {
-  const actNow = item.severity === "act-now";
-  const done = item.status !== "open";
-  const Icon = done ? CheckCircle : actNow ? Lightning : Eye;
+/* ── Recommendations tab: highlights + filters + queue + detail ── */
+
+// One bucket per recommendation — drives the status chip (our goalPriority
+// language) and which filter it falls under.
+function recMeta(item) {
+  if (item.status !== "open")
+    return { key: "archived", label: item.status === "rejected" ? "Dismissed" : "Acted", cls: "bg-green-50 text-green-600", icon: CheckCircle };
+  if (item.severity === "act-now")
+    return { key: "act-now", label: "Act now", cls: "bg-rose-50 text-rose-600", icon: Lightning };
+  if ((item.tier || 2) <= 2)
+    return { key: "needs-review", label: "Review soon", cls: "bg-amber-50 text-amber-700", icon: Warning };
+  return { key: "watchlist", label: "Watch", cls: "bg-blue-50 text-blue-700", icon: Eye };
+}
+
+const parseMoney = (v) => {
+  const m = String(v || "").match(/\$?\s*([\d.]+)\s*([KkMm])?/);
+  if (!m) return 0;
+  let n = parseFloat(m[1]);
+  if (/[Kk]/.test(m[2] || "")) n *= 1000;
+  if (/[Mm]/.test(m[2] || "")) n *= 1e6;
+  return n;
+};
+const fmtMoney = (n) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`);
+
+const REC_FILTERS = [
+  { k: "all", label: "All" },
+  { k: "act-now", label: "Act now" },
+  { k: "needs-review", label: "Needs review" },
+  { k: "watchlist", label: "Watchlist" },
+  { k: "archived", label: "Archived" },
+];
+
+// Compact filter — trigger shows the current filter + count; a portaled menu
+// lists all buckets with counts and a radio (same pattern as GoalFilterDropdown).
+function RecFilterDropdown({ value, onChange, counts }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+  const current = REC_FILTERS.find((f) => f.k === value) || REC_FILTERS[0];
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: r.left, width: Math.max(220, r.width) });
+    }
+    setOpen((o) => !o);
+  };
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={toggle}
+        className="inline-flex items-center gap-1.5 bg-transparent border-none p-0 cursor-pointer"
+      >
+        <Funnel size={14} weight="bold" className="text-[var(--text-muted)] shrink-0" />
+        <span className="text-[14px] font-medium text-[var(--text-primary)] whitespace-nowrap">{current.label}</span>
+        <span className="text-[12px] text-[var(--text-muted)] tabular-nums">{counts[current.k] || 0}</span>
+        <CaretDown size={14} className={cn("text-[var(--text-muted)] shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+          <div className="fixed z-[61] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left, width: pos.width }}>
+            {REC_FILTERS.map((f) => {
+              const active = f.k === value;
+              return (
+                <button
+                  key={f.k}
+                  onClick={() => { onChange(f.k); setOpen(false); }}
+                  className={cn("w-full flex items-center justify-between gap-4 px-3.5 py-2.5 text-[13px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50", active ? "text-primary-600 font-medium" : "text-[var(--text-primary)]")}
+                >
+                  <span className="inline-flex items-center gap-2.5">
+                    <span className={cn("flex items-center justify-center w-4 h-4 rounded-full border-2 shrink-0", active ? "border-primary-500" : "border-grey-300")}>
+                      {active && <span className="w-2 h-2 rounded-full bg-primary-500" />}
+                    </span>
+                    {f.label}
+                  </span>
+                  <span className="text-[12px] text-[var(--text-muted)] tabular-nums">{counts[f.k] || 0}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// Queue card in our card language: goalPriority-style status chip, muted
+// category + rank, primary-50 hover / selected, and Impact · Why now in the
+// same label→value read as the detail panel's metric rows.
+function RecCard({ item, selected, onClick }) {
+  const m = recMeta(item);
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full min-h-[76px] text-left rounded-[4px] border bg-white transition-colors cursor-pointer",
+        "w-full text-left rounded-lg border bg-white p-3.5 transition-all cursor-pointer",
         selected
           ? "bg-primary-50 border-primary-500 shadow-[0_4px_4px_rgba(54,97,237,0.08)]"
-          : "border-[var(--color-grey-200)] hover:bg-primary-50",
-        done && "opacity-70"
+          : "border-[var(--color-grey-100)] hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]",
+        item.status !== "open" && !selected && "opacity-70"
       )}
     >
-      <div className="flex items-center min-h-[76px]">
-        {/* icon frame */}
-        <div className="flex items-center justify-center p-2.5 shrink-0">
-          <div
-            className={cn("flex items-center justify-center w-9 h-9 rounded-[4px] border border-[var(--color-grey-200)]", selected ? "bg-white" : "bg-grey-50")}
-            style={{ boxShadow: "0 4px 4px rgba(122,122,122,0.04)" }}
-          >
-            <Icon size={16} className={done ? "text-[var(--text-muted)]" : actNow ? "text-rose-500" : "text-amber-500"} />
-          </div>
-        </div>
-        {/* content */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1 pr-3 py-2">
-          <Tooltip title={item.title} arrow placement="top">
-            <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2 cursor-default">{item.title}</p>
-          </Tooltip>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-normal uppercase tracking-wide text-[var(--text-secondary)]">{done ? "Done" : actNow ? "Act now" : "Watch"}</span>
-          </div>
-        </div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap", m.cls)}>
+          <m.icon size={10} weight="fill" />{m.label}
+        </span>
+        <span className="text-[11px] text-[var(--text-muted)] truncate">{item.category}</span>
       </div>
+      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{item.title}</p>
+      {item.tldr && <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-1 line-clamp-1">{item.tldr}</p>}
+      {(item.impact?.value || item.signal) && (
+        <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-[var(--color-grey-100)]">
+          {item.impact?.value && <span className="text-[12px] text-[var(--text-secondary)]">Impact <span className="font-medium text-[var(--text-primary)]">{item.impact.value}</span></span>}
+          {item.signal && <span className="text-[12px] text-[var(--text-secondary)] truncate">Why now <span className="font-medium text-[var(--text-primary)]">{item.signal}</span></span>}
+        </div>
+      )}
     </button>
+  );
+}
+
+// Goal scope — a listbox-style title dropdown (truncating trigger + chevron,
+// portaled radio menu), the product pattern rather than a native <select>.
+function GoalScopeDropdown({ value, onChange, goals }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+  const allLabel = `All goals (${goals.length})`;
+  const label = value === "all" ? allLabel : (goals.find((g) => g.id === value)?.name || allLabel);
+  const options = [{ id: "all", name: allLabel }, ...goals];
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 8, left: r.left, width: Math.max(320, Math.min(460, r.width + 160)) });
+    }
+    setOpen((o) => !o);
+  };
+  return (
+    <div ref={ref} className="min-w-0">
+      <button
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={toggle}
+        className="flex items-center gap-1.5 min-w-0 max-w-[440px] bg-transparent border-none p-0 cursor-pointer"
+      >
+        <span className="block truncate text-[15px] leading-[22px] font-medium text-[var(--text-primary)]">{label}</span>
+        <CaretDown size={16} className={cn("shrink-0 text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+          <div role="listbox" className="fixed z-[61] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1 max-h-[320px] overflow-y-auto" style={{ top: pos.top, left: pos.left, width: pos.width }}>
+            {options.map((o) => {
+              const active = o.id === value;
+              return (
+                <button
+                  key={o.id}
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => { onChange(o.id); setOpen(false); }}
+                  className={cn("w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50", active ? "text-primary-600 font-medium" : "text-[var(--text-primary)]")}
+                >
+                  <span className={cn("shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center", active ? "border-primary-500" : "border-grey-300")}>
+                    {active && <span className="w-2 h-2 rounded-full bg-primary-500" />}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate">{o.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// Sage requires one goal for context. Rendered in the shared floaty ChatOverlay
+// (full page height); it never dead-ends: with no goal scoped it opens on a goal
+// picker, and once a goal is chosen it becomes the live Sage chat for that goal
+// (that choice also scopes the queue).
+function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
+  return (
+    <ChatOverlay isOpen={open} onClose={onClose} floating heading="Sage" title={selected ? selected.name : "Sage"}>
+      {selected ? (
+        <div className="flex flex-col h-full">
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-[var(--color-grey-100)] bg-grey-50">
+            <Target size={13} className="text-[var(--text-muted)] shrink-0" />
+            <span className="text-[12px] text-[var(--text-secondary)] truncate flex-1">Context: <span className="font-medium text-[var(--text-primary)]">{selected.name}</span></span>
+            <button onClick={() => onSelect("all")} className="shrink-0 text-[12px] text-primary-600 hover:underline bg-transparent border-none cursor-pointer">Change</button>
+          </div>
+          <div className="flex-1 min-h-0">
+            <SageChat key={selected.id} goal={selected} />
+          </div>
+        </div>
+      ) : (
+        <div className="h-full overflow-y-auto p-4 flex flex-col gap-3">
+          <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-3.5">
+            <p className="text-[13px] font-medium text-[var(--text-primary)]">Sage needs a goal for context</p>
+            <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">Pick the goal you want to ask about. Sage answers against that goal's target, monitors, and recommendations.</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {goals.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => onSelect(g.id)}
+                className="flex items-center gap-2.5 text-left px-3.5 py-3 rounded-lg border border-[var(--color-grey-100)] bg-white hover:border-primary-400 hover:bg-primary-50 cursor-pointer transition-colors"
+              >
+                <Target size={15} className="text-[var(--text-muted)] shrink-0" />
+                <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 min-w-0">{g.name}</span>
+                <CaretRight size={14} className="text-[var(--text-muted)] shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </ChatOverlay>
   );
 }
 
@@ -444,42 +623,105 @@ function RecommendationsPanel({ onOpenGoal }) {
   const { data } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
   const items = data?.items || [];
   const [sel, setSel] = useState(null);
-  const selected = items.find((i) => i.recId === sel) || items[0];
+  const [filter, setFilter] = useState("all");
+  const [goalScope, setGoalScope] = useState("all");
+  const [sageOpen, setSageOpen] = useState(false);
 
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 h-full text-center px-6">
-        <CheckCircle size={26} weight="fill" className="text-green-500" />
-        <p className="text-[16px] font-medium text-[var(--text-primary)]">You're all caught up</p>
-        <p className="text-[14px] text-[var(--text-secondary)] max-w-[380px]">No moves to make right now. We'll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
-      </div>
-    );
-  }
+  // Distinct goals present in the queue — drive both the scope selector and the
+  // Sage goal picker so a single choice governs both.
+  const goalOptions = [...new Map(items.map((i) => [i.goalId, i.goalName])).entries()].map(([id, name]) => ({ id, name }));
+  const selectedGoal = goalScope === "all" ? null : goalOptions.find((g) => g.id === goalScope) || null;
+  const scoped = goalScope === "all" ? items : items.filter((i) => i.goalId === goalScope);
+
+  const counts = { all: scoped.length, "act-now": 0, "needs-review": 0, watchlist: 0, archived: 0 };
+  scoped.forEach((i) => { counts[recMeta(i).key] += 1; });
+  const filtered = filter === "all" ? scoped : scoped.filter((i) => recMeta(i).key === filter);
+  const selected = filtered.find((i) => i.recId === sel) || filtered[0];
+
+  // Summary strip — content mirrors the check-in concept (Needs review /
+  // Inefficient spend / SF leads at risk), rendered with our InsightCard.
+  const actNowCount = scoped.filter((i) => recMeta(i).key === "act-now").length;
+
+  const scopeSelect = (id) => { setGoalScope(id); setSel(null); };
 
   return (
-    <div className="flex h-full">
-      {/* Left: recommendation list (wbc__chat-style panel) */}
-      <div className="w-[380px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-          {items.map((it) => (
-            <RecListItem key={it.recId} item={it} selected={selected?.recId === it.recId} onClick={() => setSel(it.recId)} />
-          ))}
+    <div className="relative flex flex-col h-full">
+      {/* Scope + Ask Sage, then the summary strip */}
+      <div className="shrink-0 border-b border-[var(--color-grey-100)] px-4 py-3.5 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Target size={15} weight="bold" className="text-[var(--text-muted)] shrink-0" />
+            <GoalScopeDropdown value={goalScope} onChange={scopeSelect} goals={goalOptions} />
+          </div>
+          <PvButton variant="secondary" size="md" icon={Sparkle} label="Ask Sage" onClick={() => setSageOpen(true)} />
+        </div>
+        <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
+          <InsightCard kind="Needs review" color="red" icon={Lightning} value={String(actNowCount)}
+            desc="act-now recommendations" />
+          <InsightCard kind="Inefficient spend" color="amber" icon={Flag} value="$4.8K"
+            desc="flagged this check-in" />
+          <InsightCard kind="SF leads at risk" color="blue" icon={Warning} value="~4"
+            desc="vs expected weekly pace" />
         </div>
       </div>
-      {/* Right: detail */}
-      <div className="flex-1 min-w-0">
-        {selected && <RecommendationDetail key={selected.recId} goalId={selected.goalId} recId={selected.recId} onOpenGoal={onOpenGoal} />}
-      </div>
+
+      <RecSageDrawer open={sageOpen} onClose={() => setSageOpen(false)} goals={goalOptions} selected={selectedGoal} onSelect={scopeSelect} />
+
+      {items.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
+          <CheckCircle size={26} weight="fill" className="text-green-500" />
+          <p className="text-[16px] font-medium text-[var(--text-primary)]">You're all caught up</p>
+          <p className="text-[14px] text-[var(--text-secondary)] max-w-[380px]">No moves to make right now. We'll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 flex">
+          {/* Left: filters + rich queue */}
+          <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
+            <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
+              <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">Recommendations</h2>
+              <RecFilterDropdown value={filter} onChange={(k) => { setFilter(k); setSel(null); }} counts={counts} />
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
+                  <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
+                  <p className="text-[13px] text-[var(--text-secondary)]">Nothing in this filter.</p>
+                </div>
+              ) : (
+                filtered.map((it) => (
+                  <RecCard key={it.recId} item={it} selected={selected?.recId === it.recId} onClick={() => setSel(it.recId)} />
+                ))
+              )}
+            </div>
+          </div>
+          {/* Right: decision detail (+ its own View details drawer) */}
+          <div className="flex-1 min-w-0">
+            {selected && <RecommendationDetail key={selected.recId} goalId={selected.goalId} recId={selected.recId} onOpenGoal={onOpenGoal} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function GoalsPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("goals");
+  const qc = useQueryClient();
+  const [tab, setTab] = useState("recommendations");
   const [showConfig, setShowConfig] = useState(false);
   const [goalFilter, setGoalFilter] = useState("all");
   const [goalSearch, setGoalSearch] = useState("");
+  // "Run now" — force an immediate check-in instead of waiting for the schedule.
+  const [checking, setChecking] = useState(false);
+  const [ranJustNow, setRanJustNow] = useState(false);
+  const runNow = () => {
+    setChecking(true);
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["goals"] }),
+      qc.invalidateQueries({ queryKey: ["goals-recommendations"] }),
+      qc.invalidateQueries({ queryKey: ["goals-attention"] }),
+    ]).finally(() => { setChecking(false); setRanJustNow(true); toast.success("Check-in complete"); });
+  };
   const { data: recData } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
   const recCount = (recData?.items || []).filter((r) => r.status === "open").length;
   const { data: goalsData } = useQuery({ queryKey: ["goals"], queryFn: () => apiGet("/api/goals"), refetchInterval: 2500 });
@@ -492,17 +734,22 @@ export default function GoalsPage() {
 
   // Portfolio "Highlights" — four lenses on the goal portfolio: what to do now,
   // what's off track, what's healthy, and what's being watched (lower priority).
-  const watching = (recData?.items || []).filter((r) => r.severity === "watch" && r.status === "open").length;
+  // Derived from the live check-in queue, so the counts stay honest: goals that
+  // need a decision, watch items awaiting confirmation, and goals still inside
+  // their guardrails.
+  const openRecs = (recData?.items || []).filter((r) => r.status === "open");
+  const monitoredGoalIds = new Set((recData?.items || []).map((r) => r.goalId));
+  const actNowGoalIds = new Set(openRecs.filter((r) => r.severity === "act-now").map((r) => r.goalId));
+  const needsReviewGoals = actNowGoalIds.size;
+  const watchlistCount = openRecs.filter((r) => r.severity === "watch" && (r.tier || 2) <= 2).length;
+  const onTrackGoals = Math.max(0, monitoredGoalIds.size - actNowGoalIds.size);
   const insights = [
-    { kind: "Act now", color: "red", icon: Lightning, value: String(items.length),
-      desc: items.length ? `move${items.length !== 1 ? "s" : ""} to make before they cost you pipeline` : "nothing needs a decision right now",
-      foot: `Across ${goals.length} goal${goals.length !== 1 ? "s" : ""}`, footIcon: Target },
-    { kind: "Needs attention", color: "amber", icon: Flag, value: String(attentionGoals),
-      desc: `goal${attentionGoals !== 1 ? "s" : ""} drifting off the number this week`, foot: attentionGoals > 0 ? "See below" : "All clear", footIcon: Pulse },
-    { kind: "On track", color: "green", icon: CheckCircle, value: String(onTrack),
-      desc: `of ${goals.length} goal${goals.length !== 1 ? "s" : ""} on pace to hit the number`, foot: setup > 0 ? `${setup} still calibrating` : "Healthy pace", footIcon: Pulse },
-    { kind: "Watching", color: "blue", icon: Eye, value: String(watching),
-      desc: `early signal${watching !== 1 ? "s" : ""} we're watching, no action needed yet`, foot: "No action needed yet", footIcon: Pulse },
+    { kind: "Needs review", color: "red", icon: Lightning, value: String(needsReviewGoals),
+      desc: `goal${needsReviewGoals !== 1 ? "s" : ""} with act-now recommendations` },
+    { kind: "Watchlist", color: "blue", icon: Eye, value: String(watchlistCount),
+      desc: `recommendation${watchlistCount !== 1 ? "s" : ""} held for confirmation` },
+    { kind: "On track", color: "green", icon: CheckCircle, value: String(onTrackGoals),
+      desc: `goal${onTrackGoals !== 1 ? "s" : ""} currently within guardrails` },
   ];
 
   // Every goal opens its full detail page (no overlay).
@@ -511,17 +758,29 @@ export default function GoalsPage() {
     if (id) navigate(`/goals/${id}`);
   };
 
+  // Freshness for the header — the most recent check-in across goals.
+  const latestCheckIn = goals.map((g) => g.checkIns?.[0]).filter(Boolean)[0];
+  const lastChecked = ranJustNow ? "Just now" : (latestCheckIn?.at || "Not yet");
+
   return (
     <div className="flex flex-col w-full h-full">
       {/* Standard app header bar (consistent with Dashboards / Sessions / Workflows) */}
       <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
         <span className="text-[16px] leading-[24px] font-medium">Goals</span>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            Last checked <span className="font-medium text-[var(--text-secondary)]">{lastChecked}</span>
+          </span>
+          <PvButton variant="secondary" size="md" label="Configure" icon={Sliders} onClick={() => setShowConfig(true)} />
+          <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
+        </div>
       </div>
 
       {/* Sub-tab bar (Goals · Recommendations) */}
       <div className="flex w-full shrink-0 bg-white border-b border-[var(--color-grey-100)]">
         <div className="flex items-start gap-6 px-4">
-          {[{ k: "goals", label: "Objectives" }, { k: "recommendations", label: "Recommendations" }].map((t) => (
+          {[{ k: "recommendations", label: "Recommendations" }, { k: "goals", label: "Objectives" }].map((t) => (
             <button
               key={t.k}
               onClick={() => setTab(t.k)}
@@ -531,9 +790,6 @@ export default function GoalsPage() {
               )}
             >
               {t.label}
-              {t.k === "recommendations" && recCount > 0 && (
-                <span className={cn("px-1.5 py-0.5 text-[12px] font-semibold rounded-full", tab === t.k ? "bg-primary-500 text-white" : "bg-grey-100 text-[var(--text-muted)]")}>{recCount}</span>
-              )}
             </button>
           ))}
         </div>
@@ -545,37 +801,11 @@ export default function GoalsPage() {
           {tab === "goals" ? (
             <div className="w-full h-full overflow-y-auto">
               <div className="flex flex-col w-full p-3">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)] mb-8">
                   {insights.map((ins) => <InsightCard key={ins.kind} {...ins} />)}
                 </div>
 
-                {/* ── Where to act first — triage strip (top), same columnar row ── */}
-                {(() => {
-                  // Everything that needs a move: act-now goals and needs-attention (setup) goals.
-                  const actionable = goals.filter((g) => ["actnow", "attention"].includes(goalBucket(g)));
-                  if (actionable.length === 0) return null;
-                  const bucketRank = { actnow: 0, attention: 1 };
-                  const sorted = [...actionable].sort((a, b) => (bucketRank[goalBucket(a)] ?? 9) - (bucketRank[goalBucket(b)] ?? 9));
-                  const shown = sorted.slice(0, 5);
-                  return (
-                    <div className="mb-8">
-                      <div className="flex items-center gap-2 mb-3">
-                        <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">Where to act first</h2>
-                        <Tooltip title="The goals bleeding spend or leaving demos on the table, worked top-down, so your next move protects the number." arrow placement="top">
-                          <span className="inline-flex items-center cursor-default text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"><Info size={15} /></span>
-                        </Tooltip>
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <GoalListHeader />
-                        <div className="flex flex-col gap-2">
-                          {shown.map((g) => <GoalRow key={g.id} goal={g} onOpen={openGoal} onFull={(gid) => navigate(`/goals/${gid}`)} />)}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* ── Your goals — full list (bottom), same columnar row + header ── */}
+                {/* ── Your goals — full list, columnar row + header ── */}
                 {(() => {
                   const q = goalSearch.trim().toLowerCase();
                   const counts = goals.reduce((m, g) => { const b = goalBucket(g); m[b] = (m[b] || 0) + 1; return m; }, {});
@@ -611,7 +841,10 @@ export default function GoalsPage() {
                       {goals.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-2 py-14 border border-[var(--border-primary)] rounded-lg text-center">
                           <Target size={24} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[var(--text-secondary)]">No goals yet. Set one and we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
+                          <p className="text-[14px] text-[var(--text-secondary)] max-w-[460px]">No goals yet. Set one and we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
+                          <div className="mt-1">
+                            <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
+                          </div>
                         </div>
                       ) : filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-1.5 py-10 border border-dashed border-[var(--border-primary)] rounded-lg text-center">

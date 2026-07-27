@@ -7,7 +7,7 @@ import {
   ArrowLeft, ArrowRight, CircleNotch, CheckCircle, Target, Eye, Lightning, MagnifyingGlass,
   CaretRight, X, ClockCounterClockwise, Play, Question, WaveSine, Pulse, Warning, XCircle, PencilSimple, NotePencil,
   Clock, UserCircle, TrendUp, ChartPieSlice, PaperPlaneTilt, PaperPlaneRight, ArrowsClockwise, Info,
-  CurrencyDollar, Fire, Funnel, Tag, Code, CaretDown, ChatCircle, Sparkle,
+  CurrencyDollar, Fire, Funnel, Tag, Code, CaretDown, ChatCircle, Sparkle, Sliders,
 } from "@phosphor-icons/react";
 import { Tooltip } from "@/ui";
 
@@ -25,6 +25,7 @@ import { Button as PvButton } from "@/ui";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
 import RecommendationDrawer from "./RecommendationDrawer";
+import { StepIndicator } from "../skills-v2/SetupProgress";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
@@ -87,16 +88,98 @@ function WizardFooter({ left, right }) {
   return slot ? createPortal(bar, slot) : bar;
 }
 
-// Unified panel: titled content, footer pinned (progress now lives in the footer).
-function WizardScaffold({ title, subtitle, children, footer }) {
+/* ───────── Calibration — the same two-pane setup UX as a skill run: a left rail
+   card-list of the 6 steps (active one expands to show its description) and a
+   right pane that either explains the step or asks a clarification. ───────── */
+
+const PROGRESS_STEPS = [
+  { label: "Reading your data", desc: "Looking through your selected workflow and history to work out what's measurable for this goal." },
+  { label: "Building your catalog", desc: "Cataloging the metrics and fields available to track this goal." },
+  { label: "Targets", desc: "Turning your goal into measurable targets." },
+  { label: "Monitoring signals", desc: "Defining the signals we'll watch on every check-in." },
+  { label: "Recommended moves", desc: "Drafting the actions we may recommend." },
+  { label: "Ready for your review", desc: "Confirming the targets and rules before this goal starts running." },
+];
+const STEP_EASE = "cubic-bezier(0.23,1,0.32,1)";
+
+// Row morphs between compact and expanded rather than swapping, so the active
+// step reveals its description without the list jumping (same as a skill run).
+function CalibrationStepRow({ label, desc, status }) {
+  const expanded = status === "active";
+  const showDesc = expanded && !!desc;
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 min-h-0 overflow-y-auto bg-white border border-[var(--color-grey-100)] rounded-xl px-6 py-5">
-        <h1 className="text-[16px] font-semibold text-[var(--text-primary)]">{title}</h1>
-        <p className="text-[14px] text-[var(--text-secondary)] mb-6">{subtitle}</p>
-        {children}
+    <li className={cn("px-2 py-2 rounded-lg border border-[var(--color-grey-100)] transition-colors duration-200", expanded && "bg-[var(--color-primary-50)]")}>
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5"><StepIndicator status={status} /></span>
+        <div className="flex-1 min-w-0">
+          <span
+            className={cn(
+              "block text-[14px] transition-colors duration-200",
+              expanded ? "font-semibold text-[var(--color-primary-500)]"
+                : status === "completed" ? "font-medium text-[var(--text-primary)] truncate"
+                : "text-[var(--color-text-disabled)] truncate"
+            )}
+          >
+            {label}
+          </span>
+          <div
+            className="grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none"
+            style={{ gridTemplateRows: showDesc ? "1fr" : "0fr", opacity: showDesc ? 1 : 0, transitionTimingFunction: STEP_EASE }}
+          >
+            <div className="overflow-hidden">
+              <p className="text-[12px] leading-snug mt-1 text-[var(--text-secondary)]">{desc}</p>
+            </div>
+          </div>
+        </div>
       </div>
-      {footer}
+    </li>
+  );
+}
+
+// Left rail (6 steps) + right content pane, with the "leave and it keeps
+// running" banner on top and a Cancel-run footer.
+function CalibrationLayout({ activeIndex, waiting, onDelete, children }) {
+  return (
+    <div className="flex-1 flex flex-col min-h-0 h-full">
+      <div className="flex items-start gap-2 px-5 py-2.5 shrink-0 border-b border-[var(--color-grey-100)] text-[13px] text-[var(--text-secondary)] bg-white">
+        <Info size={15} className="shrink-0 mt-0.5 text-[var(--text-muted)]" />
+        <span>This usually takes a few minutes. <span className="font-medium text-[var(--text-primary)]">You can leave and it keeps running</span> — pick it up anytime. When it's ready, this goal starts running on every check-in.</span>
+      </div>
+      <div className="flex-1 min-h-0 flex p-4">
+        <div className="w-[340px] shrink-0 flex flex-col min-h-0 bg-white border border-[var(--color-grey-100)] border-r-0 rounded-l-2xl overflow-hidden">
+          <div className="flex items-center h-12 px-4 shrink-0">
+            <h2 className="text-[16px] font-semibold text-[var(--text-primary)] truncate">Building your goal triggers</h2>
+          </div>
+          <ul className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+            {PROGRESS_STEPS.map((s, i) => {
+              const status = i < activeIndex ? "completed" : i === activeIndex ? "active" : "pending";
+              const label = status === "active" && waiting ? "Waiting for your answers" : s.label;
+              const desc = status === "active" && waiting ? "Petavue needs a few answers from you before it can continue." : s.desc;
+              return <CalibrationStepRow key={s.label} label={label} desc={desc} status={status} />;
+            })}
+          </ul>
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 bg-white border border-[var(--color-grey-100)] rounded-r-2xl overflow-hidden">
+          {children}
+        </div>
+      </div>
+      <WizardFooter left={<PvButton variant="secondary" size="md" label="Cancel run" onClick={onDelete} />} right={<span />} />
+    </div>
+  );
+}
+
+// Right pane when there's nothing to answer — a centered line on what's
+// happening now (mirrors the skill-run setup pane).
+function CalibrationEmpty({ icon: Icon, copy, detail }) {
+  return (
+    <div className="h-full flex items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] mb-3.5">
+          <Icon size={20} />
+        </div>
+        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">{copy}</p>
+        {detail && <p className="text-[12px] text-[var(--text-muted)] mt-2 leading-relaxed">{detail}</p>}
+      </div>
     </div>
   );
 }
@@ -104,64 +187,31 @@ function WizardScaffold({ title, subtitle, children, footer }) {
 /* ───────────────────────── Calibrating ───────────────────────── */
 function Calibrating({ goal, onCancel }) {
   return (
-    <WizardScaffold
-      title="Calibrating your goal"
-      subtitle="We're reading your workflows and history before asking you a couple of quick decisions."
-      footer={
-        <WizardFooter
-          left={<WizardSteps current={0} />}
-          right={<PvButton variant="secondary" size="md" label="Cancel" onClick={onCancel} />}
-        />
-      }
-    >
-      <div className="flex items-start gap-3 p-5 bg-white border border-[var(--border-primary)] rounded-xl">
-        <Spinner size={20} className="text-primary-500 shrink-0 mt-0.5" />
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[16px] font-semibold text-[var(--text-primary)]">Reading your paid spend and demo history…</p>
-          <p className="text-[14px] text-[var(--text-secondary)]">92 days of Google &amp; Meta spend · 12,480 rows in google_ads_campaigns.csv</p>
-        </div>
-      </div>
-    </WizardScaffold>
+    <CalibrationLayout activeIndex={0} onDelete={onCancel}>
+      <CalibrationEmpty
+        icon={WaveSine}
+        copy="Reading your selected workflow and history to work out what this goal can be measured against."
+        detail="Petavue is cataloging the metrics and fields it can track."
+      />
+    </CalibrationLayout>
   );
 }
 
 /* ───────────────────────── Building ───────────────────────── */
+// Our three build sub-steps land on Targets · Monitoring signals · Recommended
+// moves in the rail (Reading data + catalog already done by this phase).
 const BUILD_STEPS = [
-  { label: "Targets", note: "Turning your goal into measurable targets" },
-  { label: "Conditions", note: "Defining the signals we'll watch each run" },
-  { label: "Recommended moves", note: "Drafting the actions we may suggest" },
+  { active: 2, icon: Target, copy: "Turning your goal into measurable targets — reading the workspace files to anchor each one to real numbers." },
+  { active: 3, icon: Pulse, copy: "Setting up what to watch — the conditions Petavue will evaluate on every check-in." },
+  { active: 4, icon: Lightning, copy: "Preparing the moves we may recommend, and saving the proposals for your review." },
 ];
 function Building({ goal, onCancel }) {
-  const p = goal.buildProgress || 0;
+  const p = Math.min(goal.buildProgress || 0, BUILD_STEPS.length - 1);
+  const s = BUILD_STEPS[p];
   return (
-    <WizardScaffold
-      title="Building your goal"
-      subtitle="Turning your answers into the targets we'll measure and the signals we'll watch on every run."
-      footer={
-        <WizardFooter
-          left={<WizardSteps current={2} />}
-          right={<PvButton variant="secondary" size="md" label="Cancel" onClick={onCancel} />}
-        />
-      }
-    >
-      <div className="flex flex-col gap-4">
-        {BUILD_STEPS.map((s, i) => {
-          const done = i < p;
-          const active = i === p;
-          return (
-            <div key={s.label} className="flex items-start gap-3">
-              {done ? <CheckCircle size={20} weight="fill" className="text-green-600 shrink-0 mt-0.5" />
-                : active ? <Spinner size={20} className="text-primary-500 shrink-0 mt-0.5" />
-                : <span className="w-5 h-5 rounded-full border-2 border-[var(--border-primary)] shrink-0 mt-0.5" />}
-              <div>
-                <p className={cn("text-[14px] font-semibold", done || active ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]")}>{s.label}</p>
-                <p className="text-[12px] text-[var(--text-muted)]">{s.note}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </WizardScaffold>
+    <CalibrationLayout activeIndex={s.active} onDelete={onCancel}>
+      <CalibrationEmpty icon={s.icon} copy={s.copy} />
+    </CalibrationLayout>
   );
 }
 
@@ -170,11 +220,18 @@ function Decisions({ goal, refetch, onCancel }) {
   const qc = useQueryClient();
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState({});
+  // Free text behind "Something else…", kept per question so navigating back
+  // and forth doesn't lose what was typed.
+  const [otherText, setOtherText] = useState({});
   const q = goal.questions[idx];
   const total = goal.questions.length;
 
+  // "other" is only a marker — it never reaches the engine; the typed text does.
+  const resolvedAnswers = () =>
+    Object.fromEntries(Object.entries(answers).map(([qid, val]) => [qid, val === "other" ? (otherText[qid] || "").trim() : val]));
+
   const submit = useMutation({
-    mutationFn: () => apiPost(`/api/goals/${goal.id}/answer`, { answers }),
+    mutationFn: () => apiPost(`/api/goals/${goal.id}/answer`, { answers: resolvedAnswers() }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["goal", goal.id] }); refetch(); },
   });
 
@@ -184,51 +241,23 @@ function Decisions({ goal, refetch, onCancel }) {
     else submit.mutate();
   };
   const chosen = answers[q.id];
+  // Choosing "Something else…" isn't an answer until it's actually written.
+  const answered = !!chosen && (chosen !== "other" || (otherText[q.id] || "").trim().length > 0);
 
   return (
-    <WizardScaffold
-      title="A couple of decisions"
-      subtitle="Your answers shape the targets; every option is grounded in your real numbers."
-      footer={
-        <WizardFooter
-          left={<WizardSteps current={1} />}
-          right={
-            <>
-              <PvButton variant="secondary" size="md" label="Cancel" onClick={onCancel} />
-              <PvButton variant="primary" size="md" label={idx < total - 1 ? "Next" : (submit.isPending ? "Building…" : "Build targets")} icon={ArrowRight} iconPosition="suffix" disabled={!chosen || submit.isPending} onClick={next} />
-            </>
-          }
-        />
-      }
-    >
-      {/* Answered so far — a quick glance; click to revisit */}
-      {idx > 0 && (
-        <div className="flex flex-col gap-2 mb-5">
-          {goal.questions.slice(0, idx).map((qq, i) => {
-            const ansId = answers[qq.id];
-            const opt = qq.options.find((o) => o.id === ansId);
-            const label = opt ? opt.label : ansId === "other" ? "Something else…" : "—";
-            return (
-              <button key={qq.id} onClick={() => setIdx(i)} className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-lg border border-[var(--border-primary)] bg-grey-50 text-left cursor-pointer hover:border-primary-300 transition-colors">
-                <CheckCircle size={16} weight="fill" className="text-green-600 shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Question {i + 1}</p>
-                  <p className="text-[14px] text-[var(--text-primary)] leading-snug line-clamp-1">{label}</p>
-                </div>
-              </button>
-            );
-          })}
+    <CalibrationLayout activeIndex={1} waiting onDelete={onCancel}>
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">A few questions</h2>
+      <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mt-4">Question {idx + 1} of {total}</p>
+      <p className="text-[18px] font-semibold text-[var(--text-primary)] leading-snug mt-1">{q.text}</p>
+      {q.found && (
+        <div className="flex items-start gap-2 px-4 py-3 mt-3 rounded-lg bg-primary-50 border border-primary-100">
+          <Question size={16} className="text-primary-500 shrink-0 mt-0.5" />
+          <p className="text-[12px] text-[var(--text-secondary)]"><span className="font-semibold text-[var(--text-primary)]">What we found:</span> {q.found}</p>
         </div>
       )}
 
-      <p className="text-[12px] font-semibold text-primary-600 mb-2">Question {idx + 1} of {total}</p>
-      <p className="text-[14px] text-[var(--text-primary)] leading-relaxed mb-4">{q.text}</p>
-      <div className="flex items-start gap-2 px-4 py-3 mb-5 rounded-lg bg-primary-50 border border-primary-100">
-        <Question size={16} className="text-primary-500 shrink-0 mt-0.5" />
-        <p className="text-[12px] text-[var(--text-secondary)]"><span className="font-semibold text-[var(--text-primary)]">What we found:</span> {q.found}</p>
-      </div>
-
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 mt-4">
         {q.options.map((o) => (
           <button
             key={o.id}
@@ -245,20 +274,38 @@ function Decisions({ goal, refetch, onCancel }) {
             {o.recommended && <span className="shrink-0 px-2 py-0.5 text-[12px] font-medium rounded-full bg-violet-50 text-violet-700 border border-violet-200">recommended</span>}
           </button>
         ))}
-        <button
-          onClick={() => choose("other")}
+        {/* "Something else…" becomes the input in place, so the row itself is
+            where you write the answer. */}
+        <div
+          onClick={() => { if (chosen !== "other") choose("other"); }}
           className={cn(
             "flex items-center gap-3 px-4 py-3.5 rounded-lg border text-left transition-colors",
-            chosen === "other" ? "border-primary-500 bg-primary-50" : "border-[var(--border-primary)] hover:border-primary-300 bg-white"
+            chosen === "other" ? "border-primary-500 bg-primary-50 cursor-text" : "border-[var(--border-primary)] hover:border-primary-300 bg-white cursor-pointer"
           )}
         >
           <span className={cn("shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center", chosen === "other" ? "border-primary-500" : "border-[var(--border-primary)]")}>
             {chosen === "other" && <span className="w-2 h-2 rounded-full bg-primary-500" />}
           </span>
-          <span className="text-[14px] text-[var(--text-secondary)]">Something else…</span>
-        </button>
+          {chosen === "other" ? (
+            <input
+              type="text"
+              autoFocus
+              value={otherText[q.id] || ""}
+              onChange={(e) => setOtherText((t) => ({ ...t, [q.id]: e.target.value }))}
+              placeholder="Tell us how to anchor this instead…"
+              className="flex-1 min-w-0 bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+            />
+          ) : (
+            <span className="text-[14px] text-[var(--text-secondary)]">Something else…</span>
+          )}
+        </div>
       </div>
-    </WizardScaffold>
+
+      <div className="flex justify-end mt-5">
+        <PvButton variant="primary" size="md" label={idx < total - 1 ? "Next" : (submit.isPending ? "Building…" : "Done")} icon={ArrowRight} iconPosition="suffix" disabled={!answered || submit.isPending} onClick={next} />
+      </div>
+      </div>
+    </CalibrationLayout>
   );
 }
 
@@ -826,6 +873,147 @@ function MonitorDetail({ label, children }) {
   );
 }
 
+/* A monitoring signal as a clickable card (title + one-line description) that
+   opens the trigger drawer. Replaces the in-place expand. */
+function SignalCard({ condition, onOpen }) {
+  const fired = condition.state === "fired";
+  return (
+    <button
+      onClick={onOpen}
+      className="text-left rounded-lg border border-[var(--color-grey-100)] bg-white p-4 hover:border-primary-300 hover:bg-[var(--color-primary-50)]/50 transition-colors cursor-pointer flex flex-col"
+    >
+      <div className="flex items-start gap-2">
+        {fired && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500 mt-[7px]" />}
+        <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug flex-1">{condition.label}</p>
+      </div>
+      {(condition.description || condition.rule) && (
+        <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-1.5 line-clamp-2">{condition.description || condition.rule}</p>
+      )}
+      <span className="text-[12px] font-medium text-primary-600 mt-2.5">View details</span>
+    </button>
+  );
+}
+
+/* One labelled block in the trigger drawer. */
+function TriggerSection({ label, children }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+// Quick-fill prompts for the "describe the change" edit flow.
+const TRIGGER_EDIT_SUGGESTIONS = [
+  { label: "Require sustained evidence", text: "Keep this trigger, but only fire after two consecutive weeks above the threshold so a single-week spike doesn't set it off." },
+  { label: "Add a quality threshold", text: "Add a quality guardrail: only fire when the downstream booked-demo rate stays within 5 percentage points of its baseline." },
+  { label: "Make it a watch condition", text: "Make this a watch condition instead of act-now — hold it for confirmation before it recommends anything." },
+];
+
+/* Trigger detail drawer — same floaty right-side overlay as a recommendation's
+   "View details", showing the metric/threshold checks, meaning, formula,
+   feasibility, and recent values — plus a natural-language edit-trigger flow. */
+function TriggerDrawer({ condition, onClose }) {
+  const [editing, setEditing] = useState(false);
+  const [changeText, setChangeText] = useState("");
+  useEffect(() => { setEditing(false); setChangeText(""); }, [condition]);
+  if (!condition) return <ChatOverlay isOpen={false} onClose={onClose} floating heading="Trigger details">{null}</ChatOverlay>;
+
+  const checks = condition.checks || [[condition.label, condition.rule || condition.description || "—"]];
+  const meaning = condition.meaning;
+  const formula = condition.formula || condition.logic;
+  const feasibility = condition.feasibility || "Passed — this monitor computes cleanly from the selected workflow.";
+  const periods = condition.periods || [];
+
+  return (
+    <ChatOverlay isOpen={!!condition} onClose={onClose} floating heading="Trigger details" title={condition.label} headerIcon={Sliders} headerIconWeight="bold">
+      <div className="h-full overflow-y-auto p-5 flex flex-col gap-4 bg-[var(--bg-primary)]">
+        <div>
+          <h3 className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{condition.label}</h3>
+          {(condition.rule || condition.description) && <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">{condition.rule || condition.description}</p>}
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 px-3.5 py-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">
+          <span className="font-semibold text-[var(--text-primary)]">Active</span> · Derived from this goal's definition and evaluated against the selected workflow.
+        </div>
+
+        {editing ? (
+          <>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Describe the change</p>
+              <h4 className="text-[14px] font-semibold text-[var(--text-primary)] mt-1">What would you like to change about this trigger?</h4>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-snug">Petavue will translate your request into updated metrics and thresholds, then check that the workflow can support it.</p>
+            </div>
+            <textarea
+              value={changeText}
+              onChange={(e) => setChangeText(e.target.value)}
+              rows={5}
+              autoFocus
+              placeholder="Example: Keep this trigger, but require two consecutive weeks above the CPL threshold and only fire when booked-demo rate stays within 5 percentage points of baseline."
+              className="w-full text-[13px] px-3 py-2.5 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none placeholder:text-[var(--text-muted)] leading-relaxed"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {TRIGGER_EDIT_SUGGESTIONS.map((s) => (
+                <button
+                  key={s.label}
+                  onClick={() => setChangeText(s.text)}
+                  className="text-[12px] font-medium px-2.5 py-1 rounded-full border border-[var(--border-primary)] text-primary-600 bg-white hover:border-primary-400 hover:bg-primary-50 cursor-pointer transition-colors"
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)] leading-snug">Changes are checked against the selected workflow before activation.</p>
+            <div className="flex items-center gap-2 pt-1">
+              <PvButton variant="secondary" size="md" label="Back to goal" icon={ArrowLeft} onClick={() => setEditing(false)} />
+              <PvButton variant="primary" size="md" label="Save trigger change" disabled={!changeText.trim()} onClick={() => { toast.success("Trigger change submitted for review"); setEditing(false); setChangeText(""); }} className="ml-auto" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-col gap-3">
+              {checks.map(([metric, threshold], i) => (
+                <div key={i} className="grid grid-cols-2 gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Metric</p>
+                    <p className="text-[12.5px] text-[var(--text-primary)] mt-0.5 leading-snug">{metric}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Threshold</p>
+                    <p className="text-[12.5px] text-[var(--text-primary)] mt-0.5 leading-snug">{threshold}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {meaning && <TriggerSection label="What this means"><p className="text-[12.5px] text-[var(--text-secondary)] leading-relaxed">{meaning}</p></TriggerSection>}
+            {formula && (
+              <TriggerSection label="How Petavue calculates it">
+                <div className="rounded-lg bg-grey-50 border border-[var(--color-grey-100)] px-3 py-2.5 text-[12px] font-mono text-[var(--text-primary)] leading-relaxed">{formula}</div>
+              </TriggerSection>
+            )}
+            <TriggerSection label="Feasibility check">
+              <p className="text-[12.5px] text-green-700 leading-snug">{feasibility}</p>
+            </TriggerSection>
+            {periods.length > 0 && (
+              <TriggerSection label="Recent values">
+                <div className="flex flex-wrap gap-1.5">
+                  {periods.map((p, i) => <span key={i} className="px-2 py-1 rounded-md bg-grey-100 text-[12px] text-[var(--text-secondary)] tabular-nums">{p}</span>)}
+                </div>
+              </TriggerSection>
+            )}
+
+            <div className="pt-1">
+              <PvButton variant="secondary" size="md" label="Edit trigger" icon={PencilSimple} onClick={() => setEditing(true)} />
+            </div>
+          </>
+        )}
+      </div>
+    </ChatOverlay>
+  );
+}
+
 function MonitorRow({ condition, defaultOpen, onOpenFinding }) {
   const [open, setOpen] = useState(!!defaultOpen);
   const fired = condition.state === "fired";
@@ -942,11 +1130,152 @@ function FeedbackTab({ goal }) {
   );
 }
 
+/* Section card for the goal detail body — kicker + title + optional action.
+   Same card language as the rest of Goals (white, grey-100 border, rounded-lg). */
+function DetailCard({ kicker, title, copy, action, children }) {
+  return (
+    <div className="flex flex-col bg-white border border-[var(--color-grey-100)] rounded-lg p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{kicker}</p>
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-0.5">{title}</h3>
+        </div>
+        {action}
+      </div>
+      {copy && <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-snug">{copy}</p>}
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+/* KPI stat — label + icon, big value, delta chip. `alert` tints the whole card
+   when the number is the one demanding attention. */
+function StatCard({ label, icon: Icon, value, unit, chip, chipTone, alert }) {
+  return (
+    <div className={cn("flex flex-col rounded-lg border px-4 py-3.5", alert ? "border-rose-200 bg-rose-50/50" : "border-[var(--color-grey-100)] bg-white")}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={cn("text-[13px] font-medium truncate", alert ? "text-rose-600" : "text-[var(--text-secondary)]")}>{label}</span>
+        {Icon && <Icon size={15} weight={alert ? "fill" : "regular"} className={cn("shrink-0", alert ? "text-rose-500" : "text-[var(--text-muted)]")} />}
+      </div>
+      <div className="flex items-end justify-between gap-2 mt-2">
+        <span className="flex items-baseline gap-1 min-w-0">
+          <span className="text-[26px] font-semibold text-[var(--text-primary)] leading-none tabular-nums truncate">{value}</span>
+          {unit && <span className="text-[13px] text-[var(--text-muted)]">{unit}</span>}
+        </span>
+        {chip && <span className={cn("shrink-0 inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap", chipTone)}>{chip}</span>}
+      </div>
+    </div>
+  );
+}
+
+// How far a metric has come toward its threshold, in both directions
+// (a "≤ / <" target improves as the number falls).
+function metricProgress(t) {
+  const cur = parseFloat(String(t.current).replace(/[^0-9.]/g, ""));
+  const tgt = parseFloat(String(t.target).replace(/[^0-9.]/g, ""));
+  if (!isFinite(cur) || !isFinite(tgt) || !tgt || !cur) return t.met ? 100 : 55;
+  const lowerIsBetter = /[≤<]/.test(String(t.target));
+  const pct = lowerIsBetter ? (tgt / cur) * 100 : (cur / tgt) * 100;
+  return Math.max(4, Math.min(100, Math.round(pct)));
+}
+
+/* A tracked metric as a progress row — label, bar toward the threshold, and the
+   current reading. */
+function MetricProgressRow({ target }) {
+  const pct = metricProgress(target);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[13px] text-[var(--text-primary)] truncate">{target.label}</span>
+        <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.current}</span> / {target.target}
+        </span>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <div className="flex-1 h-1.5 rounded-full bg-grey-100 overflow-hidden">
+          <div className={cn("h-full rounded-full", target.met ? "bg-green-500" : "bg-rose-500")} style={{ width: `${pct}%` }} />
+        </div>
+        <span className={cn("shrink-0 text-[12px] font-semibold tabular-nums", target.met ? "text-green-600" : "text-rose-600")}>{pct}%</span>
+      </div>
+      {target.why && <p className="text-[11.5px] text-[var(--text-muted)] leading-snug">{target.why}</p>}
+    </div>
+  );
+}
+
+/* Signal row — an id-style chip on the left, a severity word on the right, and
+   the plain-English line beneath. Used for triggers. */
+function SignalRow({ chip, chipTone, severity, severityTone, text, onClick }) {
+  const Wrap = onClick ? "button" : "div";
+  return (
+    <Wrap
+      onClick={onClick}
+      className={cn(
+        "w-full text-left px-3.5 py-2.5 bg-transparent border-none",
+        onClick && "cursor-pointer hover:bg-[var(--color-primary-50)] transition-colors"
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className={cn("inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded whitespace-nowrap", chipTone)}>{chip}</span>
+        <span className={cn("shrink-0 text-[10px] font-semibold uppercase tracking-wide", severityTone)}>{severity}</span>
+      </div>
+      <p className="text-[13px] text-[var(--text-primary)] leading-snug">{text}</p>
+    </Wrap>
+  );
+}
+
+/* One tracked metric — label, where it stands vs its threshold, and why it matters. */
+function GoalMetricRow({ target }) {
+  return (
+    <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{target.label}</p>
+        <span className={cn("shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap", target.met ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-700")}>
+          {target.met ? "On target" : "Off target"}
+        </span>
+      </div>
+      <div className="flex items-center gap-2.5 mt-1.5 text-[12px]">
+        <span className="text-[var(--text-secondary)]">Now <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.current}</span></span>
+        <span className="text-[var(--color-grey-300)]">|</span>
+        <span className="text-[var(--text-secondary)]">Target <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.target}</span></span>
+      </div>
+      {target.why && <p className="text-[11.5px] text-[var(--text-muted)] mt-1.5 leading-snug">{target.why}</p>}
+    </div>
+  );
+}
+
+/* Compact recommendation row for the goal's active / archived queues. */
+function GoalRecRow({ rec, onOpen }) {
+  const done = rec.status !== "open";
+  const meta = done
+    ? { label: rec.status === "rejected" ? "Dismissed" : rec.status === "snoozed" ? "Snoozed" : "Acted", cls: "bg-green-50 text-green-600", Icon: CheckCircle }
+    : rec.severity === "act-now"
+      ? { label: "Act now", cls: "bg-rose-50 text-rose-600", Icon: Lightning }
+      : { label: "Watch", cls: "bg-amber-50 text-amber-700", Icon: Eye };
+  return (
+    <button
+      onClick={() => onOpen(rec.id)}
+      className="w-full text-left rounded-lg border border-[var(--color-grey-100)] bg-white px-3 py-2.5 hover:bg-[var(--color-primary-50)] hover:border-primary-300 transition-colors cursor-pointer"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap", meta.cls)}>
+          <meta.Icon size={10} weight="fill" />{meta.label}
+        </span>
+        <span className="text-[11px] text-[var(--text-muted)] truncate">{rec.category}</span>
+      </div>
+      <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{rec.title}</p>
+      {rec.impact?.value && (
+        <p className="text-[12px] text-[var(--text-secondary)] mt-1">Impact <span className="font-medium text-[var(--text-primary)]">{rec.impact.value}</span></p>
+      )}
+    </button>
+  );
+}
+
 function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [note, setNote] = useState("");
   const [recId, setRecId] = useState(null);
+  const [triggerCond, setTriggerCond] = useState(null);
   const [tab, setTab] = useState("overview");
   const lastCheckIn = goal.checkIns[0];
   // Auto-grow the comment input up to 3 lines, then scroll (same as Sage's).
@@ -973,13 +1302,7 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
   const openRecs = recs.filter((r) => r.status === "open");
   const actNow = openRecs.filter((r) => r.severity === "act-now").length;
   const watching = openRecs.filter((r) => r.severity === "watch").length;
-  const doneCount = recs.filter((r) => r.status === "acted").length;
   const firingCount = goal.conditions.filter((c) => c.state === "fired").length;
-  // Feedback = decisions captured on recommendations + comments left on the goal.
-  const feedbackCount = goal.checkIns.flatMap((ci) => ci.recommendations).filter((r) => r.status !== "open").length + (goal.notes?.length || 0);
-  // The single highest-priority open finding — drives the Overview "Top finding"
-  // panel and the Monitor "Next step" card.
-  const leadRec = openRecs.find((r) => r.severity === "act-now") || openRecs[0] || null;
   // Open the finding a monitor produced — links "Creates: X" to the recommendation.
   const openFinding = (condition) => {
     const rec = recs.find((r) => r.category === condition.findingCategory);
@@ -995,185 +1318,170 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
         </div>
       </div>
 
-      {/* Tab bar — Overview · Recommendations · Monitor */}
-      <div className="flex w-full shrink-0 border-b border-[var(--color-grey-100)] mt-5">
-        <div className="flex items-start gap-6">
-          {[
-            { k: "overview", label: "Overview" },
-            { k: "recommendations", label: "Recommendations", badge: actNow || recs.length },
-            { k: "monitor", label: "Monitor", badge: firingCount },
-            { k: "feedback", label: "Feedback", badge: feedbackCount },
-          ].map((t) => (
-            <button
-              key={t.k}
-              onClick={() => setTab(t.k)}
-              className={cn(
-                "relative flex items-center gap-2 h-11 px-1 bg-transparent border-none cursor-pointer text-[14px] transition-colors",
-                tab === t.k ? "text-primary-500 font-medium" : "text-[var(--text-primary)] hover:text-primary-500"
-              )}
-            >
-              {t.label}
-              {t.badge > 0 && (
-                <span className={cn("px-1.5 py-0.5 text-[12px] font-semibold rounded-full", tab === t.k ? "bg-primary-500 text-white" : "bg-grey-100 text-[var(--text-muted)]")}>{t.badge}</span>
-              )}
-              {tab === t.k && (
-                <motion.span
-                  layoutId="goalTabUnderline"
-                  className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-primary-500"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+      {(() => {
+        const fired = goal.conditions.filter((c) => c.state === "fired");
+        const quietList = goal.conditions.filter((c) => c.state !== "fired");
+        const archivedRecs = goal.checkIns.flatMap((ci) => ci.recommendations).filter((r) => r.status !== "open");
+        const leadTargets = goal.targets.slice(0, 2);
+        return (
+          <div className="flex flex-col gap-3 mt-5">
+            {/* KPI strip — the goal's headline numbers, with the one that needs a
+                decision tinted so it reads first. */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {leadTargets.map((t) => (
+                <StatCard
+                  key={t.id}
+                  label={t.label}
+                  icon={t.met ? CheckCircle : Warning}
+                  value={t.current}
+                  chip={t.met ? "On target" : `Target ${t.target}`}
+                  chipTone={t.met ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-700"}
                 />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+              ))}
+              <StatCard
+                label="Triggers firing"
+                icon={Pulse}
+                value={String(firingCount)}
+                unit={`of ${goal.conditions.length}`}
+                chip={firingCount > 0 ? "Watching" : "All quiet"}
+                chipTone={firingCount > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-600"}
+              />
+              <StatCard
+                label="To act"
+                icon={Lightning}
+                value={String(actNow)}
+                unit={actNow === 1 ? "recommendation" : "recommendations"}
+                chip={watching > 0 ? `${watching} watching` : "Nothing waiting"}
+                chipTone={actNow > 0 ? "bg-white text-rose-600 border border-rose-200" : "bg-grey-100 text-[var(--text-muted)]"}
+                alert={actNow > 0}
+              />
+            </div>
 
-      <div className="mt-6">
-        {/* ── Overview: goal-level command summary ── */}
-        {tab === "overview" && (
-          <div className="flex flex-col gap-5">
-            {/* Tier 1 — status: are we winning? (quiet, flat, never competes) */}
-            <GoalStatusLine targets={goal.targets} />
+            {/* Tabs — each area gets the full width instead of competing for it */}
+            <div className="flex w-full shrink-0 border-b border-[var(--color-grey-100)]">
+              <div className="flex items-start gap-6">
+                {[
+                  { k: "overview", label: "Overview" },
+                  { k: "recommendations", label: "Recommendations", badge: openRecs.length },
+                  { k: "monitor", label: "Monitor", badge: firingCount },
+                ].map((t) => (
+                  <button
+                    key={t.k}
+                    onClick={() => setTab(t.k)}
+                    className={cn(
+                      "relative flex items-center gap-2 h-11 px-1 bg-transparent border-none cursor-pointer text-[14px] transition-colors",
+                      tab === t.k ? "text-primary-500 font-medium" : "text-[var(--text-primary)] hover:text-primary-500"
+                    )}
+                  >
+                    {t.label}
+                    {t.badge > 0 && (
+                      <span className={cn("px-1.5 py-0.5 text-[12px] font-semibold rounded-full", tab === t.k ? "bg-primary-500 text-white" : "bg-grey-100 text-[var(--text-muted)]")}>{t.badge}</span>
+                    )}
+                    {tab === t.k && (
+                      <motion.span
+                        layoutId="goalTabUnderline"
+                        className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-primary-500"
+                        transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {lastCheckIn ? (
-              <>
-                {/* Tier 2 — the one move to make (the only elevated block) */}
-                {leadRec && <TopFindingPanel rec={leadRec} onOpen={setRecId} />}
+            {/* ── Overview — the definition and where every number stands ── */}
+            {tab === "overview" && (
+              <div className="flex flex-col gap-3">
+                <DetailCard kicker="Goal definition" title="What Petavue is working toward">
+                  <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{goal.statement}</p>
+                </DetailCard>
 
-                {/* Tier 3 — also happening: quiet doors to the deeper tabs */}
-                {(() => {
-                  const more = Math.max(0, openRecs.length - (leadRec ? 1 : 0));
-                  const quietCount = goal.conditions.length - firingCount;
-                  return (
+                <DetailCard kicker="Metrics being tracked" title="Where each number stands">
+                  {goal.targets.length === 0 ? (
+                    <p className="text-[12px] text-[var(--text-muted)]">No metrics bound yet.</p>
+                  ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <OverviewLink
-                        icon={Lightning}
-                        label={more > 0 ? `${more} more open finding${more !== 1 ? "s" : ""}` : "No other open findings"}
-                        sub="See all recommendations"
-                        onClick={() => setTab("recommendations")}
-                      />
-                      <OverviewLink
-                        icon={Pulse}
-                        label={firingCount > 0 ? `${firingCount} monitor${firingCount !== 1 ? "s" : ""} firing · ${quietCount} quiet` : `All ${goal.conditions.length} monitors quiet`}
-                        sub="Open the Monitor tab"
-                        onClick={() => setTab("monitor")}
-                      />
+                      {goal.targets.map((t) => (
+                        <div key={t.id} className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-4">
+                          <p className="text-[12px] text-[var(--text-secondary)] leading-snug line-clamp-2">{t.label}</p>
+                          <div className="flex items-baseline gap-2 mt-2.5">
+                            <span className="text-[24px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">{t.current}</span>
+                            <span className={cn("text-[11px] font-semibold", t.met ? "text-green-600" : "text-amber-600")}>{t.met ? "On target" : "Off target"}</span>
+                          </div>
+                          <p className="text-[12px] text-[var(--text-muted)] mt-1.5">Target {t.target}</p>
+                        </div>
+                      ))}
                     </div>
-                  );
-                })()}
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 border border-dashed border-[var(--border-primary)] rounded-xl bg-white text-center">
-                <Lightning size={26} className="text-[var(--text-muted)]" />
-                <p className="text-[16px] font-medium text-[var(--text-primary)]">No check-ins yet</p>
-                <p className="text-[12px] text-[var(--text-secondary)] max-w-[440px]">This goal runs on the next scheduled check-in, measured against your latest paid data. You'll see where spend is leaking and where demand is going unanswered, each finding backed by the number behind it.</p>
+                  )}
+                </DetailCard>
               </div>
             )}
-          </div>
-        )}
 
-        {/* ── Recommendations ── */}
-        {tab === "recommendations" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              {lastCheckIn ? (
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Check-in · {lastCheckIn.at}</p>
-              ) : <span />}
-              <div className="flex items-center gap-3 text-[12px]">
-                <span className="inline-flex items-center gap-1.5"><Lightning size={13} weight="fill" className="text-rose-500" />{actNow} act now</span>
-                <span className="inline-flex items-center gap-1.5"><Eye size={13} className="text-amber-500" />{watching} watching</span>
-                <span className="inline-flex items-center gap-1.5"><CheckCircle size={13} weight="fill" className="text-green-500" />{doneCount} done</span>
-              </div>
-            </div>
-            {recs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 border border-dashed border-[var(--border-primary)] rounded-xl bg-white text-center">
-                <ClockCounterClockwise size={26} className="text-[var(--text-muted)]" />
-                <p className="text-[16px] font-medium text-[var(--text-primary)]">No recommendations yet</p>
-                <p className="text-[12px] text-[var(--text-secondary)] max-w-[440px]">Your moves show up here after the first check-in, each grounded in the number that triggered it, so you can act with confidence.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 items-stretch">
-                {/* Active first (act-now, then watch), then acted/rejected/snoozed. */}
-                {[...recs].sort((a, b) => {
-                  const rank = (r) => r.status !== "open" ? 2 : r.severity === "act-now" ? 0 : 1;
-                  return rank(a) - rank(b);
-                }).map((r) => <RecommendationCard key={r.id} goal={goal} rec={r} refetch={refetch} onOpen={setRecId} />)}
+            {/* ── Recommendations — the queue this goal produced, live and closed ── */}
+            {tab === "recommendations" && (
+              <div className="flex flex-col gap-3">
+                <DetailCard kicker="Current queue" title="Active recommendations" copy="Open, review-soon, and watchlist findings currently tied to this goal.">
+                  {openRecs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-10 rounded-lg border border-dashed border-[var(--border-primary)] text-center">
+                      <CheckCircle size={22} weight="fill" className="text-green-500" />
+                      <p className="text-[13px] text-[var(--text-secondary)]">Nothing open for this goal.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                      {[...openRecs].sort((a, b) => (a.severity === "act-now" ? 0 : 1) - (b.severity === "act-now" ? 0 : 1))
+                        .map((r) => <GoalRecRow key={r.id} rec={r} onOpen={setRecId} />)}
+                    </div>
+                  )}
+                </DetailCard>
+
+                <DetailCard kicker="Recommendation history" title="Archived recommendations" copy="Recommendations that were acted on or closed for this goal.">
+                  {archivedRecs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-10 rounded-lg border border-dashed border-[var(--border-primary)] text-center">
+                      <ClockCounterClockwise size={22} className="text-[var(--text-muted)]" />
+                      <p className="text-[13px] text-[var(--text-secondary)]">No decisions recorded yet.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-[var(--color-grey-100)] overflow-hidden divide-y divide-[var(--color-grey-100)]">
+                      {archivedRecs.map((r) => (
+                        <SignalRow
+                          key={r.id}
+                          chip={r.category}
+                          chipTone="bg-grey-100 text-[var(--text-secondary)]"
+                          severity={r.status === "rejected" ? "Dismissed" : r.status === "snoozed" ? "Snoozed" : "Acted"}
+                          severityTone={r.status === "rejected" ? "text-[var(--text-muted)]" : r.status === "snoozed" ? "text-amber-600" : "text-green-600"}
+                          text={r.title}
+                          onClick={() => setRecId(r.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </DetailCard>
               </div>
             )}
+
+            {/* ── Monitor — the signals as cards; click one for its full detail ── */}
+            {tab === "monitor" && (
+              <DetailCard
+                kicker="Monitoring signals"
+                title="Signals set for this goal"
+                copy="These signals define when Petavue creates, holds, or closes a recommendation. Open one for its metric, threshold, and how it's calculated."
+              >
+                {goal.conditions.length === 0 ? (
+                  <p className="text-[12px] text-[var(--text-muted)]">No signals bound yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+                    {[...goal.conditions].sort((a, b) => (a.state === "fired" ? 0 : 1) - (b.state === "fired" ? 0 : 1))
+                      .map((c) => <SignalCard key={c.id} condition={c} onOpen={() => setTriggerCond(c)} />)}
+                  </div>
+                )}
+              </DetailCard>
+            )}
           </div>
-        )}
+        );
+      })()}
 
-        {/* ── Monitor: trust-building + trigger visibility ── */}
-        {tab === "monitor" && (() => {
-          const fired = goal.conditions.filter((c) => c.state === "fired");
-          const quietList = goal.conditions.filter((c) => c.state !== "fired");
-          const quietCount = quietList.length;
-          return (
-            <div className="flex flex-col gap-5">
-              {/* Monitor summary strip */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <OverviewStat
-                  label="Current state" icon={Warning} iconClass="text-rose-500"
-                  num={firingCount} numClass="text-[var(--text-primary)]" word="firing"
-                  desc={firingCount > 0 ? `${firingCount} sustained pattern${firingCount !== 1 ? "s" : ""} generated findings in the latest check-in.` : "No monitors are firing right now."}
-                />
-                <OverviewStat
-                  label="Quiet" icon={CheckCircle} iconClass="text-green-500"
-                  num={quietCount} numClass="text-[var(--text-primary)]" word="quiet"
-                  desc={`${quietCount} monitor${quietCount !== 1 ? "s are" : " is"} healthy and still watching.`}
-                />
-                <OverviewStat
-                  label="Last run" icon={ClockCounterClockwise} iconClass="text-primary-500"
-                  num={lastCheckIn ? lastCheckIn.at : "—"} numClass="text-[var(--text-primary)]" word=""
-                  desc="Every rule was evaluated against this run's campaign and demo data."
-                />
-                <OverviewStat
-                  label="Reliability" icon={CheckCircle} iconClass="text-green-500"
-                  num={goal.conditions.length} numClass="text-[var(--text-primary)]" word={goal.conditions.length === 1 ? "rule run" : "rules run"}
-                  desc="All rules ran cleanly this check-in, no gaps or errors."
-                />
-              </div>
+      {triggerCond && <TriggerDrawer condition={triggerCond} onClose={() => setTriggerCond(null)} />}
 
-              {/* What we're watching — flat, grouped: firing (expanded) then quiet (collapsed) */}
-              <div className="flex flex-col">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-[var(--text-primary)]">What we're watching</p>
-                  <p className="text-[12px] text-[var(--text-muted)] mt-0.5">All {goal.conditions.length} monitors run on every check-in</p>
-                </div>
-
-                {fired.length > 0 && (
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Warning size={14} weight="fill" className="text-rose-500 shrink-0" />
-                      <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Firing</span>
-                      <span className="text-[12px] tabular-nums text-[var(--text-muted)]">{fired.length}</span>
-                    </div>
-                    <div className="rounded-lg border border-grey-100/70 bg-white overflow-hidden divide-y divide-[var(--color-grey-100)]">
-                      {fired.map((c) => <MonitorRow key={c.id} condition={c} defaultOpen onOpenFinding={openFinding} />)}
-                    </div>
-                  </div>
-                )}
-
-                {quietList.length > 0 && (
-                  <div className="mt-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Eye size={14} className="text-[var(--text-muted)] shrink-0" />
-                      <span className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Quiet</span>
-                      <span className="text-[12px] tabular-nums text-[var(--text-muted)]">{quietList.length}</span>
-                    </div>
-                    <div className="rounded-lg border border-grey-100/70 bg-white overflow-hidden divide-y divide-[var(--color-grey-100)]">
-                      {quietList.map((c) => <MonitorRow key={c.id} condition={c} onOpenFinding={openFinding} />)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Feedback: every decision + comment the customer has given ── */}
-        {tab === "feedback" && <FeedbackTab goal={goal} />}
-      </div>
 
       {recId && <RecommendationDrawer goalId={goal.id} recId={recId} onClose={() => setRecId(null)} />}
 
@@ -1231,6 +1539,11 @@ export default function GoalDetailPage() {
   // not the calibrating → review wizard phases.
   const goalIsActive = goal && !["calibrating", "decisions", "building", "review"].includes(goal.status);
   const lastCheckIn = goal?.checkIns?.[0] || null;
+  const qc = useQueryClient();
+  const runCheckIn = useMutation({
+    mutationFn: () => apiPost(`/api/goals/${id}/check-in`, {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goal", id] }); refetch(); toast.success("Check-in complete"); },
+  });
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -1243,15 +1556,21 @@ export default function GoalDetailPage() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {goalIsActive && lastCheckIn && (
-            <Tooltip title={`Last checked ${lastCheckIn.at}`} arrow placement="bottom">
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] cursor-default">
-                <Clock size={14} /> Last checked
-              </span>
-            </Tooltip>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+              Last check-in <span className="font-medium text-[var(--text-secondary)]">{lastCheckIn.at}</span>
+            </span>
           )}
           {goalIsActive && (
             <>
-              <PvButton variant="ghost" size="md" label="Add Comment" icon={ChatCircle} iconWeight="regular" onClick={() => setShowComment(true)} />
+              <PvButton
+                variant="secondary" size="md"
+                label={runCheckIn.isPending ? "Running…" : "Run check-in"}
+                icon={runCheckIn.isPending ? CircleNotch : Play}
+                disabled={runCheckIn.isPending}
+                onClick={() => runCheckIn.mutate()}
+                className={runCheckIn.isPending ? "[&_svg]:animate-spin" : undefined}
+              />
               <button
                 onClick={() => setSageOpen(true)}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"

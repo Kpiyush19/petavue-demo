@@ -126,30 +126,30 @@ function SingleSelect({ options = [], value, onChange, allowCustom = false }) {
         if (opt?.value === CUSTOM_SENTINEL && !allowCustom) return null
         const selected = opt.value === checkedValue
 
-        // "Other" — expands to hold its text input inline, so the custom answer
-        // lives inside the option (one connected box) rather than a field
-        // floating below the list.
+        // "Other" — the row itself turns into the text input once selected,
+        // so the custom answer lives in place rather than in a field floating
+        // below the option.
         if (opt.value === CUSTOM_SENTINEL) {
           return (
             <div
               key={opt.value}
-              className={`rounded-lg border overflow-hidden transition-colors ${selected ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-primary)] hover:border-[var(--text-muted)]/40 hover:bg-[var(--bg-hover)]'}`}
+              onClick={() => { if (!customMode) selectOption(opt.value) }}
+              className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border transition-colors ${customMode ? 'cursor-text' : 'cursor-pointer'} ${selected ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-primary)] hover:border-[var(--text-muted)]/40 hover:bg-[var(--bg-hover)]'}`}
             >
-              <label className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer">
-                <input type="radio" className="sr-only" checked={selected} onChange={() => selectOption(opt.value)} />
-                <span className="flex-1 text-[12px] text-[var(--text-primary)] leading-snug">{opt.label}</span>
-              </label>
-              {customMode && (
-                <div className="px-2.5 pb-2.5">
-                  <input
-                    type="text"
-                    autoFocus
-                    value={typeof value === 'string' ? value : ''}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder="Type your answer…"
-                    className="w-full px-3 py-2 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
-                  />
-                </div>
+              <span className={`shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'border-[var(--accent)]' : 'border-[var(--color-grey-300)]'}`}>
+                {selected && <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />}
+              </span>
+              {customMode ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={typeof value === 'string' ? value : ''}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="Type your answer…"
+                  className="flex-1 min-w-0 bg-transparent text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none leading-snug"
+                />
+              ) : (
+                <span className="flex-1 text-[12px] text-[var(--text-muted)] leading-snug">{opt.label}</span>
               )}
             </div>
           )
@@ -259,31 +259,32 @@ function MultiSelect({ options = [], value = [], onChange, allowCustom = false }
       })}
       {allowCustom && (
         <div
-          className={`rounded-lg border overflow-hidden transition-colors ${customChecked ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-primary)] hover:border-[var(--text-muted)]/40 hover:bg-[var(--bg-hover)]'}`}
+          onClick={() => { if (!customChecked) toggleCustom() }}
+          className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border transition-colors ${customChecked ? 'cursor-text' : 'cursor-pointer'} ${customChecked ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-primary)] hover:border-[var(--text-muted)]/40 hover:bg-[var(--bg-hover)]'}`}
         >
-          <label className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only"
-              checked={customChecked}
-              onChange={toggleCustom}
-            />
-            <span className="flex-1 text-[12px] text-[var(--text-primary)] leading-snug">
-              Other (please specify)
-            </span>
-            {customChecked && <Check size={15} strokeWidth={2.5} className="shrink-0 text-[var(--accent)]" />}
-          </label>
-          {customChecked && (
-            <div className="px-2.5 pb-2.5">
+          {customChecked ? (
+            <>
               <input
                 type="text"
                 autoFocus
                 value={customText}
                 onChange={(e) => onCustomTextChange(e.target.value)}
                 placeholder="Type your custom value…"
-                className="w-full px-3 py-2 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none leading-snug"
               />
-            </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); toggleCustom() }}
+                className="shrink-0 p-0.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                aria-label="Clear custom answer"
+              >
+                <X size={14} />
+              </button>
+            </>
+          ) : (
+            <span className="flex-1 text-[12px] text-[var(--text-muted)] leading-snug">
+              Other (please specify)
+            </span>
           )}
         </div>
       )}
@@ -707,9 +708,6 @@ export default function ClarificationCard({
             variant="secondary"
             label="Previous"
             icon={CaretLeft}
-            // .btn--secondary collides with the design-system CSS; force the
-            // petavue blue outline.
-            className="!text-[var(--accent)] !border-[var(--accent)] !bg-white"
           />
         ) : (
           <span />

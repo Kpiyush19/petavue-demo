@@ -151,13 +151,14 @@
 
 .btn--blueGhost:hover:not(:disabled) {
   background-color: var(--color-primary-100);
-  border-color: var(--color-primary-500);
+  /* Ghost: no border, ever — hover only tints the background. */
+  border-color: transparent;
   color: var(--color-primary-500);
 }
 
 .btn--blueGhost:active:not(:disabled) {
   background-color: var(--color-primary-50);
-  border-color: var(--color-primary-100);
+  border-color: transparent;
   color: var(--color-primary-300);
 }
 

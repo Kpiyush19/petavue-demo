@@ -772,55 +772,12 @@
 
 /* ═══════════════════════════════════════════
    Button
+   The generic .btn / .btn--primary / .btn--secondary / .btn--ghost rules that
+   lived here were removed: they were unscoped and collided globally with the
+   design-system Button (@/ui), flattening secondary buttons to grey wherever
+   this stylesheet loaded. Nothing in this widget renders raw .btn markup — it
+   uses the @/ui Button — so the design system now governs all buttons.
    ═══════════════════════════════════════════ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: inherit;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition:
-    background 0.15s,
-    color 0.15s;
-  white-space: nowrap;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn--primary {
-  background: var(--accent);
-  color: white;
-  border-radius: 8px;
-}
-.btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn--secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-}
-.btn--secondary:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
-
-.btn--ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border-radius: 8px;
-}
-.btn--ghost:hover:not(:disabled) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
 
 .btn--danger {
   background: var(--action-danger);

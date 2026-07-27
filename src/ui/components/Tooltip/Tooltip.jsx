@@ -1,4 +1,5 @@
 import MUITooltip from '@mui/material/Tooltip';
+import Fade from '@mui/material/Fade';
 import { isEqual } from 'lodash';
 import { useEffect, useRef, useState, memo, useCallback, isValidElement, cloneElement } from 'react';
 
@@ -70,6 +71,8 @@ const Tooltip = ({
   return (
     <MUITooltip
       {...(typeof open !== 'undefined' && { open })}
+      TransitionComponent={Fade}
+      TransitionProps={{ timeout: 180 }}
       disableHoverListener={disableHoverListener}
       slotProps={{
         tooltip: {

@@ -87,6 +87,11 @@
   --resize-handle-active: #3661ed;
   --tab-active-bg: #ffffff;
   --tab-hover-bg: #eef0f7;
+
+  /* Motion tokens */
+  --duration-fast: 120ms;
+  --duration-tooltip: 180ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body {
@@ -522,4 +527,78 @@ body {
    from capturing the mouse so the drag keeps tracking across the column. */
 .col-resizing iframe {
   pointer-events: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Global interaction polish
+   ───────────────────────────────────────────────────────────── */
+
+/* Press feedback — every clickable element scales to 98% while held,
+   eased with the fast duration. Interactive props are listed alongside
+   transform so this rule doesn't strip the color/background easing that
+   utility classes (transition-colors, etc.) rely on. */
+button,
+[role="button"],
+a,
+summary,
+.btn,
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  transition:
+    transform var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+button:active,
+[role="button"]:active,
+a:active,
+summary:active,
+.btn:active,
+label:has(> input[type="checkbox"]):active,
+label:has(> input[type="radio"]):active {
+  transform: scale(0.98);
+}
+
+/* Don't shrink disabled controls — a press that does nothing shouldn't
+   register as a press. */
+button:disabled:active,
+[role="button"][aria-disabled="true"]:active,
+.btn:disabled:active,
+.btn[disabled]:active {
+  transform: none;
+}
+
+/* Tooltips — fade in while lifting 4px and clearing a 2px blur, so they
+   ease into place rather than snapping. Opacity is driven by MUI's Fade
+   transition; this animation owns the lift + deblur (enter only). */
+@keyframes tooltip-lift {
+  from {
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+  to {
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+.MuiTooltip-tooltip {
+  animation: tooltip-lift var(--duration-tooltip) var(--ease-standard) both;
+}
+
+/* Respect reduced-motion — no press scale, no tooltip motion. */
+@media (prefers-reduced-motion: reduce) {
+  button:active,
+  [role="button"]:active,
+  a:active,
+  summary:active,
+  .btn:active {
+    transform: none;
+  }
+  .MuiTooltip-tooltip {
+    animation: none;
+  }
 }
