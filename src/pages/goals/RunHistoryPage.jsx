@@ -154,7 +154,7 @@ export default function RunHistoryPage() {
       <div className="flex-1 min-h-0 overflow-y-auto bg-grey-50 p-4">
         <div className="flex flex-col min-h-full w-full bg-white rounded-xl border border-[var(--color-grey-100)] p-4">
           <h1 className="text-[24px] font-semibold text-[var(--text-primary)]">Run history</h1>
-          <p className="text-[14px] text-[var(--text-secondary)] mb-6">Every check-in, its cost per agent, and the full transcripts behind it.</p>
+          <p className="text-[14px] text-[#757A97] mb-6">Every check-in, its cost per agent, and the full transcripts behind it.</p>
 
           {isLoading || !data ? (
             <div className="flex items-center gap-2 text-[14px] text-[var(--text-muted)] mt-8"><Spinner size={18} /> Loading…</div>

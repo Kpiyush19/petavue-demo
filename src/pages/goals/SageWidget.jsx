@@ -110,7 +110,7 @@ export function SageChat({ goal }) {
               <button
                 key={s}
                 onClick={() => sendSuggestion(s)}
-                className="text-[12px] px-3 py-1.5 rounded-full border border-[var(--border-primary)] text-[var(--text-secondary)] bg-white hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors"
+                className="text-[12px] px-3 py-1.5 rounded-full border border-[var(--border-primary)] text-[#757A97] bg-white hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors"
               >
                 {s}
               </button>

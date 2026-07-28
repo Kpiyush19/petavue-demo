@@ -384,6 +384,7 @@ const handlers = [
   { method: "GET", pattern: /\/api\/goals$/, handler: () => ({ goals: Goals.listGoals() }) },
   { method: "POST", pattern: /\/api\/goals$/, handler: ({ body }) => ({ goal: Goals.createGoal(body || {}) }) },
   { method: "GET", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params }) => Goals.getGoal(params[0]) || { detail: "not found" } },
+  { method: "PATCH", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params, body }) => Goals.updateGoal(params[0], body || {}) },
   { method: "DELETE", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params }) => Goals.deleteGoal(params[0]) },
   { method: "POST", pattern: /\/api\/goals\/([^/]+)\/answer$/, handler: ({ params, body }) => Goals.answerGoal(params[0], body?.answers || {}) },
   { method: "POST", pattern: /\/api\/goals\/sage$/, handler: ({ body }) => Goals.sageChat(body?.text || "") },

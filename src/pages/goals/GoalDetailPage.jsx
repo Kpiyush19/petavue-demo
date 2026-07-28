@@ -8,6 +8,7 @@ import {
   CaretRight, X, ClockCounterClockwise, Play, Question, WaveSine, Pulse, Warning, XCircle, PencilSimple, NotePencil,
   Clock, UserCircle, TrendUp, ChartPieSlice, PaperPlaneTilt, PaperPlaneRight, ArrowsClockwise, Info,
   CurrencyDollar, Fire, Funnel, Tag, Code, CaretDown, ChatCircle, Sparkle, Sliders,
+  DotsThree, Trash, ShareNetwork,
 } from "@phosphor-icons/react";
 import { Tooltip } from "@/ui";
 
@@ -22,54 +23,14 @@ import { toast } from "sonner";
 import SageWidget, { SAGE_GRADIENT } from "./SageWidget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
 import { Button as PvButton } from "@/ui";
-import { apiGet, apiPost } from "../../api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "../../api";
 import { cn } from "../../utils/cn";
 import RecommendationDrawer from "./RecommendationDrawer";
 import { StepIndicator } from "../skills-v2/SetupProgress";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
-// The wizard journey, as a linear "verify & publish"-style progress line shown
-// in the footer. Loading → your decisions → we build (targets, conditions &
-// moves folded into one step, since none need interaction) → review.
-const CALIBRATION_STEPS = [
-  "Read your data",
-  "Your decisions",
-  "Build the goal",
-  "Review & save",
-];
-
-/* ───────── Wizard shell: titled content panel · sticky footer step line ───────── */
-
-// Horizontal progress line for the footer (Figma "verify & publish" pattern):
-// filled checks for done steps, an active dot with a label, connectors between.
-function WizardSteps({ current }) {
-  return (
-    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-      {CALIBRATION_STEPS.map((label, i) => {
-        const done = i < current;
-        const active = i === current;
-        return (
-          <div key={label} className="flex items-center gap-2 shrink-0">
-            {i > 0 && <span className={cn("w-5 h-[2px] rounded-full", done ? "bg-primary-400" : "bg-[var(--border-primary)]")} />}
-            <span className="flex items-center gap-1.5">
-              {done ? (
-                <CheckCircle size={16} weight="fill" className="text-primary-600 shrink-0" />
-              ) : active ? (
-                <span className="flex items-center justify-center w-4 h-4 rounded-full border-2 border-primary-500 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                </span>
-              ) : (
-                <span className="w-4 h-4 rounded-full border-2 border-[var(--border-primary)] shrink-0" />
-              )}
-              <span className={cn("text-[14px] whitespace-nowrap", active ? "text-primary-600 font-medium" : done ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]")}>{label}</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+/* ───────── Wizard shell: titled content panel · sticky footer ───────── */
 
 // Page-wide footer slot — GoalDetailPage renders a full-width bar below the
 // scroll area and shares its DOM node here; WizardFooter portals into it so the
@@ -81,7 +42,7 @@ function WizardFooter({ left, right }) {
   const slot = useContext(FooterSlot);
   const bar = (
     <div className="w-full px-6 py-3 border-t border-[var(--border-primary)] bg-white flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2 min-w-0 text-[14px] text-[var(--text-secondary)]">{left}</div>
+      <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#757A97]">{left}</div>
       <div className="flex items-center gap-2 shrink-0">{right}</div>
     </div>
   );
@@ -127,7 +88,7 @@ function CalibrationStepRow({ label, desc, status }) {
             style={{ gridTemplateRows: showDesc ? "1fr" : "0fr", opacity: showDesc ? 1 : 0, transitionTimingFunction: STEP_EASE }}
           >
             <div className="overflow-hidden">
-              <p className="text-[12px] leading-snug mt-1 text-[var(--text-secondary)]">{desc}</p>
+              <p className="text-[12px] leading-snug mt-1 text-[#757A97]">{desc}</p>
             </div>
           </div>
         </div>
@@ -141,11 +102,7 @@ function CalibrationStepRow({ label, desc, status }) {
 function CalibrationLayout({ activeIndex, waiting, onDelete, children }) {
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full">
-      <div className="flex items-start gap-2 px-5 py-2.5 shrink-0 border-b border-[var(--color-grey-100)] text-[13px] text-[var(--text-secondary)] bg-white">
-        <Info size={15} className="shrink-0 mt-0.5 text-[var(--text-muted)]" />
-        <span>This usually takes a few minutes. <span className="font-medium text-[var(--text-primary)]">You can leave and it keeps running</span> — pick it up anytime. When it's ready, this goal starts running on every check-in.</span>
-      </div>
-      <div className="flex-1 min-h-0 flex p-4">
+      <div className="flex-1 min-h-0 flex">
         <div className="w-[340px] shrink-0 flex flex-col min-h-0 bg-white border border-[var(--color-grey-100)] border-r-0 rounded-l-2xl overflow-hidden">
           <div className="flex items-center h-12 px-4 shrink-0">
             <h2 className="text-[16px] font-semibold text-[var(--text-primary)] truncate">Building your goal triggers</h2>
@@ -177,7 +134,7 @@ function CalibrationEmpty({ icon: Icon, copy, detail }) {
         <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] mb-3.5">
           <Icon size={20} />
         </div>
-        <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">{copy}</p>
+        <p className="text-[14px] text-[#757A97] leading-relaxed">{copy}</p>
         {detail && <p className="text-[12px] text-[var(--text-muted)] mt-2 leading-relaxed">{detail}</p>}
       </div>
     </div>
@@ -246,14 +203,14 @@ function Decisions({ goal, refetch, onCancel }) {
 
   return (
     <CalibrationLayout activeIndex={1} waiting onDelete={onCancel}>
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-      <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">A few questions</h2>
+      <div className="flex-1 overflow-y-auto px-6 py-3">
+      <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">A few questions</h2>
       <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mt-4">Question {idx + 1} of {total}</p>
-      <p className="text-[18px] font-semibold text-[var(--text-primary)] leading-snug mt-1">{q.text}</p>
+      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug mt-1">{q.text}</p>
       {q.found && (
         <div className="flex items-start gap-2 px-4 py-3 mt-3 rounded-lg bg-primary-50 border border-primary-100">
           <Question size={16} className="text-primary-500 shrink-0 mt-0.5" />
-          <p className="text-[12px] text-[var(--text-secondary)]"><span className="font-semibold text-[var(--text-primary)]">What we found:</span> {q.found}</p>
+          <p className="text-[12px] text-[#757A97]"><span className="font-semibold text-[var(--text-primary)]">What we found:</span> {q.found}</p>
         </div>
       )}
 
@@ -296,7 +253,7 @@ function Decisions({ goal, refetch, onCancel }) {
               className="flex-1 min-w-0 bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           ) : (
-            <span className="text-[14px] text-[var(--text-secondary)]">Something else…</span>
+            <span className="text-[14px] text-[#757A97]">Something else…</span>
           )}
         </div>
       </div>
@@ -310,14 +267,55 @@ function Decisions({ goal, refetch, onCancel }) {
 }
 
 /* ───────────────────────── Review ───────────────────────── */
+/* Labelled facet inside an expanded review card (What this means / found / how). */
+function ReviewFacet({ label, text, tint, mono }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">{label}</p>
+      <p className={cn("text-[13px] text-[#757A97] leading-relaxed", tint && "rounded-lg bg-grey-50 px-3 py-2", mono && "font-mono text-[12px] text-[var(--text-primary)]")}>{text}</p>
+    </div>
+  );
+}
+
+/* One expandable target / signal card: title + one-line summary + View details.
+   Collapsed header is grey; the body animates open/closed. */
+function ReviewCard({ title, summary, open, onToggle, children }) {
+  return (
+    <div className="rounded-lg border border-[var(--color-grey-100)] overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-start justify-between gap-3 p-3.5 text-left bg-grey-50 hover:bg-grey-100/70 transition-colors border-none cursor-pointer active:scale-100">
+        <div className="min-w-0">
+          <p className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{title}</p>
+        </div>
+        <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 mt-0.5">
+          {open ? "Hide details" : "View details"} <CaretDown size={12} className={cn("transition-transform duration-200", open && "rotate-180")} />
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+            className="overflow-hidden bg-white"
+          >
+            <div className="px-3.5 pb-3.5 pt-3 flex flex-col gap-3 border-t border-[var(--color-grey-100)]">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function Review({ goal, refetch, onCancel }) {
   const qc = useQueryClient();
   const [showSave, setShowSave] = useState(false);
   const [name, setName] = useState(goal.name || "");
-  const [whyOpen, setWhyOpen] = useState(false);
+  const [openIds, setOpenIds] = useState(() => new Set());
+  const toggleOpen = (id) => setOpenIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const [chat, setChat] = useState([]);
   const [draft, setDraft] = useState("");
-  const [chatWidth, setChatWidth] = useState(360);
+  const [chatWidth, setChatWidth] = useState(380);
 
   // Drag the left edge of the adjust panel to resize it (300–620px).
   const startResize = (e) => {
@@ -358,64 +356,72 @@ function Review({ goal, refetch, onCancel }) {
       <div className="flex-1 flex min-h-0 bg-white border border-[var(--color-grey-100)] rounded-xl overflow-hidden">
         {/* Left: titled content */}
         <div className="flex-1 min-w-0 overflow-y-auto p-4">
-          <h1 className="text-[16px] font-semibold text-[var(--text-primary)]">Review your goal</h1>
-          <p className="text-[14px] text-[var(--text-secondary)] mb-6">Here's how we'll measure and watch it. Adjust on the right, then save.</p>
-          <div className="flex flex-col gap-7">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-[18px] font-semibold text-[var(--text-primary)]">Review your goal</h1>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-green-50 text-green-700 border border-green-200"><span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Draft ready</span>
+          </div>
+          <p className="text-[14px] text-[#757A97] mt-1 mb-5">Here's how we'll measure and watch it. Adjust on the right, then save.</p>
+
+          <div className="flex flex-col gap-4">
+            {/* Derived goal statement */}
+            <section className="rounded-xl border border-[var(--color-grey-100)] p-4">
+              <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Derived goal statement</h2>
+              <div className="mt-2.5 rounded-lg border border-primary-100 bg-primary-50/40 px-3.5 py-3">
+                <p className="text-[12px] text-[var(--text-primary)] leading-relaxed">{goal.statement}</p>
+              </div>
+            </section>
+
             {/* Targets */}
-            <section>
-              <div className="flex items-center gap-2 mb-1">
-                <Target size={16} className="text-grey-600" />
-                <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">Targets</h2>
-                <span className="px-1.5 py-0.5 text-[12px] font-semibold rounded-full bg-grey-100 text-[var(--text-muted)]">{goal.targets.length}</span>
+            <section className="rounded-xl border border-[var(--color-grey-100)] p-4">
+              <div className="flex items-center gap-2">
+                <Target size={16} weight="fill" className="text-primary-500 shrink-0" />
+                <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Your targets — how we'll know you hit the goal</h2>
               </div>
-              <p className="text-[14px] text-[var(--text-secondary)] mb-3">How we'll know you hit the goal: we check each target every run.</p>
-              {goal.targets.map((t) => (
-                <div key={t.id} className="p-4 bg-white border border-[var(--border-primary)] rounded-xl">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-[16px] font-medium text-[var(--text-primary)] leading-relaxed">{t.label}</p>
-                    {t.target && <span className="shrink-0 px-2.5 py-1 text-[14px] font-semibold rounded-md bg-primary-50 text-primary-700">{t.target}</span>}
-                  </div>
-                  <button onClick={() => setWhyOpen((v) => !v)} className="flex items-center gap-1 mt-3 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer">
-                    <CaretRight size={12} className={cn("transition-transform", whyOpen && "rotate-90")} /> Why this, and where it comes from
-                  </button>
-                  {whyOpen && <p className="mt-1.5 text-[14px] text-[var(--text-secondary)] leading-relaxed pl-4 border-l-2 border-primary-100">{t.why}</p>}
+              <p className="text-[12px] text-[#757A97] mt-0.5 mb-3">Your goal breaks into these measurable targets. Petavue checks each one every run — expand any to see exactly how it's measured.</p>
+              <div className="flex flex-col gap-2">
+                {goal.targets.map((t) => (
+                  <ReviewCard key={t.id} title={t.label} summary={t.meaning || t.why} open={openIds.has(t.id)} onToggle={() => toggleOpen(t.id)}>
+                    {(t.meaning || t.why) && <ReviewFacet label="What this means" text={t.meaning || t.why} />}
+                    {t.found && <ReviewFacet label="What we found" text={t.found} tint />}
+                    {t.formula && <ReviewFacet label="How Petavue measures this" text={t.formula} />}
+                  </ReviewCard>
+                ))}
+              </div>
+            </section>
+
+            {/* Signals */}
+            <section className="rounded-xl border border-[var(--color-grey-100)] p-4">
+              <div className="flex items-center gap-2">
+                <WaveSine size={16} weight="fill" className="text-primary-500 shrink-0" />
+                <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Signals we'll watch each run</h2>
+              </div>
+              <p className="text-[12px] text-[#757A97] mt-0.5 mb-3">Early-warning signals. If any drifts, Petavue surfaces it before it can derail the goal.</p>
+              <div className="flex flex-col gap-2">
+                {goal.conditions.map((c) => (
+                  <ReviewCard key={c.id} title={c.label} summary={c.description} open={openIds.has(c.id)} onToggle={() => toggleOpen(c.id)}>
+                    {c.description && <ReviewFacet label="What this means" text={c.description} />}
+                    {c.meaning && <ReviewFacet label="When it counts" text={c.meaning} />}
+                    {(c.formula || c.logic) && <ReviewFacet label="How Petavue measures this" text={c.formula || c.logic} mono={!c.formula} />}
+                  </ReviewCard>
+                ))}
+              </div>
+            </section>
+
+            {/* Moves */}
+            {goal.moves.length > 0 && (
+              <section className="rounded-xl border border-[var(--color-grey-100)] p-4">
+                <div className="flex items-center gap-2">
+                  <Lightning size={16} weight="fill" className="text-primary-500 shrink-0" />
+                  <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Moves we may recommend</h2>
                 </div>
-              ))}
-            </section>
-
-            {/* Conditions we'll watch */}
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <WaveSine size={16} className="text-grey-600" />
-                <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">Conditions we'll watch each run</h2>
-                <span className="px-1.5 py-0.5 text-[12px] font-semibold rounded-full bg-grey-100 text-[var(--text-muted)]">{goal.conditions.length}</span>
-              </div>
-              <div className="flex flex-col">
-                {goal.conditions.map((c, i) => (
-                  <div key={c.id} className="flex items-start gap-2.5 py-2">
-                    <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-grey-100 text-[12px] font-semibold text-[var(--text-muted)] mt-0.5">{i + 1}</span>
-                    <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed">{c.label}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Moves we may recommend */}
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <Lightning size={16} className="text-grey-600" />
-                <h2 className="text-[16px] font-semibold text-[var(--text-primary)]">Moves we may recommend</h2>
-                <span className="px-1.5 py-0.5 text-[12px] font-semibold rounded-full bg-grey-100 text-[var(--text-muted)]">{goal.moves.length}</span>
-              </div>
-              <div className="flex flex-col">
-                {goal.moves.map((m, i) => (
-                  <div key={m.id} className="flex items-start gap-2.5 py-2">
-                    <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-md bg-grey-100 text-[12px] font-semibold text-[var(--text-muted)] mt-0.5">{i + 1}</span>
-                    <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+                <p className="text-[12px] text-[#757A97] mt-0.5 mb-3">When a target or condition fires, these are the plays Petavue can suggest — always for your approval, never automatic.</p>
+                <ul className="flex flex-col gap-2 list-disc pl-5">
+                  {goal.moves.map((m) => (
+                    <li key={m.id} className="text-[12px] text-[var(--text-primary)] leading-snug marker:text-[var(--text-muted)]">{m.label}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
         </div>
 
@@ -431,13 +437,9 @@ function Review({ goal, refetch, onCancel }) {
             >
               <span className="w-[2px] h-full bg-transparent group-hover:bg-primary-300 transition-colors" />
             </div>
-            <div className="shrink-0 flex items-start gap-2 px-4 py-3.5">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <PencilSimple size={16} className="text-primary-500 shrink-0" />
-                  <p className="text-[14px] font-medium text-[var(--text-primary)]">Want to adjust anything?</p>
-                </div>
-              </div>
+            <div className="shrink-0 px-4 py-3.5 border-b border-[var(--color-grey-100)]">
+              <p className="text-[14px] font-semibold text-[var(--text-primary)]">Want to adjust anything?</p>
+              <p className="text-[12px] text-[#757A97] mt-1 leading-snug">Tell us in plain language — we'll change the setup and tell you what moved. We only adjust the goal here; we won't run analysis.</p>
             </div>
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {chat.map((m, i) => (
@@ -446,16 +448,16 @@ function Review({ goal, refetch, onCancel }) {
                 </div>
               ))}
             </div>
-            <div className="shrink-0 p-3 flex items-end gap-2">
+            <div className="shrink-0 p-3 border-t border-[var(--color-grey-100)] flex items-end gap-2">
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAdjust(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendAdjust(); } }}
                 rows={1}
-                placeholder="Tell us what to adjust…"
-                className="flex-1 text-[14px] px-3 py-2 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none"
+                placeholder="e.g. Tighten the CPL target to $600"
+                className="flex-1 min-w-0 text-[14px] px-3 py-2 rounded-[8px] border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none placeholder:text-[#adb2ce]"
               />
-              <button onClick={sendAdjust} disabled={!draft.trim() || adjust.isPending} className="flex items-center justify-center w-9 h-9 rounded-full bg-primary-500 text-white disabled:opacity-40 shrink-0 cursor-pointer border-none transition-opacity" aria-label="Send">
+              <button onClick={sendAdjust} disabled={!draft.trim() || adjust.isPending} className="flex items-center justify-center w-9 h-9 rounded-[8px] bg-primary-500 text-white disabled:opacity-40 shrink-0 cursor-pointer border-none transition-opacity" aria-label="Send">
                 {adjust.isPending ? <Spinner size={16} /> : <PaperPlaneTilt size={16} weight="fill" />}
               </button>
             </div>
@@ -463,14 +465,6 @@ function Review({ goal, refetch, onCancel }) {
       </div>
 
       <WizardFooter
-        left={
-          <>
-            <WizardSteps current={3} />
-            <Tooltip title="Tell us in plain language, and we'll change the setup and tell you what moved. We only adjust the goal here; we won't run analysis." arrow placement="top">
-              <span className="inline-flex items-center cursor-default text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0"><Info size={16} /></span>
-            </Tooltip>
-          </>
-        }
         right={
           <>
             <PvButton variant="secondary" size="md" label="Cancel" onClick={onCancel} />
@@ -550,14 +544,14 @@ function RecommendationCard({ goal, rec, refetch, onOpen }) {
       </div>
 
       {/* Headline + body */}
-      <p className={cn("text-[14px] font-semibold leading-snug mb-1.5", done ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]")}>{rec.title}</p>
-      <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mb-3 line-clamp-3">{rec.body}</p>
+      <p className={cn("text-[14px] font-semibold leading-snug mb-1.5", done ? "text-[#757A97]" : "text-[var(--text-primary)]")}>{rec.title}</p>
+      <p className="text-[14px] text-[#757A97] leading-relaxed mb-3 line-clamp-3">{rec.body}</p>
 
       {/* Impact strip */}
       {rec.impact && (
         <div className="flex items-baseline gap-2 px-3 py-2 mb-3 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
           <span className="text-[16px] font-semibold text-[var(--text-primary)] leading-none">{rec.impact.value}</span>
-          <span className="text-[12px] text-[var(--text-secondary)]">{rec.impact.label}</span>
+          <span className="text-[12px] text-[#757A97]">{rec.impact.label}</span>
           {rec.impact.sub && <span className="ml-auto text-[12px] text-[var(--text-muted)] whitespace-nowrap">{rec.impact.sub}</span>}
         </div>
       )}
@@ -590,7 +584,7 @@ function RecommendationCard({ goal, rec, refetch, onOpen }) {
                   {SNOOZE_OPTIONS.map((opt) => (
                     <button key={opt} type="button" onClick={() => setSnoozeFor(opt)}
                       className={cn("text-[12px] px-2 py-1 rounded-full border cursor-pointer transition-colors",
-                        snoozeFor === opt ? "border-primary-400 text-primary-600 bg-primary-50" : "border-[var(--border-primary)] text-[var(--text-secondary)] bg-white hover:border-primary-400")}>
+                        snoozeFor === opt ? "border-primary-400 text-primary-600 bg-primary-50" : "border-[var(--border-primary)] text-[#757A97] bg-white hover:border-primary-400")}>
                       {opt}
                     </button>
                   ))}
@@ -651,7 +645,7 @@ function StatTile({ icon: Icon, tone, value, label }) {
       </span>
       <div className="min-w-0">
         <p className="text-[18px] font-semibold text-[var(--text-primary)] leading-none">{value}</p>
-        <p className="text-[12px] text-[var(--text-secondary)] mt-1 truncate">{label}</p>
+        <p className="text-[12px] text-[#757A97] mt-1 truncate">{label}</p>
       </div>
     </div>
   );
@@ -669,7 +663,7 @@ function OverviewStat({ label, icon: Icon, iconClass, num, numClass, word, desc 
           <span className={numClass}>{num}</span>{word && <span className="text-[var(--text-primary)]"> {word}</span>}
         </span>
       </div>
-      <p className="text-[12px] text-[var(--text-secondary)] leading-snug">{desc}</p>
+      <p className="text-[12px] text-[#757A97] leading-snug">{desc}</p>
     </div>
   );
 }
@@ -703,7 +697,7 @@ function TopFindingPanel({ rec, onOpen }) {
       <div className="px-4 pb-4 flex flex-col gap-4">
         <div>
           <p className="text-[16px] font-semibold text-[var(--text-primary)] leading-snug">{rec.title}</p>
-          {rec.body && <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mt-1.5">{rec.body}</p>}
+          {rec.body && <p className="text-[12px] text-[#757A97] leading-relaxed mt-1.5">{rec.body}</p>}
         </div>
 
         {/* Impact · Trigger · Signal */}
@@ -768,7 +762,7 @@ function GoalStatusLine({ targets }) {
               <div className="h-1.5 w-full rounded-full bg-grey-100 overflow-hidden">
                 <div className={cn("h-full rounded-full transition-[width]", t.met ? "bg-green-500" : "bg-amber-500")} style={{ width: `${fill}%` }} />
               </div>
-              <span className="text-[12px] text-[var(--text-secondary)] leading-snug line-clamp-2">{t.label}</span>
+              <span className="text-[12px] text-[#757A97] leading-snug line-clamp-2">{t.label}</span>
             </div>
           );
         })}
@@ -809,7 +803,7 @@ function MonitorHealthPanel({ conditions, firingCount, onViewAll }) {
           const fired = c.state === "fired";
           return (
             <div key={c.id} className={cn("flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg", fired ? "bg-rose-50/60 border border-rose-100" : "border border-transparent")}>
-              <p className={cn("text-[12px] leading-snug", fired ? "text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)]")}>{c.label}</p>
+              <p className={cn("text-[12px] leading-snug", fired ? "text-[var(--text-primary)] font-medium" : "text-[#757A97]")}>{c.label}</p>
               <span className={cn("shrink-0 text-[10px] font-semibold", fired ? "text-rose-600" : "text-green-600")}>{fired ? "Fired" : "Quiet"}</span>
             </div>
           );
@@ -831,7 +825,7 @@ function NextStepCard({ rec, firingCount, onOpen }) {
     return (
       <div className="bg-white border border-[var(--border-primary)] rounded-xl p-4 flex flex-col gap-1.5">
         <div className="flex items-center gap-2"><CheckCircle size={15} weight="fill" className="text-green-500" /><p className="text-[14px] font-semibold text-[var(--text-primary)]">Next step</p></div>
-        <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">Monitors are quiet; nothing needs action right now. The moment a rule fires, the next step lands here.</p>
+        <p className="text-[12px] text-[#757A97] leading-relaxed">Monitors are quiet; nothing needs action right now. The moment a rule fires, the next step lands here.</p>
       </div>
     );
   }
@@ -842,7 +836,7 @@ function NextStepCard({ rec, firingCount, onOpen }) {
       </div>
       <div className="px-4 pb-3 flex flex-col gap-3">
         <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug">{rec.title}</p>
-        <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">{rec.tldr}</p>
+        <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.tldr}</p>
         {rec.impact && <p className="text-[12px] text-[var(--text-muted)]">{rec.impact.label}: <span className="font-semibold text-[var(--text-primary)]">{rec.impact.value}</span></p>}
         <PvButton variant="primary" size="md" label="Open finding" icon={ArrowRight} iconPosition="suffix" onClick={() => onOpen(rec.id)} />
       </div>
@@ -868,7 +862,7 @@ function MonitorDetail({ label, children }) {
     <div className="relative flex items-start gap-2 pl-4 py-1">
       <span className="absolute left-0 top-0 bottom-1/2 w-3 border-l border-b border-[var(--color-grey-200)] rounded-bl" />
       <span className="text-[12px] text-[var(--text-muted)] shrink-0 mt-0.5 min-w-[52px]">{label}</span>
-      <div className="text-[12px] text-[var(--text-secondary)] leading-relaxed min-w-0">{children}</div>
+      <div className="text-[12px] text-[#757A97] leading-relaxed min-w-0">{children}</div>
     </div>
   );
 }
@@ -876,18 +870,16 @@ function MonitorDetail({ label, children }) {
 /* A monitoring signal as a clickable card (title + one-line description) that
    opens the trigger drawer. Replaces the in-place expand. */
 function SignalCard({ condition, onOpen }) {
-  const fired = condition.state === "fired";
   return (
     <button
       onClick={onOpen}
       className="text-left rounded-lg border border-[var(--color-grey-100)] bg-white p-4 hover:border-primary-300 hover:bg-[var(--color-primary-50)]/50 transition-colors cursor-pointer flex flex-col"
     >
       <div className="flex items-start gap-2">
-        {fired && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-rose-500 mt-[7px]" />}
         <p className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug flex-1">{condition.label}</p>
       </div>
       {(condition.description || condition.rule) && (
-        <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-1.5 line-clamp-2">{condition.description || condition.rule}</p>
+        <p className="text-[12px] text-[#757A97] leading-snug mt-1.5 line-clamp-2">{condition.description || condition.rule}</p>
       )}
       <span className="text-[12px] font-medium text-primary-600 mt-2.5">View details</span>
     </button>
@@ -931,10 +923,10 @@ function TriggerDrawer({ condition, onClose }) {
       <div className="h-full overflow-y-auto p-5 flex flex-col gap-4 bg-[var(--bg-primary)]">
         <div>
           <h3 className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{condition.label}</h3>
-          {(condition.rule || condition.description) && <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">{condition.rule || condition.description}</p>}
+          {(condition.rule || condition.description) && <p className="text-[13px] text-[#757A97] mt-1.5 leading-relaxed">{condition.rule || condition.description}</p>}
         </div>
 
-        <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 px-3.5 py-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">
+        <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 px-3.5 py-2.5 text-[12.5px] text-[#757A97] leading-snug">
           <span className="font-semibold text-[var(--text-primary)]">Active</span> · Derived from this goal's definition and evaluated against the selected workflow.
         </div>
 
@@ -943,7 +935,7 @@ function TriggerDrawer({ condition, onClose }) {
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Describe the change</p>
               <h4 className="text-[14px] font-semibold text-[var(--text-primary)] mt-1">What would you like to change about this trigger?</h4>
-              <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-snug">Petavue will translate your request into updated metrics and thresholds, then check that the workflow can support it.</p>
+              <p className="text-[12px] text-[#757A97] mt-1 leading-snug">Petavue will translate your request into updated metrics and thresholds, then check that the workflow can support it.</p>
             </div>
             <textarea
               value={changeText}
@@ -987,7 +979,7 @@ function TriggerDrawer({ condition, onClose }) {
               ))}
             </div>
 
-            {meaning && <TriggerSection label="What this means"><p className="text-[12.5px] text-[var(--text-secondary)] leading-relaxed">{meaning}</p></TriggerSection>}
+            {meaning && <TriggerSection label="What this means"><p className="text-[12.5px] text-[#757A97] leading-relaxed">{meaning}</p></TriggerSection>}
             {formula && (
               <TriggerSection label="How Petavue calculates it">
                 <div className="rounded-lg bg-grey-50 border border-[var(--color-grey-100)] px-3 py-2.5 text-[12px] font-mono text-[var(--text-primary)] leading-relaxed">{formula}</div>
@@ -999,7 +991,7 @@ function TriggerDrawer({ condition, onClose }) {
             {periods.length > 0 && (
               <TriggerSection label="Recent values">
                 <div className="flex flex-wrap gap-1.5">
-                  {periods.map((p, i) => <span key={i} className="px-2 py-1 rounded-md bg-grey-100 text-[12px] text-[var(--text-secondary)] tabular-nums">{p}</span>)}
+                  {periods.map((p, i) => <span key={i} className="px-2 py-1 rounded-md bg-grey-100 text-[12px] text-[#757A97] tabular-nums">{p}</span>)}
                 </div>
               </TriggerSection>
             )}
@@ -1034,7 +1026,7 @@ function MonitorRow({ condition, defaultOpen, onOpenFinding }) {
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
             <div className="pl-[42px] pr-4 pb-4 flex flex-col gap-1">
-              {condition.description && <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-1">{condition.description}</p>}
+              {condition.description && <p className="text-[12px] text-[#757A97] leading-relaxed mb-1">{condition.description}</p>}
               {condition.creates && (
                 <MonitorDetail label="Creates">
                   {condition.findingCategory ? (
@@ -1042,7 +1034,7 @@ function MonitorRow({ condition, defaultOpen, onOpenFinding }) {
                       {condition.creates} <ArrowRight size={12} weight="bold" />
                     </button>
                   ) : (
-                    <span className="text-[var(--text-secondary)]">{condition.creates}</span>
+                    <span className="text-[#757A97]">{condition.creates}</span>
                   )}
                 </MonitorDetail>
               )}
@@ -1076,7 +1068,7 @@ function FeedbackTab({ goal }) {
       <div className="flex flex-col items-center justify-center gap-2 py-16 border border-dashed border-[var(--border-primary)] rounded-xl bg-white text-center">
         <ChatCircle size={26} className="text-[var(--text-muted)]" />
         <p className="text-[16px] font-medium text-[var(--text-primary)]">No feedback yet</p>
-        <p className="text-[12px] text-[var(--text-secondary)] max-w-[440px]">When you act on, dismiss, or snooze a recommendation (or leave a comment), it shows up here, and the engine factors it into the next check-in.</p>
+        <p className="text-[12px] text-[#757A97] max-w-[440px]">When you act on, dismiss, or snooze a recommendation (or leave a comment), it shows up here, and the engine factors it into the next check-in.</p>
       </div>
     );
   }
@@ -1118,7 +1110,7 @@ function FeedbackTab({ goal }) {
                 </div>
                 {it.title && <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug mt-1">{it.title}</p>}
                 {it.reason
-                  ? <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed mt-1">{it.reason}</p>
+                  ? <p className="text-[14px] text-[#757A97] leading-relaxed mt-1">{it.reason}</p>
                   : it.needsReason && <p className="text-[12px] text-[var(--text-muted)] mt-1">No reason captured.</p>}
               </div>
             </li>
@@ -1137,12 +1129,12 @@ function DetailCard({ kicker, title, copy, action, children }) {
     <div className="flex flex-col bg-white border border-[var(--color-grey-100)] rounded-lg p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{kicker}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{kicker}</p>
           <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-0.5">{title}</h3>
         </div>
         {action}
       </div>
-      {copy && <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-snug">{copy}</p>}
+      {copy && <p className="text-[12px] text-[#757A97] mt-1 leading-snug">{copy}</p>}
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -1150,24 +1142,6 @@ function DetailCard({ kicker, title, copy, action, children }) {
 
 /* KPI stat — label + icon, big value, delta chip. `alert` tints the whole card
    when the number is the one demanding attention. */
-function StatCard({ label, icon: Icon, value, unit, chip, chipTone, alert }) {
-  return (
-    <div className={cn("flex flex-col rounded-lg border px-4 py-3.5", alert ? "border-rose-200 bg-rose-50/50" : "border-[var(--color-grey-100)] bg-white")}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={cn("text-[13px] font-medium truncate", alert ? "text-rose-600" : "text-[var(--text-secondary)]")}>{label}</span>
-        {Icon && <Icon size={15} weight={alert ? "fill" : "regular"} className={cn("shrink-0", alert ? "text-rose-500" : "text-[var(--text-muted)]")} />}
-      </div>
-      <div className="flex items-end justify-between gap-2 mt-2">
-        <span className="flex items-baseline gap-1 min-w-0">
-          <span className="text-[26px] font-semibold text-[var(--text-primary)] leading-none tabular-nums truncate">{value}</span>
-          {unit && <span className="text-[13px] text-[var(--text-muted)]">{unit}</span>}
-        </span>
-        {chip && <span className={cn("shrink-0 inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap", chipTone)}>{chip}</span>}
-      </div>
-    </div>
-  );
-}
-
 // How far a metric has come toward its threshold, in both directions
 // (a "≤ / <" target improves as the number falls).
 function metricProgress(t) {
@@ -1234,9 +1208,9 @@ function GoalMetricRow({ target }) {
         </span>
       </div>
       <div className="flex items-center gap-2.5 mt-1.5 text-[12px]">
-        <span className="text-[var(--text-secondary)]">Now <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.current}</span></span>
+        <span className="text-[#757A97]">Now <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.current}</span></span>
         <span className="text-[var(--color-grey-300)]">|</span>
-        <span className="text-[var(--text-secondary)]">Target <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.target}</span></span>
+        <span className="text-[#757A97]">Target <span className="font-semibold text-[var(--text-primary)] tabular-nums">{target.target}</span></span>
       </div>
       {target.why && <p className="text-[11.5px] text-[var(--text-muted)] mt-1.5 leading-snug">{target.why}</p>}
     </div>
@@ -1264,7 +1238,7 @@ function GoalRecRow({ rec, onOpen }) {
       </div>
       <p className="text-[13px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{rec.title}</p>
       {rec.impact?.value && (
-        <p className="text-[12px] text-[var(--text-secondary)] mt-1">Impact <span className="font-medium text-[var(--text-primary)]">{rec.impact.value}</span></p>
+        <p className="text-[12px] text-[#757A97] mt-1">Impact <span className="font-medium text-[var(--text-primary)]">{rec.impact.value}</span></p>
       )}
     </button>
   );
@@ -1313,8 +1287,8 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
     <>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[18px] font-semibold text-[var(--text-primary)]">{goal.name}</h1>
-          <p className="text-[14px] text-[var(--text-secondary)] mt-1">{goal.statement}</p>
+          <h1 className="text-[16px] font-semibold text-[var(--text-primary)]">{goal.name}</h1>
+          <p className="text-[14px] text-[#757A97] mt-1">{goal.statement}</p>
         </div>
       </div>
 
@@ -1322,40 +1296,26 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
         const fired = goal.conditions.filter((c) => c.state === "fired");
         const quietList = goal.conditions.filter((c) => c.state !== "fired");
         const archivedRecs = goal.checkIns.flatMap((ci) => ci.recommendations).filter((r) => r.status !== "open");
-        const leadTargets = goal.targets.slice(0, 2);
         return (
           <div className="flex flex-col gap-3 mt-5">
-            {/* KPI strip — the goal's headline numbers, with the one that needs a
-                decision tinted so it reads first. */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {leadTargets.map((t) => (
-                <StatCard
-                  key={t.id}
-                  label={t.label}
-                  icon={t.met ? CheckCircle : Warning}
-                  value={t.current}
-                  chip={t.met ? "On target" : `Target ${t.target}`}
-                  chipTone={t.met ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-700"}
-                />
-              ))}
-              <StatCard
-                label="Triggers firing"
-                icon={Pulse}
-                value={String(firingCount)}
-                unit={`of ${goal.conditions.length}`}
-                chip={firingCount > 0 ? "Watching" : "All quiet"}
-                chipTone={firingCount > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-600"}
-              />
-              <StatCard
-                label="To act"
-                icon={Lightning}
-                value={String(actNow)}
-                unit={actNow === 1 ? "recommendation" : "recommendations"}
-                chip={watching > 0 ? `${watching} watching` : "Nothing waiting"}
-                chipTone={actNow > 0 ? "bg-white text-rose-600 border border-rose-200" : "bg-grey-100 text-[var(--text-muted)]"}
-                alert={actNow > 0}
-              />
-            </div>
+            {/* Headline — the check-in narrative, with a blue accent so it reads
+                first. Falls back to a plain status line if there's no summary. */}
+            {(() => {
+              const status = actNow > 0
+                ? `${actNow} recommendation${actNow > 1 ? "s" : ""} need${actNow > 1 ? "" : "s"} your decision`
+                : firingCount > 0
+                  ? `${firingCount} trigger${firingCount > 1 ? "s" : ""} firing — nothing to act on yet`
+                  : "On track — all triggers quiet";
+              const text = goal.checkIns?.[0]?.summary || status;
+              return (
+                <div className="rounded-xl border border-primary-100 bg-primary-50/40 px-4 py-3.5">
+                  <p className="inline-flex items-center gap-1.5 text-[14px] font-medium uppercase tracking-wider text-primary-600 mb-1.5">
+                    <Sparkle size={13} weight="fill" /> Headline
+                  </p>
+                  <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{text}</p>
+                </div>
+              );
+            })()}
 
             {/* Tabs — each area gets the full width instead of competing for it */}
             <div className="flex w-full shrink-0 border-b border-[var(--color-grey-100)]">
@@ -1393,7 +1353,7 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
             {tab === "overview" && (
               <div className="flex flex-col gap-3">
                 <DetailCard kicker="Goal definition" title="What Petavue is working toward">
-                  <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{goal.statement}</p>
+                  <p className="text-[13px] text-[#757A97] leading-relaxed">{goal.statement}</p>
                 </DetailCard>
 
                 <DetailCard kicker="Metrics being tracked" title="Where each number stands">
@@ -1403,10 +1363,10 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {goal.targets.map((t) => (
                         <div key={t.id} className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-4">
-                          <p className="text-[12px] text-[var(--text-secondary)] leading-snug line-clamp-2">{t.label}</p>
+                          <p className="text-[12px] text-[#757A97] leading-snug line-clamp-2">{t.label}</p>
                           <div className="flex items-baseline gap-2 mt-2.5">
-                            <span className="text-[24px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">{t.current}</span>
-                            <span className={cn("text-[11px] font-semibold", t.met ? "text-green-600" : "text-amber-600")}>{t.met ? "On target" : "Off target"}</span>
+                            <span className="text-[16px] font-semibold text-[var(--text-primary)] tabular-nums leading-none">{t.current}</span>
+                            <span className={cn("text-[12px] font-semibold", t.met ? "text-green-600" : "text-amber-600")}>{t.met ? "On target" : "Off target"}</span>
                           </div>
                           <p className="text-[12px] text-[var(--text-muted)] mt-1.5">Target {t.target}</p>
                         </div>
@@ -1424,7 +1384,7 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
                   {openRecs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-1.5 py-10 rounded-lg border border-dashed border-[var(--border-primary)] text-center">
                       <CheckCircle size={22} weight="fill" className="text-green-500" />
-                      <p className="text-[13px] text-[var(--text-secondary)]">Nothing open for this goal.</p>
+                      <p className="text-[13px] text-[#757A97]">Nothing open for this goal.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
@@ -1438,7 +1398,7 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
                   {archivedRecs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-1.5 py-10 rounded-lg border border-dashed border-[var(--border-primary)] text-center">
                       <ClockCounterClockwise size={22} className="text-[var(--text-muted)]" />
-                      <p className="text-[13px] text-[var(--text-secondary)]">No decisions recorded yet.</p>
+                      <p className="text-[13px] text-[#757A97]">No decisions recorded yet.</p>
                     </div>
                   ) : (
                     <div className="rounded-lg border border-[var(--color-grey-100)] overflow-hidden divide-y divide-[var(--color-grey-100)]">
@@ -1446,7 +1406,7 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
                         <SignalRow
                           key={r.id}
                           chip={r.category}
-                          chipTone="bg-grey-100 text-[var(--text-secondary)]"
+                          chipTone="bg-grey-100 text-[#757A97]"
                           severity={r.status === "rejected" ? "Dismissed" : r.status === "snoozed" ? "Snoozed" : "Acted"}
                           severityTone={r.status === "rejected" ? "text-[var(--text-muted)]" : r.status === "snoozed" ? "text-amber-600" : "text-green-600"}
                           text={r.title}
@@ -1520,6 +1480,99 @@ function ActiveGoal({ goal, refetch, showComment, setShowComment }) {
   );
 }
 
+/* Header overflow menu: edit name/description · share with team · delete. */
+function GoalMenu({ goal, onEdit, onDeleted }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+  const qc = useQueryClient();
+  const del = useMutation({
+    mutationFn: () => apiDelete(`/api/goals/${goal.id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals"] }); toast.success("Goal deleted"); onDeleted(); },
+    onError: (e) => toast.error("Delete failed: " + e.message),
+  });
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    }
+    setOpen((o) => !o);
+  };
+  const share = () => {
+    setOpen(false);
+    const url = window.location.href;
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(() => toast.success("Goal link copied — share it with your team")).catch(() => toast.success("Goal link copied"));
+    else toast.success("Goal link copied");
+  };
+  const remove = () => {
+    setOpen(false);
+    if (window.confirm(`Delete “${goal.name}”? This can't be undone.`)) del.mutate();
+  };
+  const item = "w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-left bg-transparent border-none cursor-pointer";
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button onClick={toggle} aria-label="Goal actions" className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[var(--text-muted)] hover:bg-grey-100 hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer">
+        <DotsThree size={20} weight="bold" />
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+          <div className="fixed z-[61] w-[230px] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1" style={{ top: pos.top, right: pos.right }}>
+            <button onClick={() => { setOpen(false); onEdit(); }} className={cn(item, "hover:bg-grey-50 text-[var(--text-primary)]")}><PencilSimple size={16} className="text-[var(--text-muted)] shrink-0" /> Edit name &amp; description</button>
+            <button onClick={share} className={cn(item, "hover:bg-grey-50 text-[var(--text-primary)]")}><ShareNetwork size={16} className="text-[var(--text-muted)] shrink-0" /> Share with team</button>
+            <div className="my-1 border-t border-[var(--color-grey-100)]" />
+            <button onClick={remove} className={cn(item, "hover:bg-rose-50 text-rose-600")}><Trash size={16} className="shrink-0" /> Delete</button>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+/* Edit goal name & description modal. */
+function EditGoalModal({ goal, onClose, onSaved }) {
+  const [name, setName] = useState(goal.name || "");
+  const [statement, setStatement] = useState(goal.statement || "");
+  const qc = useQueryClient();
+  const save = useMutation({
+    mutationFn: () => apiPatch(`/api/goals/${goal.id}`, { name: name.trim(), statement: statement.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goal", goal.id] }); qc.invalidateQueries({ queryKey: ["goals"] }); toast.success("Goal updated"); onSaved(); },
+    onError: (e) => toast.error("Update failed: " + e.message),
+  });
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+        className="relative w-[560px] max-w-[94vw] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border-t-[3px] border-[var(--color-primary-500)]"
+      >
+        <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border-primary)]">
+          <h3 className="text-[16px] font-semibold text-[var(--text-primary)] m-0">Edit goal</h3>
+          <PvButton variant="ghost" size="sm" icon={X} aria-label="Close" onClick={onClose} />
+        </div>
+        <div className="flex flex-col gap-4 px-5 py-5">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-semibold text-[var(--text-primary)]">Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Goal name"
+              className="w-full text-[14px] px-3.5 py-2.5 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none text-[var(--text-primary)] placeholder:text-[#adb2ce]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-semibold text-[var(--text-primary)]">Description</label>
+            <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={3} placeholder="What this goal is about"
+              className="w-full text-[14px] px-3.5 py-3 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none text-[var(--text-primary)] placeholder:text-[#adb2ce]" />
+          </div>
+        </div>
+        <div className="shrink-0 flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border-primary)]">
+          <PvButton variant="secondary" size="md" label="Cancel" onClick={onClose} />
+          <PvButton variant="primary" size="md" label={save.isPending ? "Saving…" : "Save"} disabled={save.isPending || !name.trim()} onClick={() => save.mutate()} />
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ───────────────────────── Router ───────────────────────── */
 export default function GoalDetailPage() {
   const { id } = useParams();
@@ -1534,6 +1587,7 @@ export default function GoalDetailPage() {
   const crumb = goal?.name || "Goal";
   const [footerEl, setFooterEl] = useState(null);
   const [showComment, setShowComment] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [sageOpen, setSageOpen] = useState(false);
   // Header actions (Comment / Ask Sage / Last checked) only apply to a live goal,
   // not the calibrating → review wizard phases.
@@ -1558,7 +1612,7 @@ export default function GoalDetailPage() {
           {goalIsActive && lastCheckIn && (
             <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-              Last check-in <span className="font-medium text-[var(--text-secondary)]">{lastCheckIn.at}</span>
+              Last check-in <span className="font-medium text-[#757A97]">{lastCheckIn.at}</span>
             </span>
           )}
           {goalIsActive && (
@@ -1580,6 +1634,7 @@ export default function GoalDetailPage() {
               </button>
             </>
           )}
+          {goal && <GoalMenu goal={goal} onEdit={() => setEditOpen(true)} onDeleted={() => navigate("/goals")} />}
         </div>
       </div>
 
@@ -1613,6 +1668,8 @@ export default function GoalDetailPage() {
 
       {/* Page-wide footer slot — wizard phases portal their footer here */}
       <div ref={setFooterEl} className="shrink-0 w-full" />
+
+      {editOpen && goal && <EditGoalModal goal={goal} onClose={() => setEditOpen(false)} onSaved={() => { setEditOpen(false); refetch(); }} />}
 
       {/* Sage — launched from the header "Ask Sage" button; overlay only (no FAB) */}
       <SageWidget

@@ -22,7 +22,7 @@ function SnoozeMenu({ onSnooze, disabled }) {
   return (
     <>
       <button ref={btnRef} onClick={toggle} disabled={disabled}
-        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[14px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-grey-100 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50">
+        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[14px] font-medium text-[#757A97] hover:text-[var(--text-primary)] hover:bg-grey-100 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50">
         <ClockCounterClockwise size={14} /> Snooze <CaretRight size={11} className="rotate-90" />
       </button>
       {open && pos && createPortal(
@@ -55,8 +55,8 @@ function QuickRec({ goalId, rec, onChanged }) {
   }[rec.status];
   return (
     <div className={cn("p-3.5 rounded-lg border", done ? "border-[var(--border-primary)] bg-grey-50" : "border-primary-200 bg-primary-50/30")}>
-      <p className={cn("text-[14px] font-medium leading-snug mb-1", done ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]")}>→ {rec.tldr}</p>
-      <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed mb-2.5">{rec.body}</p>
+      <p className={cn("text-[14px] font-medium leading-snug mb-1", done ? "text-[#757A97]" : "text-[var(--text-primary)]")}>→ {rec.tldr}</p>
+      <p className="text-[12px] text-[#757A97] leading-relaxed mb-2.5">{rec.body}</p>
       {done ? (
         <div className="flex items-center justify-between">
           <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-medium", resolved.cls)}>
@@ -123,7 +123,7 @@ export default function GoalQuickView({ id, onClose, onFull }) {
                   <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                   <h3 className="text-[18px] font-semibold text-[var(--text-primary)] truncate">{goal.name}</h3>
                 </div>
-                <p className="text-[14px] text-[var(--text-secondary)] mt-1 line-clamp-2">{goal.statement}</p>
+                <p className="text-[14px] text-[#757A97] mt-1 line-clamp-2">{goal.statement}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <PvButton variant="ghost" size="sm" icon={ArrowSquareOut} aria-label="Open full view" onClick={() => onFull(id)} />
@@ -204,7 +204,7 @@ export default function GoalQuickView({ id, onClose, onFull }) {
                                   <span className="w-2 h-2 rounded-full border-[1.5px] border-grey-300" />
                                 )}
                               </span>
-                              <p className={cn("flex-1 text-[12px] leading-snug line-clamp-2", fired ? "text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)]")}>{c.label}</p>
+                              <p className={cn("flex-1 text-[12px] leading-snug line-clamp-2", fired ? "text-[var(--text-primary)] font-medium" : "text-[#757A97]")}>{c.label}</p>
                               <span className={cn("shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded", fired ? "bg-rose-100 text-rose-700" : "text-[var(--text-muted)]")}>
                                 {fired ? (c.count ? `${c.count} fired` : "fired") : "quiet"}
                               </span>

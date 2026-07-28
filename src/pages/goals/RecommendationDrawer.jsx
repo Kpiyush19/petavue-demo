@@ -2,9 +2,9 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, Target, Lightning, Eye, Clock, Tag, ListBullets, FlowArrow, ClockClockwise, ChartBar } from "@phosphor-icons/react";
+import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, Target, Lightning, Eye, Clock, Tag, ListBullets, FlowArrow, ClockClockwise, ChartBar, Info, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { Button as PvButton } from "@/ui";
+import { Button as PvButton, Tooltip } from "@/ui";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import { apiGet, apiPost } from "../../api";
@@ -13,6 +13,15 @@ import { cn } from "../../utils/cn";
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
 const SNOOZE_OPTIONS = ["1 day", "3 days", "1 week", "2 weeks", "Until next check-in"];
+
+// Status badge — mirrors recMeta in GoalsPage so the title's suffix chip matches
+// the queue card. Bordered (no fill), regular-weight icon, uppercase.
+const recBadge = (rec) => {
+  if (rec.status !== "open") return { label: rec.status === "rejected" ? "Dismissed" : "Acted", cls: "text-green-600 border border-green-200", icon: CheckCircle };
+  if (rec.severity === "act-now") return { label: "Act now", cls: "text-rose-600 border border-rose-200", icon: Lightning };
+  if ((rec.tier || 2) <= 2) return { label: "Review soon", cls: "text-amber-700 border border-amber-200", icon: Warning };
+  return { label: "Watch", cls: "text-blue-700 border border-blue-200", icon: Eye };
+};
 
 /* Snooze split-button with a duration dropdown (portaled, opens upward). */
 function SnoozeMenu({ onSnooze, disabled }) {
@@ -29,13 +38,13 @@ function SnoozeMenu({ onSnooze, disabled }) {
   return (
     <>
       <button ref={btnRef} onClick={toggle} disabled={disabled}
-        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[14px] font-medium text-amber-600 hover:bg-amber-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-amber-600 hover:bg-amber-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
         <ClockCounterClockwise size={16} /> Snooze <CaretDown size={12} />
       </button>
       {open && pos && createPortal(
         <>
           <div className="fixed inset-0 z-[70]" onClick={() => setOpen(false)} />
-          <div className="fixed z-[71] w-44 bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1" style={{ bottom: pos.bottom, left: pos.left }}>
+          <div className="fixed z-[71] w-44 bg-white border border-[var(--border-primary)] rounded-[8px] shadow-lg py-1" style={{ bottom: pos.bottom, left: pos.left }}>
             <p className="px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Snooze for</p>
             {SNOOZE_OPTIONS.map((label) => (
               <button key={label} onClick={() => { onSnooze(label); setOpen(false); }}
@@ -65,9 +74,9 @@ function renderInline(text) {
 /* A single fact cell in the recommendation header (label over value). */
 function Fact({ label, value, valueCls }) {
   return (
-    <div className="bg-white px-3.5 py-2.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
-      <div className={cn("text-[12.5px] font-medium mt-0.5 text-[var(--text-primary)]", valueCls)}>{value}</div>
+    <div className="bg-grey-50 px-3.5 py-2.5">
+      <div className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
+      <div className={cn("text-[12px] font-medium mt-0.5 text-[var(--text-primary)]", valueCls)}>{value}</div>
     </div>
   );
 }
@@ -75,10 +84,10 @@ function Fact({ label, value, valueCls }) {
 /* One section of the evidence "View details" drawer. */
 function EvidenceCard({ icon: Icon, title, children }) {
   return (
-    <div className="rounded-lg border border-[var(--color-grey-100)] bg-white p-3.5">
+    <div className="rounded-[8px] border border-[var(--color-grey-100)] bg-white p-3.5">
       <div className="flex items-center gap-1.5 mb-2.5">
         {Icon && <Icon size={14} weight="bold" className="text-[var(--text-muted)]" />}
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
       </div>
       {children}
     </div>
@@ -141,35 +150,42 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
       {/* Scrollable region: header + body scroll together */}
       <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="border-b border-[var(--border-primary)] px-5 py-4 flex flex-col gap-3">
+      <div className="px-5 py-4 flex flex-col gap-[10px]">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h2 className="text-[16px] font-semibold text-[var(--text-primary)] leading-snug">{rec.title}</h2>
-            {rec.tldr && <p className="text-[13px] text-[var(--text-secondary)] leading-snug mt-1.5">{rec.tldr}</p>}
+            <h2 className="text-[18px] font-semibold text-[var(--text-primary)] leading-snug">
+              {rec.title}
+              {(() => { const b = recBadge(rec); return (
+                <span className={cn("inline-flex items-center gap-1 align-middle ml-2 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", b.cls)}>
+                  <b.icon size={10} weight="regular" />{b.label}
+                </span>
+              ); })()}
+            </h2>
+            {rec.tldr && <p className="text-[14px] text-[#757A97] leading-snug mt-1.5">{rec.tldr}</p>}
           </div>
           {onClose && <button onClick={onClose} className="shrink-0 -mt-1 -mr-1 p-1 rounded-md text-[var(--text-muted)] hover:bg-grey-100 bg-transparent border-none cursor-pointer" aria-label="Close"><X size={18} /></button>}
         </div>
         <div className="flex items-center justify-between gap-3">
           {onOpenGoal && goal?.name ? (
-            <button onClick={() => onOpenGoal(goalId)} className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"><Target size={13} weight="bold" className="shrink-0" /><span className="truncate">{goal.name}</span></button>
+            <button onClick={() => onOpenGoal(goalId)} className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"><Target size={16} weight="bold" className="shrink-0" /><span className="truncate">{goal.name}</span></button>
           ) : <span />}
-          <PvButton variant="blueGhost" size="md" label="View details" icon={ListBullets} onClick={() => setShowDetails(true)} className="shrink-0" />
+          <PvButton variant="blueGhost" size="md" label="View details" icon={Info} onClick={() => setShowDetails(true)} className="shrink-0" />
         </div>
         {/* Facts — first generated / last updated / status */}
-        <div className="grid grid-cols-3 gap-px rounded-lg border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
+        <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
           <Fact label="First generated" value={rec.age || "This check-in"} />
           <Fact label="Last updated" value={done ? "Just now" : "This check-in"} />
-          <Fact label="Status" value={resolved ? resolved.label : "Open · unresolved"} valueCls={resolved ? resolved.cls : "text-primary-600"} />
+          <Fact label="Status" value={resolved ? resolved.label : "Open · unresolved"} valueCls={resolved ? resolved.cls : "text-black"} />
         </div>
       </div>
 
       {/* Body */}
-      <div className="px-5 py-4 flex flex-col gap-5 [&>*]:shrink-0">
+      <div className="px-5 pt-0 pb-4 flex flex-col gap-5 [&>*]:shrink-0">
         {/* Impact tile — the estimated outcome, amber. */}
         {rec.impact && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">{rec.impact.label || "Estimated impact"}</p>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700">{rec.impact.label || "Estimated impact"}</p>
               {rec.tier && <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white text-amber-700 border border-amber-200">Tier {rec.tier}</span>}
             </div>
             <p className="text-[24px] font-bold text-amber-900 leading-none mt-2">{rec.impact.value}</p>
@@ -177,61 +193,82 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           </div>
         )}
 
+        {/* Borderless sections separated by hairline rules instead of cards. */}
+        <div className="flex flex-col divide-y divide-[var(--color-grey-100)] [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
         {/* Insight — why this recommendation is being made. */}
         {rec.body && (
-          <div className="rounded-lg border border-[var(--color-grey-100)] bg-white p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Insight</p>
-            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{rec.body}</p>
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Insight</p>
+            <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.body}</p>
           </div>
         )}
 
-        {/* Recommended Next Actions — the 3–5 key moves. */}
-        <div className="rounded-lg border border-[var(--color-grey-100)] bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Recommended Next Actions</p>
+        {/* What to do — Action now, then Hold for now and Revisit when. */}
+        <div>
+          {(rec.hold || rec.revisit) && <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Action now</p>}
           <ul className="flex flex-col gap-2.5">
             {(rec.steps || [rec.tldr]).map((s, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-50 text-primary-600 border border-primary-200 text-[11px] font-semibold shrink-0 mt-px">{i + 1}</span>
-                <p className="text-[13px] text-[var(--text-primary)] leading-snug pt-0.5">{s}</p>
+                <p className="text-[14px] text-[var(--text-primary)] leading-snug pt-0.5">{s}</p>
               </li>
             ))}
           </ul>
+          {rec.hold && (
+            <div className="mt-4 pt-3 border-t border-[var(--color-grey-100)]">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Hold for now</p>
+              <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.hold}</p>
+            </div>
+          )}
+          {rec.revisit && (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Revisit when</p>
+              <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.revisit}</p>
+            </div>
+          )}
+        </div>
+
+        {/* About the data — an honest note on any reporting caveat. */}
+        {rec.aboutData && (
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">About the data</p>
+            <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.aboutData}</p>
+          </div>
+        )}
         </div>
 
         {/* Notes — composer stays pinned on top; saved notes scroll below it so
             the input never gets pushed down as notes accumulate. */}
-        <div className="rounded-lg border border-[var(--color-grey-100)] bg-white p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Recommendation notes</p>
-              <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-0.5">Keep context with this recommendation</h3>
+        <div>
+          {/* Composer — header + input grouped in one grey block, fully separate. */}
+          <div className="rounded-[8px] border border-[var(--color-grey-100)] bg-grey-50 p-3">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-[12px] font-semibold text-[var(--text-primary)]">Keep context with this recommendation</h3>
+              <Tooltip title="Add a note for the next check-in. Saved notes stay attached to this recommendation." placement="top">
+                <span className="inline-flex shrink-0 text-[var(--text-muted)] cursor-help"><Info size={14} /></span>
+              </Tooltip>
             </div>
-            <span className="shrink-0 mt-0.5 text-[11px] text-[var(--text-muted)] tabular-nums">{thread.length ? `${thread.length} saved` : "None yet"}</span>
-          </div>
-          <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-snug">Add a note for the next check-in. Saved notes stay attached to this recommendation.</p>
-
-          {/* Composer — textarea, then the Save action on its own row below. */}
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendComment(); } }}
-            rows={2}
-            placeholder="What should the next check-in know?"
-            className="w-full mt-3 text-[13px] px-3 py-2 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none"
-          />
-          <div className="flex items-center justify-between gap-2 mt-2">
-            <span className="text-[11px] text-[var(--text-muted)]">⌘/Ctrl + Enter to save</span>
-            <PvButton variant="primary" size="sm" label="Save note" disabled={!comment.trim()} onClick={sendComment} />
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendComment(); } }}
+              rows={2}
+              placeholder="What should the next check-in know?"
+              className="w-full mt-3 text-[13px] px-3 py-2 rounded-[8px] border border-[var(--border-primary)] bg-white focus:border-primary-500 outline-none resize-none"
+            />
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <PvButton variant="primary" size="sm" label="Save note" disabled={!comment.trim()} onClick={sendComment} />
+            </div>
           </div>
 
           {/* Saved notes — newest first, scroll if the list grows. */}
           {thread.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[var(--color-grey-100)] flex flex-col gap-2 max-h-[220px] overflow-y-auto -mr-1 pr-1">
               {thread.map((m, i) => (
-                <div key={i} className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 px-3 py-2">
+                <div key={i} className="rounded-[8px] border border-[var(--color-grey-100)] bg-grey-50 px-3 py-2">
                   <p className="text-[13px] text-[var(--text-primary)] leading-snug">{m.text}</p>
                   <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-muted)]">
-                    <span className="font-medium text-[var(--text-secondary)]">You</span>
+                    <span className="font-medium text-[#757A97]">You</span>
                     <span>·</span>
                     <span>{m.at || "Just now"}</span>
                   </div>
@@ -245,7 +282,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
       </div>
 
       {/* Footer actions */}
-      <div className="shrink-0 border-t border-[var(--border-primary)] px-5 py-3.5">
+      <div className="shrink-0 border-t border-[var(--color-grey-100)] px-5 py-3.5">
         {done ? (
           <div className="flex items-center justify-between">
             <span className={cn("inline-flex items-center gap-1.5 text-[14px] font-medium", resolved?.cls)}><CheckCircle size={15} weight="fill" /> {resolved?.label}</span>
@@ -261,17 +298,8 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
                   onChange={(e) => setSnoozeFor(e.target.value)}
                   autoFocus
                   placeholder="e.g. 2 weeks · until next month · after the launch"
-                  className="w-full text-[14px] px-3 py-2 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none"
+                  className="w-full text-[14px] px-3 py-2 rounded-[8px] border border-[var(--border-primary)] focus:border-primary-500 outline-none"
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {SNOOZE_OPTIONS.map((opt) => (
-                    <button key={opt} type="button" onClick={() => setSnoozeFor(opt)}
-                      className={cn("text-[12px] px-2 py-1 rounded-full border cursor-pointer transition-colors",
-                        snoozeFor === opt ? "border-primary-400 text-primary-600 bg-primary-50" : "border-[var(--border-primary)] text-[var(--text-secondary)] bg-white hover:border-primary-400")}>
-                      {opt}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
             <p className="text-[12px] font-medium text-[var(--text-primary)]">
@@ -285,7 +313,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
               rows={2}
               autoFocus={pending.action !== "snoozed"}
               placeholder={pending.action === "rejected" ? "e.g. Never pause Brand Search, it's our best demo source" : "Add context for the next run…"}
-              className="w-full text-[14px] px-3 py-2 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none"
+              className="w-full text-[14px] px-3 py-2 rounded-[8px] border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none"
             />
             <div className="flex items-center gap-2">
               <PvButton
@@ -303,15 +331,15 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
         ) : (
           <div className="flex items-center gap-2">
             <button onClick={() => { setReason(""); setPending({ action: "acted" }); }} disabled={act.isPending}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[14px] font-medium text-green-600 hover:bg-green-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-green-600 hover:bg-green-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
               <CheckCircle size={16} /> Acted
             </button>
             <button onClick={() => { setReason(""); setPending({ action: "rejected" }); }} disabled={act.isPending}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[14px] font-medium text-rose-600 hover:bg-rose-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-rose-600 hover:bg-rose-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
               <XCircle size={16} /> Reject
             </button>
             <button onClick={() => { setReason(""); setSnoozeFor(""); setPending({ action: "snoozed" }); }} disabled={act.isPending}
-              className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[14px] font-medium text-amber-600 hover:bg-amber-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
+              className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-amber-600 hover:bg-amber-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
               <ClockCounterClockwise size={16} /> Snooze
             </button>
           </div>
@@ -326,24 +354,25 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
         floating
         heading="Details"
         title={rec.title}
-        headerIcon={ListBullets}
-        headerIconWeight="bold"
+        headerIcon={Info}
+        headerIconWeight="regular"
+        headerIconSize={20}
+        headerIconClass="text-grey-600"
       >
         <div className="h-full overflow-y-auto p-4 flex flex-col gap-3 bg-[var(--bg-primary)]">
-              <p className="text-[11px] text-[var(--text-muted)] -mb-1">Proof, trigger, and decision context.</p>
                 <EvidenceCard icon={Sliders} title="Thresholds">
                   {rec.derivation?.length ? (
                     <ul className="flex flex-col gap-2">
-                      {rec.derivation.map((s, i) => <li key={i} className="text-[12.5px] text-[var(--text-secondary)] leading-relaxed">{renderInline(s)}</li>)}
+                      {rec.derivation.map((s, i) => <li key={i} className="text-[12px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
                     </ul>
-                  ) : <p className="text-[12.5px] text-[var(--text-secondary)] leading-relaxed">{rec.evidence}</p>}
+                  ) : <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.evidence}</p>}
                 </EvidenceCard>
                 {rec.metrics?.length > 0 && (
                   <EvidenceCard icon={ChartBar} title="Metrics">
                     <div className="flex flex-col divide-y divide-[var(--color-grey-100)]">
                       {rec.metrics.map((m, i) => (
                         <div key={i} className="flex items-baseline justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
-                          <span className="text-[12.5px] text-[var(--text-secondary)]">{m.label}</span>
+                          <span className="text-[12.5px] text-[#757A97]">{m.label}</span>
                           <span className="text-[12.5px] text-right text-[var(--text-primary)]"><span className="font-medium">{m.value}</span>{m.note && <span className="text-[var(--text-muted)]"> · {m.note}</span>}</span>
                         </div>
                       ))}
@@ -352,12 +381,12 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
                 )}
                 <EvidenceCard icon={FlowArrow} title="Triggers">
                   <p className="text-[13px] font-medium text-[var(--text-primary)]">{rec.triggerLabel || "Rule"}</p>
-                  {rec.trigger && <p className="text-[12.5px] text-[var(--text-secondary)] mt-1 leading-relaxed">{rec.trigger}</p>}
-                  {rec.signal && <p className="text-[12px] text-[var(--text-muted)] mt-2">Why it fired: <span className="text-[var(--text-secondary)] font-medium">{rec.signal}</span></p>}
+                  {rec.trigger && <p className="text-[12.5px] text-[#757A97] mt-1 leading-relaxed">{rec.trigger}</p>}
+                  {rec.signal && <p className="text-[12px] text-[var(--text-muted)] mt-2">Why it fired: <span className="text-[#757A97] font-medium">{rec.signal}</span></p>}
                 </EvidenceCard>
                 <EvidenceCard icon={Target} title="Goal">
                   <p className="text-[13px] font-medium text-[var(--text-primary)]">{goal?.name || "—"}</p>
-                  <p className="text-[12px] text-[var(--text-secondary)] mt-1">This recommendation is graded against this goal's target.</p>
+                  <p className="text-[12px] text-[#757A97] mt-1">This recommendation is graded against this goal's target.</p>
                 </EvidenceCard>
                 <EvidenceCard icon={ClockClockwise} title="Decision log">
                   <ol className="flex flex-col gap-2.5">
@@ -366,7 +395,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />
                         <div>
                           <p className="text-[12.5px] font-medium text-[var(--text-primary)]">{h[0]} <span className="text-[var(--text-muted)] font-normal">· {h[1]}</span></p>
-                          <p className="text-[12px] text-[var(--text-secondary)]">{h[2]}</p>
+                          <p className="text-[12px] text-[#757A97]">{h[2]}</p>
                         </div>
                       </li>
                     ))}

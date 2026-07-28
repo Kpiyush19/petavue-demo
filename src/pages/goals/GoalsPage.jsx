@@ -13,8 +13,9 @@ import { Tooltip } from "@/ui";
 import { Button as PvButton } from "@/ui";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../api";
 import { cn } from "../../utils/cn";
+import { FilterMenu } from "./FilterMenu";
 import { RecommendationDetail } from "./RecommendationDrawer";
-import { SageChat } from "./SageWidget";
+import { SageChat, SAGE_GRADIENT } from "./SageWidget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 
@@ -91,13 +92,13 @@ const INSIGHT_COLOR = {
 function InsightCard({ kind, color, icon: Icon, value, desc, foot, footIcon: FootIcon, onClick }) {
   const c = INSIGHT_COLOR[color] || INSIGHT_COLOR.blue;
   return (
-    <div className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-lg px-4 py-3.5">
+    <div className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3.5">
       <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{kind}</span>
       <div className="flex items-center gap-1.5 mb-1.5">
         {Icon && <Icon size={16} className={c.txt} />}
         <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)]">{value}</span>
       </div>
-      <p className="text-[12px] text-[var(--text-secondary)] leading-snug">{desc}</p>
+      <p className="text-[12px] text-[#757A97] leading-snug">{desc}</p>
     </div>
   );
 }
@@ -164,7 +165,7 @@ function AttentionRow({ item, onOpen, onOpenRec }) {
         <span className="text-[14px] font-medium text-[var(--text-primary)] truncate hover:text-primary-600">{item.title}</span>
       </button>
       <button onClick={() => onOpen(item.goalId)} className="text-[12px] font-medium text-primary-600 hover:underline truncate text-left bg-transparent border-none p-0 cursor-pointer">{item.goalName}</button>
-      <span className="text-[12px] text-[var(--text-secondary)] truncate">{item.groupLabel}</span>
+      <span className="text-[12px] text-[#757A97] truncate">{item.groupLabel}</span>
       <span className="text-[12px] text-[var(--text-muted)] whitespace-nowrap">{item.at}</span>
       <RowMenu
         disabled={act.isPending}
@@ -212,36 +213,14 @@ function GoalFilterDropdown({ value, onChange, counts, total }) {
     <div ref={ref} className="relative shrink-0">
       <PvButton variant="secondary" size="md" icon={Funnel} aria-label={`Filter goals: ${current.label}`} onClick={toggle} />
       {value !== "all" && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary-500 ring-2 ring-white pointer-events-none" />}
-      {open && pos && createPortal(
-        <>
-          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
-          <div className="fixed z-[61] w-[240px] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left }}>
-            <p className="px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Filter by</p>
-            {GOAL_FILTERS.map((f) => {
-              const count = f.k === "all" ? total : (counts[f.k] || 0);
-              const active = f.k === value;
-              return (
-                <button
-                  key={f.k}
-                  onClick={() => { onChange(f.k); setOpen(false); }}
-                  className={cn(
-                    "w-full flex items-center justify-between gap-4 px-4 py-3 text-[14px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50",
-                    active ? "text-primary-600 font-medium" : "text-[var(--text-primary)]"
-                  )}
-                >
-                  <span className="inline-flex items-center gap-2.5">
-                    <span className={cn("flex items-center justify-center w-4 h-4 rounded-full border-2 shrink-0 transition-colors", active ? "border-primary-500" : "border-grey-300")}>
-                      {active && <span className="w-2 h-2 rounded-full bg-primary-500" />}
-                    </span>
-                    {f.label}
-                  </span>
-                  <span className="text-[12px] text-[var(--text-muted)]">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>,
-        document.body
+      {open && pos && (
+        <FilterMenu
+          pos={pos}
+          value={value}
+          onSelect={onChange}
+          onClose={() => setOpen(false)}
+          options={GOAL_FILTERS.map((f) => ({ id: f.k, label: f.label, count: f.k === "all" ? total : (counts[f.k] || 0) }))}
+        />
       )}
     </div>
   );
@@ -373,7 +352,7 @@ function ConfigModal({ onClose }) {
         <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border-primary)]">
           <div>
             <h3 className="text-[18px] font-semibold text-[var(--text-primary)] m-0">Configure</h3>
-            <p className="text-[14px] text-[var(--text-secondary)] mt-0.5 max-w-[480px]">The context we ground every goal in: how your business, funnel, and best-fit customers actually work, so the findings fit you, not a generic benchmark.</p>
+            <p className="text-[14px] text-[#757A97] mt-0.5 max-w-[480px]">The context we ground every goal in: how your business, funnel, and best-fit customers actually work, so the findings fit you, not a generic benchmark.</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <PvButton variant="ghost" size="sm" icon={X} aria-label="Close" onClick={onClose} />
@@ -403,12 +382,12 @@ function ConfigModal({ onClose }) {
 // language) and which filter it falls under.
 function recMeta(item) {
   if (item.status !== "open")
-    return { key: "archived", label: item.status === "rejected" ? "Dismissed" : "Acted", cls: "bg-green-50 text-green-600", icon: CheckCircle };
+    return { key: "archived", label: item.status === "rejected" ? "Dismissed" : "Acted", cls: "text-green-600 border border-green-200", icon: CheckCircle };
   if (item.severity === "act-now")
-    return { key: "act-now", label: "Act now", cls: "bg-rose-50 text-rose-600", icon: Lightning };
+    return { key: "act-now", label: "Act now", cls: "text-rose-600 border border-rose-200", icon: Lightning };
   if ((item.tier || 2) <= 2)
-    return { key: "needs-review", label: "Review soon", cls: "bg-amber-50 text-amber-700", icon: Warning };
-  return { key: "watchlist", label: "Watch", cls: "bg-blue-50 text-blue-700", icon: Eye };
+    return { key: "needs-review", label: "Review soon", cls: "text-amber-700 border border-amber-200", icon: Warning };
+  return { key: "watchlist", label: "Watch", cls: "text-blue-700 border border-blue-200", icon: Eye };
 }
 
 const parseMoney = (v) => {
@@ -426,7 +405,6 @@ const REC_FILTERS = [
   { k: "act-now", label: "Act now" },
   { k: "needs-review", label: "Needs review" },
   { k: "watchlist", label: "Watchlist" },
-  { k: "archived", label: "Archived" },
 ];
 
 // Compact filter — trigger shows the current filter + count; a portaled menu
@@ -449,38 +427,20 @@ function RecFilterDropdown({ value, onChange, counts }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggle}
-        className="inline-flex items-center gap-1.5 bg-transparent border-none p-0 cursor-pointer"
+        className="inline-flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer"
       >
-        <Funnel size={14} weight="bold" className="text-[var(--text-muted)] shrink-0" />
-        <span className="text-[14px] font-medium text-[var(--text-primary)] whitespace-nowrap">{current.label}</span>
-        <span className="text-[12px] text-[var(--text-muted)] tabular-nums">{counts[current.k] || 0}</span>
-        <CaretDown size={14} className={cn("text-[var(--text-muted)] shrink-0 transition-transform", open && "rotate-180")} />
+        <span className="text-[14px] leading-[22px] font-normal text-[var(--text-primary)] whitespace-nowrap">{current.label}</span>
+        <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">{counts[current.k] || 0}</span>
+        <CaretDown size={16} className={cn("text-[var(--text-muted)] shrink-0 transition-transform", open && "rotate-180")} />
       </button>
-      {open && pos && createPortal(
-        <>
-          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
-          <div className="fixed z-[61] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1" style={{ top: pos.top, left: pos.left, width: pos.width }}>
-            {REC_FILTERS.map((f) => {
-              const active = f.k === value;
-              return (
-                <button
-                  key={f.k}
-                  onClick={() => { onChange(f.k); setOpen(false); }}
-                  className={cn("w-full flex items-center justify-between gap-4 px-3.5 py-2.5 text-[13px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50", active ? "text-primary-600 font-medium" : "text-[var(--text-primary)]")}
-                >
-                  <span className="inline-flex items-center gap-2.5">
-                    <span className={cn("flex items-center justify-center w-4 h-4 rounded-full border-2 shrink-0", active ? "border-primary-500" : "border-grey-300")}>
-                      {active && <span className="w-2 h-2 rounded-full bg-primary-500" />}
-                    </span>
-                    {f.label}
-                  </span>
-                  <span className="text-[12px] text-[var(--text-muted)] tabular-nums">{counts[f.k] || 0}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>,
-        document.body
+      {open && pos && (
+        <FilterMenu
+          pos={pos}
+          value={value}
+          onSelect={onChange}
+          onClose={() => setOpen(false)}
+          options={REC_FILTERS.map((f) => ({ id: f.k, label: f.label, count: counts[f.k] || 0 }))}
+        />
       )}
     </div>
   );
@@ -495,7 +455,7 @@ function RecCard({ item, selected, onClick }) {
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left rounded-lg border bg-white p-3.5 transition-all cursor-pointer",
+        "w-full text-left rounded-[8px] border bg-white p-3.5 transition-all cursor-pointer",
         selected
           ? "bg-primary-50 border-primary-500 shadow-[0_4px_4px_rgba(54,97,237,0.08)]"
           : "border-[var(--color-grey-100)] hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]",
@@ -503,19 +463,12 @@ function RecCard({ item, selected, onClick }) {
       )}
     >
       <div className="flex items-center gap-2 mb-1.5">
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap", m.cls)}>
-          <m.icon size={10} weight="fill" />{m.label}
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", m.cls)}>
+          <m.icon size={10} weight="regular" />{m.label}
         </span>
-        <span className="text-[11px] text-[var(--text-muted)] truncate">{item.category}</span>
       </div>
       <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{item.title}</p>
-      {item.tldr && <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-1 line-clamp-1">{item.tldr}</p>}
-      {(item.impact?.value || item.signal) && (
-        <div className="flex items-center gap-4 mt-2.5 pt-2.5 border-t border-[var(--color-grey-100)]">
-          {item.impact?.value && <span className="text-[12px] text-[var(--text-secondary)]">Impact <span className="font-medium text-[var(--text-primary)]">{item.impact.value}</span></span>}
-          {item.signal && <span className="text-[12px] text-[var(--text-secondary)] truncate">Why now <span className="font-medium text-[var(--text-primary)]">{item.signal}</span></span>}
-        </div>
-      )}
+      {item.tldr && <p className="text-[12px] text-[#757A97] leading-snug mt-1 line-clamp-1">{item.tldr}</p>}
     </button>
   );
 }
@@ -526,7 +479,7 @@ function GoalScopeDropdown({ value, onChange, goals }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
-  const allLabel = `All goals (${goals.length})`;
+  const allLabel = `All goals`;
   const label = value === "all" ? allLabel : (goals.find((g) => g.id === value)?.name || allLabel);
   const options = [{ id: "all", name: allLabel }, ...goals];
   const toggle = () => {
@@ -544,33 +497,19 @@ function GoalScopeDropdown({ value, onChange, goals }) {
         onClick={toggle}
         className="flex items-center gap-1.5 min-w-0 max-w-[440px] bg-transparent border-none p-0 cursor-pointer"
       >
-        <span className="block truncate text-[15px] leading-[22px] font-medium text-[var(--text-primary)]">{label}</span>
+        <span className="block truncate text-[14px] leading-[22px] font-normal text-[var(--text-primary)]">{label}</span>
         <CaretDown size={16} className={cn("shrink-0 text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
       </button>
-      {open && pos && createPortal(
-        <>
-          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
-          <div role="listbox" className="fixed z-[61] bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1 max-h-[320px] overflow-y-auto" style={{ top: pos.top, left: pos.left, width: pos.width }}>
-            {options.map((o) => {
-              const active = o.id === value;
-              return (
-                <button
-                  key={o.id}
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => { onChange(o.id); setOpen(false); }}
-                  className={cn("w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50", active ? "text-primary-600 font-medium" : "text-[var(--text-primary)]")}
-                >
-                  <span className={cn("shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center", active ? "border-primary-500" : "border-grey-300")}>
-                    {active && <span className="w-2 h-2 rounded-full bg-primary-500" />}
-                  </span>
-                  <span className="flex-1 min-w-0 truncate">{o.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>,
-        document.body
+      {open && pos && (
+        <FilterMenu
+          pos={pos}
+          value={value}
+          onSelect={onChange}
+          onClose={() => setOpen(false)}
+          searchable
+          searchPlaceholder="Search goals…"
+          options={options.map((o) => ({ id: o.id, label: o.name }))}
+        />
       )}
     </div>
   );
@@ -587,7 +526,7 @@ function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
         <div className="flex flex-col h-full">
           <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-[var(--color-grey-100)] bg-grey-50">
             <Target size={13} className="text-[var(--text-muted)] shrink-0" />
-            <span className="text-[12px] text-[var(--text-secondary)] truncate flex-1">Context: <span className="font-medium text-[var(--text-primary)]">{selected.name}</span></span>
+            <span className="text-[12px] text-[#757A97] truncate flex-1">Context: <span className="font-medium text-[var(--text-primary)]">{selected.name}</span></span>
             <button onClick={() => onSelect("all")} className="shrink-0 text-[12px] text-primary-600 hover:underline bg-transparent border-none cursor-pointer">Change</button>
           </div>
           <div className="flex-1 min-h-0">
@@ -598,7 +537,7 @@ function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
         <div className="h-full overflow-y-auto p-4 flex flex-col gap-3">
           <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-3.5">
             <p className="text-[13px] font-medium text-[var(--text-primary)]">Sage needs a goal for context</p>
-            <p className="text-[12px] text-[var(--text-secondary)] mt-1 leading-relaxed">Pick the goal you want to ask about. Sage answers against that goal's target, monitors, and recommendations.</p>
+            <p className="text-[12px] text-[#757A97] mt-1 leading-relaxed">Pick the goal you want to ask about. Sage answers against that goal's target, monitors, and recommendations.</p>
           </div>
           <div className="flex flex-col gap-2">
             {goals.map((g) => (
@@ -619,8 +558,68 @@ function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
   );
 }
 
+// One shimmering grey block — the skeleton primitive.
+const Skel = ({ className }) => <div className={cn("rounded bg-grey-100 animate-pulse", className)} />;
+
+// Loading placeholder that mirrors the two-pane recommendations layout: a queue
+// of card skeletons on the left, a decision-panel skeleton on the right.
+function RecSkeleton() {
+  return (
+    <div className="flex-1 min-h-0 flex">
+      {/* Left: filter + queue cards */}
+      <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
+        <div className="shrink-0 flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
+          <Skel className="h-5 w-28" />
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-[8px] border border-[var(--color-grey-100)] bg-white p-3.5 flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <Skel className="h-4 w-16 rounded-full" />
+                <Skel className="h-3 w-24" />
+              </div>
+              <Skel className="h-4 w-full" />
+              <Skel className="h-3 w-3/4" />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Right: decision panel */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="px-5 py-4 flex flex-col gap-[10px]">
+          <Skel className="h-6 w-2/3" />
+          <Skel className="h-4 w-1/2" />
+          <div className="flex items-center justify-between gap-3">
+            <Skel className="h-4 w-40" />
+            <Skel className="h-8 w-28 rounded-[8px]" />
+          </div>
+          <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white px-3 py-2.5 flex flex-col gap-1.5">
+                <Skel className="h-2.5 w-16" />
+                <Skel className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="px-5 pb-4 flex flex-col gap-5">
+          <Skel className="h-20 w-full rounded-[8px]" />
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-2.5">
+              <Skel className="h-3 w-24" />
+              <Skel className="h-4 w-full" />
+              <Skel className="h-4 w-11/12" />
+              <Skel className="h-4 w-4/5" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RecommendationsPanel({ onOpenGoal }) {
-  const { data } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
+  const { data, isLoading } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
   const items = data?.items || [];
   const [sel, setSel] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -638,9 +637,14 @@ function RecommendationsPanel({ onOpenGoal }) {
   const filtered = filter === "all" ? scoped : scoped.filter((i) => recMeta(i).key === filter);
   const selected = filtered.find((i) => i.recId === sel) || filtered[0];
 
-  // Summary strip — content mirrors the check-in concept (Needs review /
-  // Inefficient spend / SF leads at risk), rendered with our InsightCard.
+  // Summary strip — the paid-spend use case's headline signals. The first tile
+  // (Needs review) reflects the scoped act-now count; the rest read from the goal.
   const actNowCount = scoped.filter((i) => recMeta(i).key === "act-now").length;
+  const summaryTiles = [
+    { kind: "Needs review", color: "red", icon: Lightning, value: String(actNowCount), desc: "act-now recommendations" },
+    { kind: "Inefficient spend", color: "amber", icon: Flag, value: "$2.4K", desc: "LinkedIn above CPL baseline / wk" },
+    { kind: "Blended CPL", color: "blue", icon: Target, value: "$642", desc: "target ≤ $610" },
+  ];
 
   const scopeSelect = (id) => { setGoalScope(id); setSel(null); };
 
@@ -653,39 +657,44 @@ function RecommendationsPanel({ onOpenGoal }) {
             <Target size={15} weight="bold" className="text-[var(--text-muted)] shrink-0" />
             <GoalScopeDropdown value={goalScope} onChange={scopeSelect} goals={goalOptions} />
           </div>
-          <PvButton variant="secondary" size="md" icon={Sparkle} label="Ask Sage" onClick={() => setSageOpen(true)} />
+          <button
+            type="button"
+            onClick={() => setSageOpen(true)}
+            className="inline-flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-[8px] text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"
+            style={{ background: SAGE_GRADIENT }}
+          >
+            <Sparkle size={14} weight="fill" /> Ask Sage
+          </button>
         </div>
         <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
-          <InsightCard kind="Needs review" color="red" icon={Lightning} value={String(actNowCount)}
-            desc="act-now recommendations" />
-          <InsightCard kind="Inefficient spend" color="amber" icon={Flag} value="$4.8K"
-            desc="flagged this check-in" />
-          <InsightCard kind="SF leads at risk" color="blue" icon={Warning} value="~4"
-            desc="vs expected weekly pace" />
+          {summaryTiles.map((t, i) => (
+            <InsightCard key={i} kind={t.kind} color={t.color} icon={t.icon} value={t.value} desc={t.desc} />
+          ))}
         </div>
       </div>
 
       <RecSageDrawer open={sageOpen} onClose={() => setSageOpen(false)} goals={goalOptions} selected={selectedGoal} onSelect={scopeSelect} />
 
-      {items.length === 0 ? (
+      {isLoading ? (
+        <RecSkeleton />
+      ) : items.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
           <CheckCircle size={26} weight="fill" className="text-green-500" />
           <p className="text-[16px] font-medium text-[var(--text-primary)]">You're all caught up</p>
-          <p className="text-[14px] text-[var(--text-secondary)] max-w-[380px]">No moves to make right now. We'll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
+          <p className="text-[14px] text-[#757A97] max-w-[380px]">No moves to make right now. We'll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
         </div>
       ) : (
         <div className="flex-1 min-h-0 flex">
           {/* Left: filters + rich queue */}
           <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-            <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
-              <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">Recommendations</h2>
+            <div className="shrink-0 flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
               <RecFilterDropdown value={filter} onChange={(k) => { setFilter(k); setSel(null); }} counts={counts} />
             </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
                   <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
-                  <p className="text-[13px] text-[var(--text-secondary)]">Nothing in this filter.</p>
+                  <p className="text-[13px] text-[#757A97]">Nothing in this filter.</p>
                 </div>
               ) : (
                 filtered.map((it) => (
@@ -758,20 +767,12 @@ export default function GoalsPage() {
     if (id) navigate(`/goals/${id}`);
   };
 
-  // Freshness for the header — the most recent check-in across goals.
-  const latestCheckIn = goals.map((g) => g.checkIns?.[0]).filter(Boolean)[0];
-  const lastChecked = ranJustNow ? "Just now" : (latestCheckIn?.at || "Not yet");
-
   return (
     <div className="flex flex-col w-full h-full">
       {/* Standard app header bar (consistent with Dashboards / Sessions / Workflows) */}
       <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
         <span className="text-[16px] leading-[24px] font-medium">Goals</span>
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-            Last checked <span className="font-medium text-[var(--text-secondary)]">{lastChecked}</span>
-          </span>
           <PvButton variant="secondary" size="md" label="Configure" icon={Sliders} onClick={() => setShowConfig(true)} />
           <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
         </div>
@@ -841,7 +842,7 @@ export default function GoalsPage() {
                       {goals.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-2 py-14 border border-[var(--border-primary)] rounded-lg text-center">
                           <Target size={24} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[var(--text-secondary)] max-w-[460px]">No goals yet. Set one and we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
+                          <p className="text-[14px] text-[#757A97] max-w-[460px]">No goals yet. Set one and we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
                           <div className="mt-1">
                             <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
                           </div>
@@ -849,7 +850,7 @@ export default function GoalsPage() {
                       ) : filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-1.5 py-10 border border-dashed border-[var(--border-primary)] rounded-lg text-center">
                           <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[var(--text-secondary)]">No goals match{q ? ` “${goalSearch.trim()}”` : " this filter"}.</p>
+                          <p className="text-[14px] text-[#757A97]">No goals match{q ? ` “${goalSearch.trim()}”` : " this filter"}.</p>
                         </div>
                       ) : (
                         <div className="flex flex-col w-full">
