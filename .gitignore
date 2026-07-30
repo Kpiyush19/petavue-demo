@@ -26,3 +26,8 @@ dist-ssr
 
 # Local Claude Code config
 .claude/
+
+# Standalone UX prototype HTML (not part of the app build)
+c2e-ux.html
+onboarding-v2.html
+onboarding-v3.html

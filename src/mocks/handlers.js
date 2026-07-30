@@ -433,29 +433,174 @@ const handlers = [
   {
     method: "GET",
     pattern: /\/api\/sessions\/([^/]+)\/widget-lineage$/,
-    handler: () => ({
-      widget_id: "revenue_trend",
-      widget_file: "widgets/revenue_trend.jsx",
-      main_chat_edits_count: 0,
-      // LineagePanel reads `chain` (steps) + `also_feeds_into` (sibling widgets).
-      chain: [
-        {
-          id: "step_1", tool: "query_athena", status: "success",
-          summary: "Pull monthly revenue", llm_title: "Pull monthly revenue",
-          llm_description: "- Aggregate order amounts by month\n- Limit to the current quarter with a dynamic date window",
-          code_preview: "SELECT month, SUM(amount) AS revenue\nFROM ns_demo_orders\nGROUP BY month\nORDER BY month",
-        },
-        {
-          id: "step_4", tool: "write_file", status: "success",
-          summary: "Build the revenue chart", llm_title: "Build the revenue chart",
-          llm_description: "- Render a bar per month from the query results\n- Reads from data/revenue_by_month.csv",
-          code_preview: "export default function RevenueTrend({ data }) {\n  /* bar chart */\n}",
-        },
-      ],
-      also_feeds_into: [
-        { widget_name: "Scoreboard", file_path: "widgets/scoreboard.jsx" },
-      ],
-    }),
+    handler: ({ query }) => {
+      // Per-widget pipelines, keyed by the real dashboard widget ids. Each
+      // widget has a DIFFERENT number of steps. Almost every step is unique to
+      // its widget — the ONLY crossover is a single shared fetch step used by
+      // both Performance scorecard and Channel performance, so verifying it in
+      // one place verifies it in the other. Everything else stands alone.
+      const step = (id, tool, title, desc, card, code) => ({
+        id, tool, status: "success", summary: title, llm_title: title,
+        llm_description: desc.map((l) => `- ${l}`).join("\n"),
+        llm_card: { instructions: card.i || [], conditions: card.c || [], outputs: card.o || [] },
+        code_preview: code,
+      });
+
+      // ── The one shared step (scorecard ↔ channel_table) ──
+      const S_FETCH_PAID = step("s_fetch_paid", "query_athena", "Pull paid spend & conversions",
+        ["Aggregate spend, clicks and conversions by channel and campaign", "Trailing 90-day window"],
+        { i: ["Read {{spend}}, {{clicks}} and {{conversions}} from {{ns_paid_events}}.", "Group by {{channel}} and {{campaign}}."], c: ["Trailing 90 days.", "Test campaigns are excluded."], o: ["One row per campaign per day, as {{paid_daily}}."] },
+        "SELECT channel, campaign, SUM(spend) spend, SUM(conversions) conv\nFROM ns_paid_events\nWHERE event_date >= current_date - 90\nGROUP BY channel, campaign");
+
+      const W = {
+        // Performance scorecard — 6 steps (shares S_FETCH_PAID)
+        scorecard: { chain: [
+          S_FETCH_PAID,
+          step("q_scorecard_crm", "query_athena", "Pull closed-won revenue",
+            ["Read closed-won opportunity revenue from the CRM", "Current fiscal quarter"],
+            { i: ["Read {{amount}} and {{account_id}} from {{salesforce_opportunity}}."], c: ["Only {{stage}} = Closed Won."], o: ["Closed-won revenue, as {{crm_won}}."] },
+            "SELECT account_id, amount\nFROM salesforce_opportunity\nWHERE stage = 'Closed Won'"),
+          step("x_scorecard_attr", "execute_code", "Attribute revenue to spend",
+            ["Tie closed-won revenue back to the paid touches that drove it"],
+            { i: ["Join {{crm_won}} to {{paid_daily}} within a 90-day lookback."], o: ["Attributed revenue per channel, as {{attributed}}."] },
+            "attributed = attribute(paid_daily, crm_won, lookback_days=90)"),
+          step("x_scorecard_roas", "execute_code", "Compute true ROAS & CPL",
+            ["Derive true ROAS and cost-per-lead from attributed revenue"],
+            { i: ["True ROAS = attributed revenue / total {{spend}}.", "CPL = total {{spend}} / {{conversions}}."], o: ["Headline ROAS and CPL figures."] },
+            "true_roas = attributed['rev'].sum() / spend_total\ncpl = spend_total / conversions"),
+          step("x_scorecard_rollup", "execute_code", "Roll up the six KPIs",
+            ["Assemble spend, ROAS, CPL, conversions, closed-won and CTR"], { o: ["A {{scorecard}} object with all six KPIs."] },
+            "scorecard = {'spend': spend_total, 'roas': true_roas, 'cpl': cpl, ...}"),
+          step("r_scorecard", "write_file", "Render the scorecard row",
+            ["Lay out the six KPIs as the headline scorecard"], { o: ["The Performance scorecard row."] },
+            "export default function Scorecard({ data }) { /* KPI row */ }"),
+        ], feeds: [["Channel performance", "widgets/channel_table.html"]] },
+
+        // Spend by channel — 3 steps (independent)
+        spend_by_channel: { chain: [
+          step("q_spend", "query_athena", "Pull spend by channel",
+            ["Sum 90-day spend for each paid channel"],
+            { i: ["Sum {{spend}} from {{ns_paid_events}} grouped by {{channel}}."], c: ["Trailing 90 days."], o: ["Spend per channel, as {{spend_by_channel}}."] },
+            "SELECT channel, SUM(spend) spend\nFROM ns_paid_events\nWHERE event_date >= current_date - 90\nGROUP BY channel"),
+          step("x_spend_share", "execute_code", "Compute each channel's share",
+            ["Turn absolute spend into a percentage of total"], { o: ["A {{pct}} column per channel."] },
+            "df['pct'] = df['spend'] / df['spend'].sum()"),
+          step("r_spend", "write_file", "Render the spend bars",
+            ["Draw one bar per channel sized by share of spend"], { o: ["The Spend by channel bars."] },
+            "export default function SpendByChannel({ data }) { /* bars */ }"),
+        ], feeds: [] },
+
+        // ROAS trend — 5 steps (independent)
+        roas_trend: { chain: [
+          step("q_weekly_spend", "query_athena", "Pull weekly spend & conversions",
+            ["Bucket spend and conversions into ISO weeks", "Last 12 weeks"],
+            { i: ["Group {{spend}} and {{conversions}} by ISO week."], c: ["Last 12 weeks."], o: ["Weekly spend and conversions, as {{weekly}}."] },
+            "SELECT date_trunc('week', event_date) wk, SUM(spend), SUM(conversions)\nFROM ns_paid_events\nGROUP BY 1"),
+          step("q_weekly_rev", "query_athena", "Pull weekly closed-won revenue",
+            ["Bucket closed-won revenue into the same ISO weeks"],
+            { i: ["Group {{amount}} from {{salesforce_opportunity}} by ISO week."], o: ["Weekly revenue, as {{weekly_rev}}."] },
+            "SELECT date_trunc('week', close_date) wk, SUM(amount)\nFROM salesforce_opportunity\nWHERE stage='Closed Won'\nGROUP BY 1"),
+          step("x_weekly_roas", "execute_code", "Compute weekly true ROAS",
+            ["Divide weekly revenue by weekly spend"], { o: ["A true-ROAS value per week, as {{weekly_roas}}."] },
+            "weekly_roas = weekly_rev['amount'] / weekly['spend']"),
+          step("x_smooth", "execute_code", "Smooth the 12-week series",
+            ["Apply a light rolling average so the line reads cleanly"], { c: ["3-week centred window."], o: ["The smoothed series for the sparkline."] },
+            "series = weekly_roas.rolling(3, center=True).mean()"),
+          step("r_trend", "write_file", "Render the trend sparkline",
+            ["Draw the 12-week ROAS sparkline with the latest value"], { o: ["The ROAS trend chart."] },
+            "export default function RoasTrend({ data }) { /* sparkline */ }"),
+        ], feeds: [] },
+
+        // Channel performance — 7 steps (shares S_FETCH_PAID)
+        channel_table: { chain: [
+          S_FETCH_PAID,
+          step("q_platform_roas", "query_athena", "Pull platform-reported ROAS",
+            ["Read the ROAS each ad platform reports for itself"],
+            { i: ["Read {{reported_roas}} per {{channel}} from {{platform_stats}}."], o: ["Platform-reported ROAS per channel."] },
+            "SELECT channel, reported_roas FROM platform_stats"),
+          step("q_channel_rev", "query_athena", "Pull CRM revenue by channel",
+            ["Read closed-won revenue attributable to each channel"],
+            { i: ["Sum {{amount}} from {{salesforce_opportunity}} by first-touch {{channel}}."], o: ["Closed-won revenue per channel."] },
+            "SELECT first_touch_channel channel, SUM(amount) rev\nFROM salesforce_opportunity\nWHERE stage='Closed Won'\nGROUP BY 1"),
+          step("x_channel_attr", "execute_code", "Attribute revenue to channels",
+            ["Distribute closed-won revenue across the channels that touched it"],
+            { i: ["Weight {{rev}} across {{paid_daily}} touches per account."], o: ["Attributed revenue per channel."] },
+            "attr = attribute_by_channel(paid_daily, channel_rev)"),
+          step("x_channel_cpa", "execute_code", "Compute CPA per channel",
+            ["Divide channel spend by channel conversions"], { o: ["A {{cpa}} column per channel."] },
+            "df['cpa'] = df['spend'] / df['conv']"),
+          step("x_true_vs_platform", "execute_code", "Compare true vs platform ROAS",
+            ["Put platform-reported and CRM-true ROAS side by side"], { c: ["Channels under $500 spend pooled into Other."], o: ["The full channel comparison, as {{channel_table}}."] },
+            "df['true_roas'] = attr['rev'] / df['spend']"),
+          step("r_channel_table", "write_file", "Render the channel table",
+            ["Render the per-channel table with true ROAS bolded"], { o: ["The Channel performance table."] },
+            "export default function ChannelTable({ data }) { /* table */ }"),
+        ], feeds: [["Performance scorecard", "widgets/scorecard.html"]] },
+
+        // Top campaigns — 4 steps (independent)
+        top_campaigns: { chain: [
+          step("q_campaigns", "query_athena", "Pull campaign performance",
+            ["Read spend, conversions and revenue per campaign", "Last 90 days"],
+            { i: ["Read {{spend}}, {{conversions}} and {{revenue}} from {{campaign_stats}}."], c: ["Last 90 days."], o: ["One row per campaign, as {{campaigns}}."] },
+            "SELECT campaign, SUM(spend), SUM(conversions), SUM(revenue)\nFROM campaign_stats\nGROUP BY campaign"),
+          step("x_campaign_roas", "execute_code", "Compute true ROAS per campaign",
+            ["Divide attributed revenue by spend for each campaign"], { o: ["A true-ROAS value per campaign."] },
+            "df['roas'] = df['revenue'] / df['spend']"),
+          step("x_campaign_rank", "execute_code", "Rank & measure movement",
+            ["Sort by true ROAS and compute week-over-week change"], { c: ["Top 4 surfaced."], o: ["Ranked campaigns with WoW deltas, as {{top_campaigns}}."] },
+            "top = df.sort_values('roas', ascending=False).head(4)"),
+          step("r_campaigns", "write_file", "Render the campaigns list",
+            ["Render each campaign with its ROAS and movement chip"], { o: ["The Top campaigns list."] },
+            "export default function TopCampaigns({ data }) { /* list */ }"),
+        ], feeds: [] },
+
+        // Audience performance — 5 steps (independent)
+        audience_perf: { chain: [
+          step("q_audience", "query_athena", "Pull conversions by segment",
+            ["Read conversions grouped by audience segment"],
+            { i: ["Group {{conversions}} by {{segment}} from {{ns_paid_events}}."], o: ["Conversions per segment."] },
+            "SELECT segment, SUM(conversions) conv\nFROM ns_paid_events\nGROUP BY segment"),
+          step("q_segment_rev", "query_athena", "Pull revenue by segment",
+            ["Read closed-won revenue for each audience segment"],
+            { i: ["Sum {{amount}} by {{segment}} from the CRM join."], o: ["Revenue per segment."] },
+            "SELECT segment, SUM(amount) rev\nFROM crm_segment_rev\nGROUP BY segment"),
+          step("x_segment_roas", "execute_code", "Compute ROAS per segment",
+            ["Divide segment revenue by segment spend"], { o: ["A true-ROAS value per segment."] },
+            "df['roas'] = df['rev'] / df['spend']"),
+          step("x_segment_sort", "execute_code", "Sort segments by ROAS",
+            ["Order segments best-to-worst so the scale-into targets lead"], { o: ["Sorted segments, as {{audience}}."] },
+            "df = df.sort_values('roas', ascending=False)"),
+          step("r_audience", "write_file", "Render the audience bars",
+            ["Draw one bar per segment sized by true ROAS"], { o: ["The Audience performance bars."] },
+            "export default function AudiencePerf({ data }) { /* bars */ }"),
+        ], feeds: [] },
+
+        // Budget pacing — 3 steps (independent)
+        budget_pacing: { chain: [
+          step("q_pacing", "query_athena", "Pull month-to-date spend vs plan",
+            ["Read MTD spend and the planned budget per channel"],
+            { i: ["Read MTD {{spend}} and {{budget}} per {{channel}}."], o: ["Spend vs plan per channel, as {{pacing}}."] },
+            "SELECT channel, mtd_spend, budget\nFROM channel_budget"),
+          step("x_project", "execute_code", "Project end-of-period pacing",
+            ["Extrapolate MTD spend to a full-period projection", "Flag channels pacing over plan"],
+            { c: ["Flag any channel projected > 100% of budget."], o: ["A pacing percentage and over/under flag per channel."] },
+            "df['pace'] = df['mtd_spend'] / df['budget'] * (days_in_month / day_of_month)"),
+          step("r_pacing", "write_file", "Render the pacing bars",
+            ["Draw spend-vs-plan bars with the over-pacing channel called out"], { o: ["The Budget pacing bars."] },
+            "export default function BudgetPacing({ data }) { /* bars */ }"),
+        ], feeds: [] },
+      };
+
+      const key = (query?.path || "").split("/").pop().replace(/\.(html|jsx|json)$/i, "");
+      const w = W[key] || W.scorecard;
+      return {
+        widget_id: key,
+        widget_file: `widgets/${key}.html`,
+        main_chat_edits_count: 0,
+        chain: w.chain,
+        also_feeds_into: w.feeds.map(([widget_name, file_path]) => ({ widget_name, file_path })),
+      };
+    },
   },
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/widget-window-preview$/, handler: () => ({ messages: [] }) },
 

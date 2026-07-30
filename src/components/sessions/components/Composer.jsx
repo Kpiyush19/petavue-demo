@@ -168,10 +168,11 @@ export default function Composer({ onSend, onCancel, disabled, isThinking, place
               variant="secondaryGhost"
               size="sm"
               onClick={onCancel}
-              className="p-2"
+              className="flex items-center justify-center shrink-0"
+              style={{ width: 32, height: 32, padding: 0 }}
               aria-label="Stop generating"
             >
-              <Square size={14} fill="currentColor" className="text-[var(--color-red)]" />
+              <Square size={12} fill="currentColor" className="text-[var(--color-red)]" />
             </Button>
           </Tooltip>
         </motion.div>
@@ -190,10 +191,11 @@ export default function Composer({ onSend, onCancel, disabled, isThinking, place
                 size="sm"
                 onClick={handleSend}
                 disabled={!canSend}
-                className="p-2"
+                className="flex items-center justify-center shrink-0"
+                style={{ width: 32, height: 32, padding: 0 }}
                 aria-label="Send message"
               >
-                <ArrowUp size={16} strokeWidth={2.5} />
+                <ArrowUp size={12} strokeWidth={2.5} />
               </Button>
             </span>
           </Tooltip>

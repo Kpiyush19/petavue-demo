@@ -703,13 +703,14 @@ const SKILL_DASH_CSS = `
   :root{--ink:#1F2430;--muted:#6B7280;--line:#EAECEF;--teal:#0D787F;--teal-bg:#E6F4F5;--blue:#3661ED;--green:#08BD50;--red:#F93D3D;--amber:#E0A422;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:#F6F8FA;-webkit-font-smoothing:antialiased;}
-  .sd-wrap{max-width:1120px;margin:0 auto;padding:24px 24px 64px;}
+  .sd-wrap{max-width:1120px;margin:0 auto;padding:12px;}
   .sd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
   .sd-head h1{font-size:24px;font-weight:600;margin:0;}
   .sd-head p{margin:4px 0 0;font-size:13px;color:var(--muted);}
   .sd-pill{background:var(--teal-bg);color:var(--teal);font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;}
+  .sd-inner{padding:10px;border:1px solid #d4d9ea;border-radius:8px;}
   .sd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
-  .sd-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .sd-card{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
   .sd-card--wide{grid-column:1 / -1;}
   .sd-card h3{font-size:14px;font-weight:600;margin:0 0 2px;}
   .sd-card .sub{font-size:11.5px;color:var(--muted);margin:0 0 14px;}
@@ -722,7 +723,8 @@ const SKILL_DASH_CSS = `
   .sd-bar-track{flex:1;height:10px;background:#F0F2F5;border-radius:999px;overflow:hidden;}
   .sd-bar-fill{height:100%;border-radius:999px;}
   .sd-bar-row .amt{width:64px;text-align:right;flex-shrink:0;font-weight:600;font-variant-numeric:tabular-nums;}
-  table.sd-tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .sd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.sd-tbl{width:100%;border-collapse:collapse;font-size:12.5px;min-width:340px;}
   table.sd-tbl th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:0 10px 8px;border-bottom:1px solid var(--line);}
   table.sd-tbl th.num,table.sd-tbl td.num{text-align:right;}
   table.sd-tbl td{padding:9px 10px;border-bottom:1px solid var(--line);}
@@ -769,11 +771,11 @@ const SKILL_DASH_WIDGETS = [
     id: "channel_table", name: "Channel performance", kind: "table",
     desc: "Per-channel spend, conversions, CPA and true ROAS in one table.",
     body: `<section class="sd-card sd-card--wide"><h3>Channel performance</h3><p class="sub">Platform-reported vs CRM-grounded</p>
-      <table class="sd-tbl"><thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Conv.</th><th class="num">CPA</th><th class="num">Platform ROAS</th><th class="num">True ROAS</th></tr></thead><tbody>
+      <div class="sd-scroll"><table class="sd-tbl"><thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Conv.</th><th class="num">CPA</th><th class="num">Platform ROAS</th><th class="num">True ROAS</th></tr></thead><tbody>
       <tr><td><span class="sd-dot" style="background:#0D787F"></span>Google</td><td class="num">$77.4K</td><td class="num">512</td><td class="num">$151</td><td class="num">0.65×</td><td class="num"><b>4.81×</b></td></tr>
       <tr><td><span class="sd-dot" style="background:#1B3A8B"></span>LinkedIn</td><td class="num">$61.0K</td><td class="num">208</td><td class="num">$293</td><td class="num">1.28×</td><td class="num"><b>3.14×</b></td></tr>
       <tr><td><span class="sd-dot" style="background:#3661ED"></span>Meta</td><td class="num">$24.7K</td><td class="num">176</td><td class="num">$140</td><td class="num">1.18×</td><td class="num"><b>0.98×</b></td></tr>
-      </tbody></table></section>`,
+      </tbody></table></div></section>`,
   },
   {
     id: "top_campaigns", name: "Top campaigns", kind: "list",
@@ -808,11 +810,13 @@ const skillDashDoc = (bodies) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Paid Media Performance</title>
 <style>${SKILL_DASH_CSS}</style></head>
 <body><div class="sd-wrap">
-  <div class="sd-head">
-    <div><h1>Paid Media Performance</h1><p>Operational view across Google, LinkedIn &amp; Meta — CRM-grounded, refreshed daily.</p></div>
-    <span class="sd-pill">◷ 90d · updated today</span>
+  <div class="sd-inner">
+    <div class="sd-head">
+      <div><h1>Paid Media Performance</h1><p>Operational view across Google, LinkedIn &amp; Meta — CRM-grounded, refreshed daily.</p></div>
+      <span class="sd-pill">◷ 90d · updated today</span>
+    </div>
+    <div class="sd-grid">${bodies}</div>
   </div>
-  <div class="sd-grid">${bodies}</div>
 </div></body></html>`;
 
 // Assemble the final dashboard from the KEPT widgets (drop in the plan → gone here).

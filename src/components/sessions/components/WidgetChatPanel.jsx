@@ -279,14 +279,10 @@ export default function WidgetChatPanel({
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2">
         {messages.length === 0 && (
-          <div className="text-[12px] text-[var(--text-muted)] py-3 leading-relaxed">
-            <p className="m-0">
-              This is a fresh widget-scoped conversation. Ask a question or
-              request a change. The agent will only see this widget's
-              lineage and recent edits made here.
-            </p>
-            <p className="m-0 mt-2 text-[10px] opacity-80">
-              Edits made from main chat may not appear here.
+          <div className="min-h-full flex flex-col items-center justify-center text-center px-6">
+            <img src="/petavue-logo.svg" alt="Petavue" style={{ width: 26, height: 32 }} className="mb-4" />
+            <p className="m-0 text-[14px] text-[var(--text-muted)] leading-relaxed max-w-[300px]">
+              Ask a question or request a change — the agent only sees this widget's lineage and recent edits made here.
             </p>
           </div>
         )}
@@ -342,32 +338,30 @@ export default function WidgetChatPanel({
       </div>
 
       <div className="shrink-0 px-3 pb-3 pt-2">
-        <div className="relative flex flex-col bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-2xl focus-within:border-[var(--accent)] transition-colors">
+        <div className="flex flex-1 items-center gap-2 py-2 px-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-[8px] overflow-hidden focus-within:border-[var(--accent)] hover:border-[var(--accent)]/60 transition-colors">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Refine this widget…"
-            rows={2}
+            rows={1}
             disabled={isBusy}
             className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)]
-              px-3 py-3 pr-12 min-h-[44px] max-h-[120px]
-              placeholder:text-[var(--text-muted)] rounded-2xl
-              disabled:opacity-60"
+              max-h-[120px] placeholder:text-[var(--text-muted)] disabled:opacity-60"
           />
-          <div className="absolute right-2 bottom-2">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!text.trim() || isBusy}
-              className="w-8 h-8 rounded-xl flex items-center justify-center
-                border-none cursor-pointer transition-colors
-                bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]
-                disabled:bg-[var(--bg-hover)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
-            >
-              <ArrowUp size={16} strokeWidth={2.5} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!text.trim() || isBusy}
+            aria-label="Send message"
+            style={{ width: 32, height: 32, flexShrink: 0 }}
+            className="rounded-full flex items-center justify-center p-0
+              border-none cursor-pointer transition-colors
+              bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]
+              disabled:bg-[var(--bg-hover)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
+          >
+            <ArrowUp size={16} strokeWidth={2.5} />
+          </button>
         </div>
         {totalTurns > 0 && !isBusy && (
           <div className="text-[10px] text-[var(--text-muted)] mt-1.5 px-2 leading-snug">

@@ -34,7 +34,7 @@ export default function WidgetListView({
       </div>
 
       {/* Filters */}
-      <div className="shrink-0 px-6 py-2.5 border-b border-[var(--border-primary)]">
+      <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-2.5 border-b border-[var(--border-primary)]">
         <div className="flex items-center gap-1">
           {FILTERS.map((f) => (
             <button
@@ -50,6 +50,9 @@ export default function WidgetListView({
             </button>
           ))}
         </div>
+        <span className="text-[12px] text-[var(--text-muted)] tabular-nums shrink-0">
+          <span className="font-semibold text-[var(--text-primary)]">{verifiedCount}</span> of {widgetCount} verified
+        </span>
       </div>
 
       {/* Widget rows */}
@@ -106,7 +109,7 @@ export default function WidgetListView({
         {footerStart || <span />}
         <PvButton
           variant="primary"
-          size="lg"
+          size="md"
           className="shrink-0"
           label="Continue"
           icon={CaretRight}

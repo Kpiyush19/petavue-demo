@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '../../../api'
 import HtmlViewer from '../viewers/HtmlViewer'
 import LineagePanel from './LineagePanel'
 import WidgetChatPanel from './WidgetChatPanel'
+import { useVerifiedSteps, verifySteps } from './stepVerification'
 
 const COL_MIN_PCT = 15
 
@@ -44,7 +45,7 @@ function MinimizedStrip({ label, onExpand }) {
 function ColumnHeader({ title, extra, onMinimize, minimizeTitle }) {
   return (
     <div className="shrink-0 flex items-center gap-2 h-10 px-3 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
-      <span className="text-[12px] font-semibold text-[var(--text-primary)] flex-1 truncate">
+      <span className="text-[12px] font-normal text-[var(--text-primary)] flex-1 truncate">
         {title}
       </span>
       {extra}
@@ -74,14 +75,15 @@ export default function WidgetDetailView({
   onVerified,
   onBackToSession,
   onContinueToPublish,
+  footerStart,
 }) {
   const [lineage, setLineage] = useState(null)
   const [lineageLoading, setLineageLoading] = useState(true)
   const [lineageError, setLineageError] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [widgetPct, setWidgetPct] = useState(40)
-  const [lineagePct, setLineagePct] = useState(30)
-  const [chatPct, setChatPct] = useState(30)
+  const [widgetPct, setWidgetPct] = useState(34)
+  const [lineagePct, setLineagePct] = useState(33)
+  const [chatPct, setChatPct] = useState(33)
   const [lineageMin, setLineageMin] = useState(false)
   const [chatMin, setChatMin] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -153,12 +155,30 @@ export default function WidgetDetailView({
   }
   const handleToggleVerified = () => setVerifiedValue(!verified)
 
+  // ── Step-derived verification ──
+  // Rule 1: verifying a step marks it verified everywhere (shared store).
+  // Rule 2: a widget is verified once ALL of its steps are verified.
+  const verifiedSet = useVerifiedSteps()
+  const chain = lineage?.chain || []
+  const stepIsVerified = (s) => verifiedSet.has(s.id) || !!s.verified_via || !!s.verified
+  const verifiedStepCount = chain.filter(stepIsVerified).length
+  const allStepsVerified = chain.length > 0 && verifiedStepCount === chain.length
+  const isWidgetVerified = chain.length > 0 ? allStepsVerified : verified
+
+  useEffect(() => {
+    if (allStepsVerified && !verified) setVerifiedValue(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allStepsVerified])
+
   // Widget navigation (prev / next) + "verify & advance".
   const idx = widgets.findIndex((w) => w.id === widget?.id)
   const total = widgets.length
   const prevW = idx > 0 ? widgets[idx - 1] : null
   const nextW = idx >= 0 && idx < total - 1 ? widgets[idx + 1] : null
   const verifyAndAdvance = async () => {
+    // Verifying the widget verifies all its steps (which, being shared, also
+    // count toward any other widget that uses them).
+    if (chain.length) verifySteps(chain.map((s) => s.id))
     await setVerifiedValue(true)
     if (nextW) onNavigate?.(nextW)
     else onBack?.()
@@ -204,32 +224,33 @@ export default function WidgetDetailView({
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-[var(--border-primary)]">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1 text-[12px] text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer p-0"
-        >
-          <ArrowLeft size={12} weight="bold" />
-          Back to widgets
-        </button>
-        <h3 className="text-[14px] font-semibold text-[var(--text-primary)] m-0 truncate max-w-[40%]">
-          {widget?.name}
-        </h3>
-        <div className="flex items-center gap-1.5">
+      <div className="shrink-0 flex items-center gap-3 px-4 py-2 border-b border-[var(--border-primary)]">
+        {/* left: back */}
+        <div className="flex-1 flex justify-start min-w-0">
+          <PvButton variant="blueGhost" size="md" label="Back to widgets" icon={CaretLeft} iconWeight="bold" onClick={onBack} />
+        </div>
+        {/* center: position */}
+        {total > 0 && (
+          <span className="text-[12px] font-medium text-[var(--text-muted)] tabular-nums shrink-0">Widget {idx + 1} of {total}</span>
+        )}
+        {/* right: ‹ title › pager */}
+        <div className="flex-1 flex justify-end items-center gap-2 min-w-0">
           <button
             onClick={() => prevW && onNavigate?.(prevW)}
             disabled={!prevW}
             title="Previous widget"
-            className="flex items-center justify-center w-6 h-6 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="shrink-0 flex items-center justify-center w-6 h-6 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <CaretLeft size={13} weight="bold" />
           </button>
-          {total > 0 && <span className="text-[12px] font-medium text-[var(--text-muted)] tabular-nums">{idx + 1} of {total}</span>}
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] m-0 truncate max-w-[240px]">
+            {widget?.name}
+          </h3>
           <button
             onClick={() => nextW && onNavigate?.(nextW)}
             disabled={!nextW}
             title="Next widget"
-            className="flex items-center justify-center w-6 h-6 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="shrink-0 flex items-center justify-center w-6 h-6 rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <CaretRight size={13} weight="bold" />
           </button>
@@ -246,8 +267,8 @@ export default function WidgetDetailView({
           style={{ width: widths.widget, transition: colTransition }}
         >
           <div className="shrink-0 flex items-center justify-between h-10 px-3 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
-            <span className="text-[12px] text-[var(--text-muted)] truncate">{widget?.name}</span>
-            <PvButton variant="ghost" size="sm" icon={ArrowsClockwise} iconWeight="bold" onClick={handleRefresh} title="Refresh widget preview" />
+            <span className="text-[12px] font-normal text-[var(--text-primary)] truncate">{widget?.name}</span>
+            <PvButton variant="ghost" size="sm" label="Refresh" icon={ArrowsClockwise} iconWeight="bold" onClick={handleRefresh} title="Refresh widget preview" />
           </div>
           <div className="flex-1 min-h-0">
             <HtmlViewer
@@ -322,8 +343,10 @@ export default function WidgetDetailView({
             <>
               <ColumnHeader
                 title="How it's built"
-                extra={lineage?.chain && (
-                  <span className="text-[12px] text-[var(--text-muted)]">{lineage.chain.length} steps</span>
+                extra={chain.length > 0 && (
+                  <span className={`text-[12px] font-medium ${allStepsVerified ? 'text-green-600' : 'text-[var(--text-muted)]'}`}>
+                    {verifiedStepCount} of {chain.length} verified
+                  </span>
                 )}
                 onMinimize={() => setLineageMin(true)}
                 minimizeTitle="Minimize lineage"
@@ -338,14 +361,19 @@ export default function WidgetDetailView({
 
       {/* Footer */}
       <div className="shrink-0 flex items-center justify-between gap-4 px-4 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
-        {verified ? (
-          <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-green-600">
-            <ShieldCheck size={15} weight="fill" />Verified
-          </span>
-        ) : (
-          <span className="text-[12px] text-[var(--text-muted)]">Not verified yet</span>
-        )}
-        <PvButton variant="primary" size="md" label={nextW ? (verified ? 'Next' : 'Verify & next') : (verified ? 'Back to list' : 'Verify & finish')} icon={CaretRight} iconPosition="suffix" iconWeight="bold" onClick={verifyAndAdvance} />
+        {footerStart || <span />}
+        <div className="flex items-center gap-3 shrink-0">
+          {isWidgetVerified ? (
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-green-600">
+              <ShieldCheck size={15} weight="fill" />Verified
+            </span>
+          ) : (
+            <span className="text-[12px] text-[var(--text-muted)] tabular-nums">
+              {chain.length ? `${verifiedStepCount} of ${chain.length} steps verified` : 'Not verified yet'}
+            </span>
+          )}
+          <PvButton variant="primary" size="md" label={nextW ? (isWidgetVerified ? 'Next' : 'Verify all & next') : (isWidgetVerified ? 'Back to list' : 'Verify all & finish')} icon={CaretRight} iconPosition="suffix" iconWeight="bold" onClick={verifyAndAdvance} />
+        </div>
       </div>
     </div>
   )

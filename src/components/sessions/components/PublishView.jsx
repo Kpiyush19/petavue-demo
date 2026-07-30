@@ -2070,6 +2070,7 @@ export default function PublishView({
         onVerified={onWidgetVerified}
         onBackToSession={() => onClose?.()}
         onContinueToPublish={() => { setSelectedWidget(null); setUserReviewDone(true); setVerifySubTab('agent') }}
+        footerStart={renderVerifyStepNav()}
       />
     ) : (
       <WidgetListView
@@ -2385,7 +2386,7 @@ export default function PublishView({
   // ── Footer (context-aware nav) ──
   const renderFooter = () => {
     const backBtn = (target, label = 'Back') => (
-      <PvButton variant="secondary" size="lg" label={label} icon={CaretLeft} iconWeight="bold" disabled={isAgentBusy} onClick={() => setStep(target)} />
+      <PvButton variant="secondary" size="md" label={label} icon={CaretLeft} iconWeight="bold" disabled={isAgentBusy} onClick={() => setStep(target)} />
     )
     const dashboardOk = !publishDashboardEnabled || (dashboardTitle || '').trim().length > 0
     const newFolderMissing = summaryToFolder && summaryFolder === NEW_FOLDER && !newFolderName.trim()
@@ -2411,16 +2412,16 @@ export default function PublishView({
         {step === STEP.FREQUENCY && phase !== PHASE.DONE && !isPublishing && backBtn(STEP.OUTPUTS)}
         <div>
           {step === STEP.WORKFLOW && (
-            <PvButton variant="primary" size="lg" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={isEditing && !updateMode?.workflow_id} onClick={() => setStep(STEP.OUTPUTS)} />
+            <PvButton variant="primary" size="md" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={isEditing && !updateMode?.workflow_id} onClick={() => setStep(STEP.OUTPUTS)} />
           )}
           {step === STEP.OUTPUTS && (
-            <PvButton variant="primary" size="lg" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={!canPublish} title={publishReason} onClick={() => { if (summaryEnabled && slackEnabled && slackChannels.length === 0 && slackDmUsers.length === 0) { setSlackTargetError(true); return } setStep(STEP.FREQUENCY) }} />
+            <PvButton variant="primary" size="md" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={!canPublish} title={publishReason} onClick={() => { if (summaryEnabled && slackEnabled && slackChannels.length === 0 && slackDmUsers.length === 0) { setSlackTargetError(true); return } setStep(STEP.FREQUENCY) }} />
           )}
           {step === STEP.FREQUENCY && (
             reviewPassed ? (
-              <PvButton variant="primary" size="lg" label={isPublishing ? 'Publishing…' : 'Publish'} icon={isPublishing ? SpinnerIcon : CheckCircle} iconPosition="suffix" iconWeight="fill" disabled={isPublishing || !canPublish} title={publishReason} onClick={() => createWorkflow(execSessionIdRef.current)} />
+              <PvButton variant="primary" size="md" label={isPublishing ? 'Publishing…' : 'Publish'} icon={isPublishing ? SpinnerIcon : CheckCircle} iconPosition="suffix" iconWeight="fill" disabled={isPublishing || !canPublish} title={publishReason} onClick={() => createWorkflow(execSessionIdRef.current)} />
             ) : (
-              <PvButton variant="primary" size="lg" label="Run Agentic Review" icon={Play} iconWeight="fill" title="The agentic review must pass before you can publish" onClick={() => { setTab(TAB.VERIFY); setVerifySubTab('agent') }} />
+              <PvButton variant="primary" size="md" label="Run Agentic Review" icon={Play} iconWeight="fill" title="The agentic review must pass before you can publish" onClick={() => { setTab(TAB.VERIFY); setVerifySubTab('agent') }} />
             )
           )}
         </div>
@@ -2738,7 +2739,7 @@ export default function PublishView({
           </div>
           <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
             {renderVerifyStepNav()}
-            <PvButton variant="primary" size="lg" className="shrink-0" label="Continue to Publish" icon={CaretRight} iconPosition="suffix" iconWeight="bold" onClick={continueToPublish} />
+            <PvButton variant="primary" size="md" className="shrink-0" label="Continue to Publish" icon={CaretRight} iconPosition="suffix" iconWeight="bold" onClick={continueToPublish} />
           </div>
         </div>
       )
@@ -2768,7 +2769,7 @@ export default function PublishView({
             {renderInlineAdjustments()}
             <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
               {renderVerifyStepNav()}
-              <PvButton variant="primary" size="lg" className="shrink-0" label="Approve & Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" title="Approve the checked adjustments (applied to your main chat session), then continue" onClick={continueToPublish} />
+              <PvButton variant="primary" size="md" className="shrink-0" label="Approve & Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" title="Approve the checked adjustments (applied to your main chat session), then continue" onClick={continueToPublish} />
             </div>
           </div>
         )
@@ -2815,7 +2816,7 @@ export default function PublishView({
           </div>
           <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
             {renderVerifyStepNav()}
-            <PvButton variant="primary" size="lg" className="shrink-0" label={adjustmentCount > 0 ? 'Approve & Continue' : 'Continue to Publish'} icon={CaretRight} iconPosition="suffix" iconWeight="bold" title={adjustmentCount > 0 ? 'Approve the checked adjustments (applied to your main chat session), then continue' : 'Continue to publish'} onClick={continueToPublish} />
+            <PvButton variant="primary" size="md" className="shrink-0" label={adjustmentCount > 0 ? 'Approve & Continue' : 'Continue to Publish'} icon={CaretRight} iconPosition="suffix" iconWeight="bold" title={adjustmentCount > 0 ? 'Approve the checked adjustments (applied to your main chat session), then continue' : 'Continue to publish'} onClick={continueToPublish} />
           </div>
         </div>
       )
@@ -2826,7 +2827,7 @@ export default function PublishView({
         <div className="shrink-0 flex items-center justify-between gap-4 px-6 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
           {renderVerifyStepNav()}
           <div className="shrink-0">
-            <PvButton variant="primary" size="lg" label="Continue to Publish" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled title="Run the agentic review first" onClick={() => {}} />
+            <PvButton variant="primary" size="md" label="Continue to Publish" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled title="Run the agentic review first" onClick={() => {}} />
           </div>
         </div>
       </div>
