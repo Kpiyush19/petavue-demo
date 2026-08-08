@@ -553,24 +553,6 @@ label:has(> input[type="radio"]) {
     opacity var(--duration-fast) var(--ease-standard);
 }
 
-button:active,
-[role="button"]:active,
-a:active,
-summary:active,
-.btn:active,
-label:has(> input[type="checkbox"]):active,
-label:has(> input[type="radio"]):active {
-  transform: scale(0.98);
-}
-
-/* Don't shrink disabled controls — a press that does nothing shouldn't
-   register as a press. */
-button:disabled:active,
-[role="button"][aria-disabled="true"]:active,
-.btn:disabled:active,
-.btn[disabled]:active {
-  transform: none;
-}
 
 /* Tooltips — fade in while lifting 4px and clearing a 2px blur, so they
    ease into place rather than snapping. Opacity is driven by MUI's Fade

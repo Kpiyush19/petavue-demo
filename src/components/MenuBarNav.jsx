@@ -17,8 +17,8 @@ import { timeAgo } from "@/utils/relativeTimeDiff";
 export const NAV_ITEMS = [
   { id: "dashboard-live", label: "Dashboard", icon: "dashboard" },
   { id: "skills", label: "Skills", icon: "skills" },
-  { id: "workflows", label: "Workflows", icon: "workflows" },
   { id: "goals", label: "Goals", icon: "goals" },
+  { id: "workflows", label: "Workflows", icon: "workflows" },
   { id: "contexts", label: "Contexts", icon: "contexts", title: "Contexts — add new (coming soon)" },
   { id: "data-hub", label: "Data Hub", icon: "data-hub" },
 ];

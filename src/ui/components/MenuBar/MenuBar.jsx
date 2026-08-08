@@ -10,8 +10,8 @@ import './MenuBar.css';
 // sidebar is consistent on every screen.
 const CANONICAL_NAV = [
   { id: 'skills', label: 'Skills', icon: 'skills' },
-  { id: 'workflows', label: 'Workflows', icon: 'workflows' },
   { id: 'goals', label: 'Goals', icon: 'goals' },
+  { id: 'workflows', label: 'Workflows', icon: 'workflows' },
   { id: 'dashboard-live', label: 'Dashboard', icon: 'dashboard' },
   { id: 'data-hub', label: 'Data Hub', icon: 'data-hub' },
 ];

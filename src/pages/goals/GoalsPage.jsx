@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  X, Target, CheckCircle, ClockCounterClockwise, Play, CircleNotch, CaretRight, CaretDown, Lightning, Sliders,
-  DotsThree, XCircle, ArrowSquareOut, Lightbulb, Eye, Clock, Flag, Pulse, FlowArrow, MagnifyingGlass, Plus, Trash,
+  X, Target, CheckCircle, ClockCounterClockwise, Play, CircleNotch, CaretRight, CaretDown, Lightning,
+  DotsThree, XCircle, ArrowSquareOut, Lightbulb, Eye, Clock, Flag, Pulse, FlowArrow, MagnifyingGlass, Trash,
   Sparkle, PaperPlaneRight, Funnel, Info, Warning, ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -322,60 +322,6 @@ function GoalRow({ goal, onOpen, onFull }) {
   );
 }
 
-/* ── Config popup ── */
-function ConfigModal({ onClose }) {
-  const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["goal-config"], queryFn: () => apiGet("/api/goals/config") });
-  const [form, setForm] = useState(null);
-  const value = form || data || { company: "", process: "", icp: "", additional: "" };
-  const set = (k, v) => setForm({ ...value, [k]: v });
-  const save = useMutation({
-    mutationFn: () => apiPut("/api/goals/config", value),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goal-config"] }); toast.success("Context saved"); onClose(); },
-  });
-  const filled = ["company", "process", "icp", "additional"].filter((k) => (value[k] || "").trim()).length;
-  const FIELDS = [
-    { k: "company", label: "Company", placeholder: "What does your company do?" },
-    { k: "process", label: "Process", placeholder: "How does your GTM / revenue process work?" },
-    { k: "icp", label: "Ideal Customer Profile", placeholder: "Who are your best-fit customers?" },
-    { k: "additional", label: "Additional context", placeholder: "Anything else the engine should know." },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-        className="relative w-[700px] max-w-[94vw] max-h-[88vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border-t-[3px] border-[var(--color-primary-500)]"
-      >
-        <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border-primary)]">
-          <div>
-            <h3 className="text-[18px] font-semibold text-[var(--text-primary)] m-0">Configure</h3>
-            <p className="text-[14px] text-[#757A97] mt-0.5 max-w-[480px]">The context we ground every goal in: how your business, funnel, and best-fit customers actually work, so the findings fit you, not a generic benchmark.</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <PvButton variant="ghost" size="sm" icon={X} aria-label="Close" onClick={onClose} />
-          </div>
-        </div>
-        <div className="flex flex-col gap-4 px-5 py-5 overflow-y-auto">
-          {FIELDS.map((f) => (
-            <div key={f.k} className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-semibold text-[var(--text-primary)]">{f.label}</label>
-              <textarea value={value[f.k] || ""} onChange={(e) => set(f.k, e.target.value)} rows={3} placeholder={f.placeholder}
-                className="w-full text-[14px] px-3.5 py-3 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none text-[var(--text-primary)] placeholder:text-[#adb2ce]" />
-            </div>
-          ))}
-        </div>
-        <div className="shrink-0 flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border-primary)]">
-          <PvButton variant="secondary" size="md" label="Cancel" onClick={onClose} />
-          <PvButton variant="primary" size="md" label={save.isPending ? "Saving…" : "Save"} disabled={save.isPending} onClick={() => save.mutate()} />
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 /* ── Recommendations tab: highlights + filters + queue + detail ── */
 
 // One bucket per recommendation — drives the status chip (our goalPriority
@@ -666,7 +612,7 @@ function RecommendationsPanel({ onOpenGoal }) {
             <Sparkle size={14} weight="fill" /> Ask Sage
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
+        <div className="hidden grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
           {summaryTiles.map((t, i) => (
             <InsightCard key={i} kind={t.kind} color={t.color} icon={t.icon} value={t.value} desc={t.desc} />
           ))}
@@ -717,7 +663,6 @@ export default function GoalsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [tab, setTab] = useState("recommendations");
-  const [showConfig, setShowConfig] = useState(false);
   const [goalFilter, setGoalFilter] = useState("all");
   const [goalSearch, setGoalSearch] = useState("");
   // "Run now" — force an immediate check-in instead of waiting for the schedule.
@@ -769,19 +714,10 @@ export default function GoalsPage() {
 
   return (
     <div className="flex flex-col w-full h-full">
-      {/* Standard app header bar (consistent with Dashboards / Sessions / Workflows) */}
-      <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
-        <span className="text-[16px] leading-[24px] font-medium">Goals</span>
-        <div className="flex items-center gap-3">
-          <PvButton variant="secondary" size="md" label="Configure" icon={Sliders} onClick={() => setShowConfig(true)} />
-          <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
-        </div>
-      </div>
-
       {/* Sub-tab bar (Goals · Recommendations) */}
       <div className="flex w-full shrink-0 bg-white border-b border-[var(--color-grey-100)]">
         <div className="flex items-start gap-6 px-4">
-          {[{ k: "recommendations", label: "Recommendations" }, { k: "goals", label: "Objectives" }].map((t) => (
+          {[{ k: "recommendations", label: "Recommendations" }, { k: "goals", label: "Goals" }].map((t) => (
             <button
               key={t.k}
               onClick={() => setTab(t.k)}
@@ -821,31 +757,31 @@ export default function GoalsPage() {
                           <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">Your goals</h2>
                           <span className="px-1.5 py-0.5 text-[12px] font-semibold rounded-full bg-grey-100 text-[var(--text-muted)]">{goals.length}</span>
                         </div>
-                        {goals.length > 0 && (
-                          <div className="flex items-center gap-2 ml-auto">
-                            {/* Search — consistent 320px design-system style */}
-                            <div className="flex items-center gap-2 w-80 h-8 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 px-3 transition-colors">
-                              <MagnifyingGlass size={16} weight="regular" className="text-grey-500 shrink-0" />
-                              <input
-                                value={goalSearch}
-                                onChange={(e) => setGoalSearch(e.target.value)}
-                                placeholder="Search goals"
-                                className="flex-1 min-w-0 border-none outline-none bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-grey-500 p-0"
-                              />
-                            </div>
-                            {/* Filter — 32×32 icon-only secondary button, after the search */}
-                            <GoalFilterDropdown value={goalFilter} onChange={setGoalFilter} counts={counts} total={goals.length} />
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 ml-auto">
+                          {goals.length > 0 && (
+                            <>
+                              {/* Search — consistent 320px design-system style */}
+                              <div className="flex items-center gap-2 w-80 h-8 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 px-3 transition-colors">
+                                <MagnifyingGlass size={16} weight="regular" className="text-grey-500 shrink-0" />
+                                <input
+                                  value={goalSearch}
+                                  onChange={(e) => setGoalSearch(e.target.value)}
+                                  placeholder="Search goals"
+                                  className="flex-1 min-w-0 border-none outline-none bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-grey-500 p-0"
+                                />
+                              </div>
+                              {/* Filter — 32×32 icon-only secondary button, after the search */}
+                              <GoalFilterDropdown value={goalFilter} onChange={setGoalFilter} counts={counts} total={goals.length} />
+                            </>
+                          )}
+                          <PvButton variant="primary" size="md" label="Manage Goals" icon={Target} onClick={() => {}} />
+                        </div>
                       </div>
 
                       {goals.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-2 py-14 border border-[var(--border-primary)] rounded-lg text-center">
                           <Target size={24} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[#757A97] max-w-[460px]">No goals yet. Set one and we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
-                          <div className="mt-1">
-                            <PvButton variant="primary" size="md" label="New goal" icon={Plus} onClick={() => navigate("/goals/new")} />
-                          </div>
+                          <p className="text-[14px] text-[#757A97] max-w-[460px]">No goals yet. Once a goal is set, we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
                         </div>
                       ) : filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-1.5 py-10 border border-dashed border-[var(--border-primary)] rounded-lg text-center">
@@ -871,7 +807,6 @@ export default function GoalsPage() {
         </div>
       </div>
 
-      {showConfig && <ConfigModal onClose={() => setShowConfig(false)} />}
     </div>
   );
 }

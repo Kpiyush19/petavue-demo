@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, Target, Lightning, Eye, Clock, Tag, ListBullets, FlowArrow, ClockClockwise, ChartBar, Info, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button as PvButton, Tooltip } from "@/ui";
-import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
@@ -81,28 +80,13 @@ function Fact({ label, value, valueCls }) {
   );
 }
 
-/* One section of the evidence "View details" drawer. */
-function EvidenceCard({ icon: Icon, title, children }) {
-  return (
-    <div className="rounded-[8px] border border-[var(--color-grey-100)] bg-white p-3.5">
-      <div className="flex items-center gap-1.5 mb-2.5">
-        {Icon && <Icon size={14} weight="bold" className="text-[var(--text-muted)]" />}
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 /* Inline recommendation detail — used both in the drawer and the Recommendations
    tab's right panel. Fills its container height (scroll body + pinned footer). */
 export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
   const [thread, setThread] = useState([]);
-  const [showChat, setShowChat] = useState(false);
-  const [showDeriv, setShowDeriv] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(true);
   // pending = the action awaiting input ({ action }); reason = the note; snoozeFor = duration.
   const [pending, setPending] = useState(null);
   const [reason, setReason] = useState("");
@@ -139,11 +123,6 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
     snoozed: { label: rec.snoozeLabel ? `Snoozed · ${rec.snoozeLabel}` : "Snoozed", cls: "text-amber-600" },
   }[rec.status];
 
-  // Synthesized decision log for the "View details" drawer.
-  const history = [["Generated", rec.age || "This check-in", "Surfaced from the latest check-in."]];
-  if (rec.status === "acted") history.push(["Acted", "Just now", "Marked done — monitoring for recovery."]);
-  if (rec.status === "rejected") history.push(["Dismissed", "Just now", "Archived from the queue."]);
-  if (rec.status === "snoozed") history.push(["Snoozed", "Just now", rec.snoozeLabel ? `Until ${rec.snoozeLabel}.` : "Snoozed."]);
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -169,20 +148,14 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           {onOpenGoal && goal?.name ? (
             <button onClick={() => onOpenGoal(goalId)} className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"><Target size={16} weight="bold" className="shrink-0" /><span className="truncate">{goal.name}</span></button>
           ) : <span />}
-          <PvButton variant="blueGhost" size="md" label="View details" icon={Info} onClick={() => setShowDetails(true)} className="shrink-0" />
-        </div>
-        {/* Facts — first generated / last updated / status */}
-        <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
-          <Fact label="First generated" value={rec.age || "This check-in"} />
-          <Fact label="Last updated" value={done ? "Just now" : "This check-in"} />
-          <Fact label="Status" value={resolved ? resolved.label : "Open · unresolved"} valueCls={resolved ? resolved.cls : "text-black"} />
         </div>
       </div>
 
       {/* Body */}
       <div className="px-5 pt-0 pb-4 flex flex-col gap-5 [&>*]:shrink-0">
-        {/* Impact tile — the estimated outcome, amber. */}
-        {rec.impact && (
+        {/* Impact tile — the estimated outcome, amber. Hidden when a richer
+            "Expected impact" scenario is present, so we don't stack two impact boxes. */}
+        {rec.impact && !rec.scenario && (
           <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700">{rec.impact.label || "Estimated impact"}</p>
@@ -236,6 +209,143 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           </div>
         )}
         </div>
+
+        {/* Expected impact — scenario estimate, blue. */}
+        {rec.scenario && (
+          <div className="rounded-[8px] border border-primary-200 bg-primary-50 p-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-primary-700 mb-2">Expected impact</p>
+            <div className="flex items-start gap-3">
+              <span className="shrink-0 text-[12px] font-medium text-primary-600 mt-[3px]">Scenario estimate</span>
+              <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{rec.scenario}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Full evidence — every number, interpreted (collapsible). */}
+        {((rec.derivation || []).length > 0 || (rec.metrics || []).length > 0 || rec.trigger) && (
+          <div className="rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowEvidence((v) => !v)}
+              aria-expanded={showEvidence}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-grey-50 hover:bg-grey-100/60 border-none cursor-pointer text-left transition-colors"
+            >
+              <span className="text-[14px] font-medium text-[var(--text-primary)]">Full evidence, every number interpreted</span>
+              <CaretDown size={16} className={cn("text-[var(--text-muted)] transition-transform duration-200", showEvidence && "rotate-180")} />
+            </button>
+            <AnimatePresence initial={false}>
+            {showEvidence && (
+              <motion.div
+                key="evidence"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+              <div className="px-4 py-4 flex flex-col gap-5 border-t border-[var(--color-grey-100)]">
+                {(rec.derivation || []).length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">What the numbers show</p>
+                    <ul className="flex flex-col gap-2 list-disc pl-4">
+                      {rec.derivation.map((s, i) => <li key={i} className="text-[14px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {(rec.metrics || []).length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Key metrics</p>
+                    <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
+                      {rec.metrics.map((m, i) => (
+                        <div key={i} className="bg-white px-3 py-2.5">
+                          <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] leading-tight">{m.label}</p>
+                          <p className="text-[16px] font-semibold text-[var(--text-primary)] mt-1">{m.value}</p>
+                          {m.note && <p className="text-[12px] text-[#757A97] mt-0.5 leading-snug">{m.note}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {rec.trigger && (
+                  <div>
+                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">When this fires</p>
+                    <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.trigger}</p>
+                  </div>
+                )}
+              </div>
+              </motion.div>
+            )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Guardrails — continue if / reverse if. */}
+        {rec.guardrails && ((rec.guardrails.continueIf || []).length > 0 || (rec.guardrails.reverseIf || []).length > 0) && (
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Guardrails</p>
+            <div className="grid grid-cols-2 gap-3">
+              {(rec.guardrails.continueIf || []).length > 0 && (
+                <div className="rounded-[8px] border border-green-200 bg-green-50 p-4">
+                  <p className="text-[12px] font-semibold uppercase tracking-wider text-green-700 mb-2">Continue if</p>
+                  <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-green-400">
+                    {rec.guardrails.continueIf.map((s, i) => <li key={i} className="text-[14px] text-[var(--text-primary)] leading-snug">{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {(rec.guardrails.reverseIf || []).length > 0 && (
+                <div className="rounded-[8px] border border-rose-200 bg-rose-50 p-4">
+                  <p className="text-[12px] font-semibold uppercase tracking-wider text-rose-700 mb-2">Reverse if</p>
+                  <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-rose-400">
+                    {rec.guardrails.reverseIf.map((s, i) => <li key={i} className="text-[14px] text-[var(--text-primary)] leading-snug">{s}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Read before deciding — caveats, amber. */}
+        {(rec.readBeforeDeciding || []).length > 0 && (
+          <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700 mb-2">Read before deciding</p>
+            <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-amber-500">
+              {rec.readBeforeDeciding.map((s, i) => <li key={i} className="text-[14px] text-amber-900 leading-snug">{s}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {/* Timeline — test window / earliest mature review / reversible. */}
+        {rec.timeline && (
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Timeline</p>
+            <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
+              <Fact label="Test window" value={rec.timeline.window} />
+              <Fact label="Earliest mature review" value={rec.timeline.review} />
+              <Fact label="Reversible" value={rec.timeline.reversible} />
+            </div>
+          </div>
+        )}
+
+        {/* What happens next — if it works / fails / unclear. */}
+        {rec.whatHappensNext && (
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">What happens next</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-green-700 mb-1.5">If it works</p>
+                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.works}</p>
+              </div>
+              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-rose-700 mb-1.5">If it fails</p>
+                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.fails}</p>
+              </div>
+              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
+                <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">If unclear</p>
+                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.unclear}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Notes — composer stays pinned on top; saved notes scroll below it so
             the input never gets pushed down as notes accumulate. */}
@@ -329,7 +439,9 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2.5">
+            {rec.guardrails && <p className="text-[12px] text-[var(--text-muted)] leading-snug">Nothing changes until you decide, and every accepted move carries its reverse condition.</p>}
+            <div className="flex items-center gap-2">
             <button onClick={() => { setReason(""); setPending({ action: "acted" }); }} disabled={act.isPending}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-green-600 hover:bg-green-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
               <CheckCircle size={16} /> Acted
@@ -342,67 +454,11 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
               className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-amber-600 hover:bg-amber-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
               <ClockCounterClockwise size={16} /> Snooze
             </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* "View details" — the shared floaty right-side overlay (same chrome as
-          Sage): Thresholds · Metrics · Triggers · Goal · Decision log. */}
-      <ChatOverlay
-        isOpen={showDetails}
-        onClose={() => setShowDetails(false)}
-        floating
-        heading="Details"
-        title={rec.title}
-        headerIcon={Info}
-        headerIconWeight="regular"
-        headerIconSize={20}
-        headerIconClass="text-grey-600"
-      >
-        <div className="h-full overflow-y-auto p-4 flex flex-col gap-3 bg-[var(--bg-primary)]">
-                <EvidenceCard icon={Sliders} title="Thresholds">
-                  {rec.derivation?.length ? (
-                    <ul className="flex flex-col gap-2">
-                      {rec.derivation.map((s, i) => <li key={i} className="text-[12px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
-                    </ul>
-                  ) : <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.evidence}</p>}
-                </EvidenceCard>
-                {rec.metrics?.length > 0 && (
-                  <EvidenceCard icon={ChartBar} title="Metrics">
-                    <div className="flex flex-col divide-y divide-[var(--color-grey-100)]">
-                      {rec.metrics.map((m, i) => (
-                        <div key={i} className="flex items-baseline justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
-                          <span className="text-[12.5px] text-[#757A97]">{m.label}</span>
-                          <span className="text-[12.5px] text-right text-[var(--text-primary)]"><span className="font-medium">{m.value}</span>{m.note && <span className="text-[var(--text-muted)]"> · {m.note}</span>}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </EvidenceCard>
-                )}
-                <EvidenceCard icon={FlowArrow} title="Triggers">
-                  <p className="text-[13px] font-medium text-[var(--text-primary)]">{rec.triggerLabel || "Rule"}</p>
-                  {rec.trigger && <p className="text-[12.5px] text-[#757A97] mt-1 leading-relaxed">{rec.trigger}</p>}
-                  {rec.signal && <p className="text-[12px] text-[var(--text-muted)] mt-2">Why it fired: <span className="text-[#757A97] font-medium">{rec.signal}</span></p>}
-                </EvidenceCard>
-                <EvidenceCard icon={Target} title="Goal">
-                  <p className="text-[13px] font-medium text-[var(--text-primary)]">{goal?.name || "—"}</p>
-                  <p className="text-[12px] text-[#757A97] mt-1">This recommendation is graded against this goal's target.</p>
-                </EvidenceCard>
-                <EvidenceCard icon={ClockClockwise} title="Decision log">
-                  <ol className="flex flex-col gap-2.5">
-                    {history.map((h, i) => (
-                      <li key={i} className="flex gap-2.5">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-400 shrink-0" />
-                        <div>
-                          <p className="text-[12.5px] font-medium text-[var(--text-primary)]">{h[0]} <span className="text-[var(--text-muted)] font-normal">· {h[1]}</span></p>
-                          <p className="text-[12px] text-[#757A97]">{h[2]}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </EvidenceCard>
-        </div>
-      </ChatOverlay>
     </div>
   );
 }
