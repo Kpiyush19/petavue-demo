@@ -19,6 +19,28 @@ const PMR_FOLLOWUPS = [
   { question: 'Show me the winning journey patterns', grounded_in: 'Paid Media ROI', grounded_type: 'dashboard' },
 ];
 
+// Chips grounded in the Target Account Journey dashboard.
+const TAJ_FOLLOWUPS = [
+  { question: 'Where are accounts leaking out of the funnel?', grounded_in: 'Target Account Journey', grounded_type: 'dashboard' },
+  { question: 'Is our $1.34M ad spend reaching the named accounts?', grounded_in: 'Target Account Journey', grounded_type: 'dashboard' },
+  { question: 'Which accounts are furthest along the winning path?', grounded_in: 'Target Account Journey', grounded_type: 'dashboard' },
+];
+
+// Simple chips for the Creative & Ad Performance dashboard (demo-friendly).
+const CAP_FOLLOWUPS = [
+  { question: 'Explain this dashboard', grounded_in: 'Creative & Ad Performance', grounded_type: 'dashboard' },
+  { question: 'Which campaign is performing best?', grounded_in: 'Creative & Ad Performance', grounded_type: 'dashboard' },
+  { question: 'Anything I should worry about?', grounded_in: 'Creative & Ad Performance', grounded_type: 'dashboard' },
+];
+
+// Pick the follow-up set that matches the dashboard the chat was opened from.
+const followupsFor = (dashboardName) => {
+  const n = dashboardName || '';
+  if (/target account/i.test(n)) return TAJ_FOLLOWUPS;
+  if (/creative/i.test(n)) return CAP_FOLLOWUPS;
+  return PMR_FOLLOWUPS;
+};
+
 // Quick-action CTAs shown under the intro.
 const WELCOME_CTAS = [
   'Walk me through the numbers',
@@ -28,7 +50,16 @@ const WELCOME_CTAS = [
 
 function WelcomeState({ dashboardName, onSuggestionClick }) {
   return (
-    <div className="welcome-state" style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
+    <div
+      className="welcome-state"
+      style={{
+        width: 'var(--chat-width)',
+        minWidth: 'var(--chat-min-width)',
+        maxWidth: 'var(--chat-max-width)',
+        margin: '0 auto',
+        textAlign: 'center',
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -48,7 +79,7 @@ function WelcomeState({ dashboardName, onSuggestionClick }) {
         className="welcome-state__text"
       >
         <h2 className="welcome-state__title">{dashboardName || 'Your dashboard'}</h2>
-        <p className="welcome-state__subtitle">
+        <p className="welcome-state__subtitle" style={{ maxWidth: 560, margin: '0 auto' }}>
           Ask me to walk through any number, explain how a widget was built, edit a chart, or add a new analysis.
         </p>
       </motion.div>
@@ -72,9 +103,9 @@ function WelcomeState({ dashboardName, onSuggestionClick }) {
         ))}
       </motion.div>
 
-      {/* Follow-ups for this dashboard */}
-      <div style={{ marginTop: 20, textAlign: 'left' }}>
-        <SuggestedQuestions questions={PMR_FOLLOWUPS} onSelect={(q) => onSuggestionClick?.(q)} />
+      {/* Follow-ups for this dashboard — full chat width to match the input bar */}
+      <div style={{ marginTop: 20, textAlign: 'left', width: '100%', alignSelf: 'stretch' }}>
+        <SuggestedQuestions questions={followupsFor(dashboardName)} onSelect={(q) => onSuggestionClick?.(q)} />
       </div>
     </div>
   );
@@ -472,10 +503,17 @@ export default function ChatArea({
         )}
         */}
 
-        {/* Follow-up suggestions after an answer (home-page style). */}
-        {!isThinking && messages.length > 0 && messages[messages.length - 1]?.type === 'assistant' && (
-          <SuggestedQuestions questions={PMR_FOLLOWUPS} onSelect={(q) => onSuggestionClick?.(q)} />
-        )}
+        {/* Follow-up suggestions after an answer (home-page style).
+            Drop any chip the user has already asked this session. */}
+        {!isThinking && messages.length > 0 && messages[messages.length - 1]?.type === 'assistant' && (() => {
+          const asked = new Set(
+            messages.filter((m) => m.type === 'user').map((m) => (m.text || '').trim().toLowerCase())
+          );
+          const remaining = followupsFor(dashboardName).filter((q) => !asked.has((q.question || '').trim().toLowerCase()));
+          return remaining.length > 0 ? (
+            <SuggestedQuestions questions={remaining} onSelect={(q) => onSuggestionClick?.(q)} />
+          ) : null;
+        })()}
 
         <div ref={bottomRef} />
       </div>

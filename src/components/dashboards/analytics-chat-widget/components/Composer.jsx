@@ -186,12 +186,12 @@ export default function Composer({
 
         {/* Send / Stop button */}
         {isThinking ? (
-          <Button variant="secondaryGhost" className="!w-12 !h-12 !p-0 shrink-0" onClick={onCancel}>
+          <Button variant="secondaryGhost" className="!w-9 !h-9 !p-0 shrink-0" onClick={onCancel}>
             <Square size={16} weight="fill" className="text-[var(--color-red)]" />
           </Button>
         ) : (
-          <Button disabled={!canSend} onClick={handleSend} className="!w-12 !h-12 !p-0 shrink-0">
-            <ArrowUp size={20} weight="bold" />
+          <Button disabled={!canSend} onClick={handleSend} className="!w-9 !h-9 !p-0 shrink-0">
+            <ArrowUp size={16} weight="bold" />
           </Button>
         )}
       </div>

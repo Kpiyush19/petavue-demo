@@ -127,12 +127,40 @@ const NEXT_FOLLOWUP_QUESTIONS = [
   { question: "Why is Google under-reporting its own ROAS by 7×?", grounded_in: "Paid Media ROI", grounded_type: "dashboard" },
   { question: "Add a demo-conversion leading-indicator block on top.", grounded_in: "Paid Media ROI", grounded_type: "skill" },
 ];
+// Follow-up chips shown after a Creative & Ad Performance reply (kept simple).
+const CAP_NEXT_FOLLOWUPS = [
+  { question: "Which campaign is performing best?", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
+  { question: "Why is Google showing 0 conversions?", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
+  { question: "Which creative format should I put more budget behind?", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
+];
+// Follow-up chips shown after a Target Account Journey reply.
+const TAJ_NEXT_FOLLOWUPS = [
+  { question: "Draft rescue plays for the top 4 stalled accounts.", grounded_in: "Target Account Journey", grounded_type: "skill" },
+  { question: "Why do we lose so many accounts between opportunity and closed won?", grounded_in: "Target Account Journey", grounded_type: "dashboard" },
+  { question: "Which 3 accounts have never been reached by paid?", grounded_in: "Target Account Journey", grounded_type: "dashboard" },
+];
 // Starter questions shown in the Sage (Beta) chat opened FROM the Paid Media ROI
 // dashboard — the "what can I ask?" chips, customized to this dashboard.
 const PMR_SAGE_STARTERS = [
   { question: "What's our true ROAS by channel vs what the platforms report?", grounded_in: "Paid Media ROI", grounded_type: "dashboard" },
   { question: "Where should I move budget this week?", grounded_in: "Paid Media ROI", grounded_type: "dashboard" },
   { question: "Which ICP accounts should sales call?", grounded_in: "Paid Media ROI", grounded_type: "dashboard" },
+];
+
+// Starter chips for the Sage chat opened FROM the Target Account Journey
+// dashboard — grounded in that dashboard's ABM funnel + stalled-account numbers.
+const TAJ_SAGE_STARTERS = [
+  { question: "Which stalled accounts should I rescue first, and how much pipeline is at risk?", grounded_in: "Target Account Journey", grounded_type: "dashboard" },
+  { question: "Where are target accounts leaking out of the funnel?", grounded_in: "Target Account Journey", grounded_type: "dashboard" },
+  { question: "Is our $1.34M ad spend actually reaching the named accounts?", grounded_in: "Target Account Journey", grounded_type: "dashboard" },
+];
+
+// Simple starter chips for the Creative & Ad Performance dashboard — kept light
+// for the demo ("explain this dashboard" style), grounded in its own numbers.
+const CAP_SAGE_STARTERS = [
+  { question: "Explain this dashboard", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
+  { question: "Which campaign is performing best?", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
+  { question: "Anything I should worry about?", grounded_in: "Creative & Ad Performance", grounded_type: "dashboard" },
 ];
 
 // Tailored answers so clicking a follow-up reads like a real analyst reply,
@@ -168,9 +196,109 @@ export function codeHashFor(sessionId) {
 // the code changed and re-prompt for review instead of "No code change detected".
 const REVIEW_SYNC_MARKER = /reviewed fixes from the agentic review/i;
 
+// Sage (Beta) — read-only analytics chat on the Target Account Journey
+// dashboard. Grounded in that dashboard's ABM funnel, stalled accounts, and
+// paid-spend numbers so the demo reads like a real analyst reply.
+function sageReplyTAJ(userText) {
+  const t = (userText || "").toLowerCase();
+  if (/stall|at.?risk|rescue|stuck|slipping|save|unstick|nudge/.test(t))
+    return `**8 accounts are stalled — $788K of pipeline sitting still 60+ days.** Rescue in this order:
+
+- **Tran, Jordan and Williams** — $196K · 118d in Discovery · Google + LinkedIn + Meta engaged. Biggest single risk, all 3 channels touched — get an exec in.
+- **Garcia-James** — $144K · 149d stuck in Proposal. Furthest along, most days idle — this is a pricing/legal unblock, not a demand problem.
+- **Ferrell, Jones and Lewis** — $116K · 142d in Proposal (Google/LinkedIn/Meta).
+- **Perez Inc** — $112K · 139d in Negotiation (LinkedIn/Meta). Closest stage of the four — one push likely closes it.
+
+Those four are $568K of the $788K. Want me to draft outreach plays for each?`;
+  if (/leak|funnel|drop|fall|stage|convert|conversion|where.*lose|losing/.test(t))
+    return `**The funnel is tight until the opportunity stage — that's where the leak is.**
+
+| Stage | Accounts | Step conversion |
+| --- | --- | --- |
+| Paid Contact | 121 | — |
+| MQL | 119 | 98.3% |
+| SQL | 112 | 94.1% |
+| Active Opportunity | 78 | **69.6%** |
+| Closed Won | 29 | **37.2%** |
+
+Marketing hands off cleanly — 92.6% of reached accounts get to SQL. The two leaks are **SQL → Opportunity** (34 accounts never open an opp) and **Opportunity → Closed Won** (49 opps don't close, and 8 of those are the stalled deals). The bottleneck is sales acceptance and late-stage close, not lead quality.`;
+  if (/spend|coverage|reach|reaching|channel|google|linkedin|meta|budget|cover/.test(t))
+    return `**Coverage is excellent — the $1.34M is landing on the named accounts.**
+
+- **97.6% paid coverage** — 121 of 124 target accounts got a paid touch. Only **3 accounts** have never been reached; worth a targeted push.
+- Spend split: **Google $624K · LinkedIn $508K · Meta $208K.**
+- Every stalled account except the two smallest was reached on 2–3 channels, so the risk is *stage progression*, not lack of air cover. I'd hold spend flat and put the energy into the 8 stalled opps and the 3 unreached accounts.`;
+  if (/on.?path|winning|healthy|score|best|strongest|good shape|track/.test(t))
+    return `**These accounts are furthest along the golden path** (journey score out of 100):
+
+- **Doyle Ltd** — 100 · Education · 9 contacts · already Closed Won
+- **Novak PLC** — 97 · Education · 13 contacts
+- **Hoffman, Baker and Richards** — 80 · Media · 8 contacts
+- **Patterson, Smith and Jones** — 80 · Finance · 9 contacts
+
+High score = multi-channel touch + multi-threaded (many contacts) + late funnel stage. These are your reference journeys — the pattern to replicate on the accounts still at MQL/SQL.`;
+  if (/won|revenue|pipeline|win rate|closed|result|how.*doing|performance/.test(t))
+    return `**$1.24M won across 29 accounts, $1.12M still open** — the target list is producing.
+
+- **42.0% opportunity win rate** on the accounts that reached an opp.
+- **$1.12M active pipeline** across 10 open opps — but $788K of that is in the 8 **stalled** accounts, so the healthy-and-moving pipeline is closer to $330K.
+- Biggest lever isn't new demand; it's converting the 78 accounts already in an opportunity (only 29 have closed).
+
+Ask me about the stalled accounts, the funnel leak, or the spend coverage.`;
+  if (/summary|overview|tl;?dr|highlight|headline/.test(t))
+    return `**TL;DR — the named-account program is working, but late-stage is where deals go to sit.**
+
+- **124 target accounts · 97.6% paid coverage** → **112 reached SQL+**.
+- **$1.24M won** (42% opp win rate) with **$1.12M** still open.
+- The catch: **8 stalled accounts = $788K** frozen 60+ days, and the funnel only converts **37.2%** of opportunities to won.
+
+Ask me which stalled deals to rescue first, where the funnel leaks, or whether spend is reaching the accounts.`;
+  return `**124 target accounts, 97.6% paid coverage, $1.24M won at a 42% opp win rate.** The program reaches its accounts and moves them to SQL well — the drag is late-stage: **8 stalled accounts hold $788K** that's been idle 60+ days.
+
+Ask me which stalled accounts to rescue first, where the funnel is leaking, or whether the $1.34M in spend is actually reaching the named accounts.`;
+}
+
+// Sage (Beta) — read-only analytics chat on the Creative & Ad Performance
+// dashboard. Kept simple for the demo, grounded in its spend/engagement numbers.
+function sageReplyCAP(userText) {
+  const t = (userText || "").toLowerCase();
+  if (/explain|walk|overview|what.*this|about this|summary|tl;?dr|how.*read/.test(t))
+    return `**This dashboard grades your paid creative across Facebook, Google, and LinkedIn over the last 30 days.**
+
+- **$84,210 total spend**, up 16.1% vs the prior 30 days.
+- **Facebook** drives the volume — 71,940 link clicks and 1,602 leads at a **$16.40 CPL**.
+- **LinkedIn** is the premium channel — only 163 conversions at a **$98.20 CPL** (6× Facebook).
+- **Engagement is video-led:** 76.8% of all interactions are video views (301K), so your video creative is doing the heavy lifting.
+
+The three sections below break it down: weekly trend by channel, the engagement mix, and every campaign ranked by spend. Ask me about the best campaign or anything that looks off.`;
+  if (/best|top|winner|performing|working|strongest|which campaign|which ad|which creative/.test(t))
+    return `**FB_Prospecting_Video_Q3 is your top campaign by spend and reach** — $5,410 spend, 381K impressions, 259K reach, 0.59% CTR.
+
+A couple of standouts underneath it:
+- **FB_Carousel_Product** — best CTR at **1.31%** and the cheapest clicks (**$0.09 CPC**), so it converts attention efficiently.
+- **FB_Event_Webinar** — **1.65% CTR**, the highest on the board.
+
+The pattern is clear: your **video and carousel creative** out-engage static ads at a fraction of the cost. I'd shift more budget behind those formats.`;
+  if (/worry|concern|wrong|issue|problem|off|risk|watch|broken|fix/.test(t))
+    return `**One thing to fix: Google is reporting 0 conversions.** It has spent normally and driven 142,880 clicks (up 64%), but recorded **0 conversions in the last 30 days** despite 8,704 historically — that's almost certainly a **tracking/tag break**, not real performance. Worth verifying before you judge Google.
+
+Two softer flags:
+- **Facebook CPL is up 34.5%** to $16.40 while leads fell 23% — creative fatigue is setting in on the older ad sets.
+- **LinkedIn CPL is $98.20** and climbing; fine for ABM, expensive for volume.
+
+Everything else looks healthy.`;
+  return `**Paid creative is running $84,210/mo across Facebook, Google, and LinkedIn**, and engagement is heavily video-led (76.8% of interactions). Facebook drives leads at a $16.40 CPL; LinkedIn is the premium ABM channel at $98.20.
+
+Ask me to explain the dashboard, which campaign is performing best, or anything that looks off.`;
+}
+
 // Sage (Beta) — read-only analytics chat on a published dashboard. Answers are
 // grounded in the demo dashboard's numbers; it never edits the dashboard.
-function sageReply(userText) {
+function sageReply(userText, sessionId) {
+  // Route to the dashboard the chat was opened from (session id carries the
+  // dashboard/workflow id, e.g. "sage-pub-dash-target-account-journey").
+  if (/target-account/.test(String(sessionId))) return sageReplyTAJ(userText);
+  if (/creative/.test(String(sessionId))) return sageReplyCAP(userText);
   const t = (userText || "").toLowerCase();
   if (/pause|move|shift|scale|budget|reallocat|this week|action|do next/.test(t))
     return `**Move budget into Google Display, out of Meta.** Same $163K spend, materially better return. Three moves this week:
@@ -314,7 +442,7 @@ function simulateAgentReply(sessionId, userText) {
   }
   const followupReply = FOLLOWUP_REPLIES[(userText || "").trim().toLowerCase()];
   const reply = isSage
-    ? sageReply(userText)
+    ? sageReply(userText, sessionId)
     : isReviewSync
     ? "Done. I've applied the reviewed adjustments to your dashboard so it stays accurate on every scheduled refresh."
     : followupReply ||
@@ -330,7 +458,8 @@ function simulateAgentReply(sessionId, userText) {
       emit(channel, "agent-event", { type: "done", context_tokens: 26400, turn_count: 3 });
       // Fresh follow-ups for the turn we just answered — delayed so the
       // "Related" loading skeleton has a clear moment to shimmer first.
-      setTimeout(() => emit(channel, "agent-event", { type: "suggested-questions", questions: NEXT_FOLLOWUP_QUESTIONS }), 3500);
+      const nextQs = /target-account/.test(String(sessionId)) ? TAJ_NEXT_FOLLOWUPS : /creative/.test(String(sessionId)) ? CAP_NEXT_FOLLOWUPS : NEXT_FOLLOWUP_QUESTIONS;
+      setTimeout(() => emit(channel, "agent-event", { type: "suggested-questions", questions: nextQs }), 3500);
     }
   };
   setTimeout(tick, 250);
@@ -406,7 +535,7 @@ const handlers = [
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/history$/, handler: ({ params }) => ({ messages: db.history[params[0]] || [] }) },
   // Grounded follow-up chips for the latest turn (shown under the last message).
   // Slight delay so the "Related" loading skeleton renders before they resolve.
-  { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/recommendations$/, handler: async ({ params }) => { await new Promise((r) => setTimeout(r, 1200)); return { questions: String(params[0]).startsWith("sage-") ? PMR_SAGE_STARTERS : FOLLOWUP_QUESTIONS }; } },
+  { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/recommendations$/, handler: async ({ params }) => { await new Promise((r) => setTimeout(r, 1200)); const sid = String(params[0]); const questions = /target-account/.test(sid) ? TAJ_SAGE_STARTERS : /creative/.test(sid) ? CAP_SAGE_STARTERS : sid.startsWith("sage-") ? PMR_SAGE_STARTERS : FOLLOWUP_QUESTIONS; return { questions }; } },
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/files$/, handler: ({ params }) => ({ files: db.fileTree[params[0]] || [], tree: db.fileTree[params[0]] || [] }) },
 
   // ── Verify & Publish: dashboard detection + widgets ────────────────

@@ -2,6 +2,34 @@
 // The dashboard HTML is fully inline (no external scripts/links) so it renders
 // inside an iframe via `srcdoc` with no network dependency.
 
+// Phosphor (regular) inline-SVG icons for the self-contained dashboards.
+const PH_ICONS = {
+  "chart-bar": "<path d=\"M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z\"/>",
+  "lightning": "<path d=\"M215.79,118.17a8,8,0,0,0-5-5.66L153.18,90.9l14.66-73.33a8,8,0,0,0-13.69-7l-112,120a8,8,0,0,0,3,13l57.63,21.61L88.16,238.43a8,8,0,0,0,13.69,7l112-120A8,8,0,0,0,215.79,118.17ZM109.37,214l10.47-52.38a8,8,0,0,0-5-9.06L62,132.71l84.62-90.66L136.16,94.43a8,8,0,0,0,5,9.06l52.8,19.8Z\"/>",
+  "table": "<path d=\"M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM40,112H80v32H40Zm56,0H216v32H96ZM216,64V96H40V64ZM40,160H80v32H40Zm176,32H96V160H216v32Z\"/>",
+  "video": "<path d=\"M251.77,73a8,8,0,0,0-8.21.39L208,97.05V72a16,16,0,0,0-16-16H32A16,16,0,0,0,16,72V184a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V159l35.56,23.71A8,8,0,0,0,248,184a8,8,0,0,0,8-8V80A8,8,0,0,0,251.77,73ZM192,184H32V72H192V184Zm48-22.95-32-21.33V116.28L240,95Z\"/>",
+  "function": "<path d=\"M208,40a8,8,0,0,1-8,8H170.71a24,24,0,0,0-23.62,19.71L137.59,120H184a8,8,0,0,1,0,16H134.68l-10,55.16A40,40,0,0,1,85.29,224H56a8,8,0,0,1,0-16H85.29a24,24,0,0,0,23.62-19.71l9.5-52.29H72a8,8,0,0,1,0-16h49.32l10-55.16A40,40,0,0,1,170.71,32H200A8,8,0,0,1,208,40Z\"/>",
+  "info": "<path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z\"/>",
+  "funnel": "<path d=\"M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm108.34,72.28A15.92,15.92,0,0,0,144,139.17v55.49L112,216V139.17a15.92,15.92,0,0,0-4.32-10.94L40,56H216Z\"/>",
+  "warning": "<path d=\"M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z\"/>",
+  "buildings": "<path d=\"M240,208H224V96a16,16,0,0,0-16-16H144V32a16,16,0,0,0-24.88-13.32L39.12,72A16,16,0,0,0,32,85.34V208H16a8,8,0,0,0,0,16H240a8,8,0,0,0,0-16ZM208,96V208H144V96ZM48,85.34,128,32V208H48ZM112,112v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm-32,0v16a8,8,0,0,1-16,0V112a8,8,0,1,1,16,0Zm0,56v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Zm32,0v16a8,8,0,0,1-16,0V168a8,8,0,0,1,16,0Z\"/>",
+  "target": "<path d=\"M221.87,83.16A104.1,104.1,0,1,1,195.67,49l22.67-22.68a8,8,0,0,1,11.32,11.32l-96,96a8,8,0,0,1-11.32-11.32l27.72-27.72a40,40,0,1,0,17.87,31.09,8,8,0,1,1,16-.9,56,56,0,1,1-22.38-41.65L184.3,60.39a87.88,87.88,0,1,0,23.13,29.67,8,8,0,0,1,14.44-6.9Z\"/>",
+  "trend-up": "<path d=\"M240,56v64a8,8,0,0,1-16,0V75.31l-82.34,82.35a8,8,0,0,1-11.32,0L96,123.31,29.66,189.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0L136,140.69,212.69,64H168a8,8,0,0,1,0-16h64A8,8,0,0,1,240,56Z\"/>",
+  "dollar": "<path d=\"M152,120H136V56h8a32,32,0,0,1,32,32,8,8,0,0,0,16,0,48.05,48.05,0,0,0-48-48h-8V24a8,8,0,0,0-16,0V40h-8a48,48,0,0,0,0,96h8v64H104a32,32,0,0,1-32-32,8,8,0,0,0-16,0,48.05,48.05,0,0,0,48,48h16v16a8,8,0,0,0,16,0V216h16a48,48,0,0,0,0-96Zm-40,0a32,32,0,0,1,0-64h8v64Zm40,80H136V136h16a32,32,0,0,1,0,64Z\"/>",
+  "trophy": "<path d=\"M232,64H208V56a16,16,0,0,0-16-16H64A16,16,0,0,0,48,56v8H24A16,16,0,0,0,8,80V96a40,40,0,0,0,40,40h3.65A80.13,80.13,0,0,0,120,191.61V216H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16H136V191.58c31.94-3.23,58.44-25.64,68.08-55.58H208a40,40,0,0,0,40-40V80A16,16,0,0,0,232,64ZM48,120A24,24,0,0,1,24,96V80H48v32q0,4,.39,8Zm144-8.9c0,35.52-28.49,64.64-63.51,64.9H128a64,64,0,0,1-64-64V56H192ZM232,96a24,24,0,0,1-24,24h-.5a81.81,81.81,0,0,0,.5-8.9V80h24Z\"/>",
+  "users": "<path d=\"M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,0,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.7a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.7Z\"/>",
+  "search": "<path d=\"M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z\"/>",
+  "cursor": "<path d=\"M169.64,134.33l44.77-19.46A16,16,0,0,0,213,85.07L52.92,32.8A16,16,0,0,0,32.8,52.92L85.07,213a15.83,15.83,0,0,0,14.41,11l.79,0a15.83,15.83,0,0,0,14.6-9.59h0l19.46-44.77L184,219.31a16,16,0,0,0,22.63,0l12.68-12.68a16,16,0,0,0,0-22.63Zm-69.48,73.76.06-.05Zm95.15-.09-49.66-49.67a16,16,0,0,0-26,4.94l-19.42,44.65L48,48l159.87,52.21-44.64,19.41a16,16,0,0,0-4.94,26L208,195.31ZM88,24V16a8,8,0,0,1,16,0v8a8,8,0,0,1-16,0ZM8,96a8,8,0,0,1,8-8h8a8,8,0,0,1,0,16H16A8,8,0,0,1,8,96ZM120.85,28.42l8-16a8,8,0,0,1,14.31,7.16l-8,16a8,8,0,1,1-14.31-7.16Zm-81.69,96a8,8,0,0,1-3.58,10.74l-16,8a8,8,0,0,1-7.16-14.31l16-8A8,8,0,0,1,39.16,124.42Z\"/>",
+  "envelope": "<path d=\"M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48Zm-96,85.15L52.57,64H203.43ZM98.71,128,40,181.81V74.19Zm11.84,10.85,12,11.05a8,8,0,0,0,10.82,0l12-11.05,58,53.15H52.57ZM157.29,128,216,74.18V181.82Z\"/>",
+  "clock": "<path d=\"M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z\"/>",
+  "database": "<path d=\"M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z\"/>",
+  "gauge": "<path d=\"M207.06,80.67A111.24,111.24,0,0,0,128,48h-.4C66.07,48.21,16,99,16,161.13V184a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V160A111.25,111.25,0,0,0,207.06,80.67ZM224,184H119.71l54.76-75.3a8,8,0,0,0-12.94-9.42L99.92,184H32V161.13c0-3.08.15-6.12.43-9.13H56a8,8,0,0,0,0-16H35.27c10.32-38.86,44-68.24,84.73-71.66V88a8,8,0,0,0,16,0V64.33A96.14,96.14,0,0,1,221,136H200a8,8,0,0,0,0,16h23.67c.21,2.65.33,5.31.33,8Z\"/>",
+  "arrow-up": "<path d=\"M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z\"/>",
+  "percent": "<path d=\"M205.66,61.64l-144,144a8,8,0,0,1-11.32-11.32l144-144a8,8,0,0,1,11.32,11.31ZM50.54,101.44a36,36,0,0,1,50.92-50.91h0a36,36,0,0,1-50.92,50.91ZM56,76A20,20,0,1,0,90.14,61.84h0A20,20,0,0,0,56,76ZM216,180a36,36,0,1,1-10.54-25.46h0A35.76,35.76,0,0,1,216,180Zm-16,0a20,20,0,1,0-5.86,14.14A19.87,19.87,0,0,0,200,180Z\"/>",
+  "crosshair": "<path d=\"M232,120h-8.34A96.14,96.14,0,0,0,136,32.34V24a8,8,0,0,0-16,0v8.34A96.14,96.14,0,0,0,32.34,120H24a8,8,0,0,0,0,16h8.34A96.14,96.14,0,0,0,120,223.66V232a8,8,0,0,0,16,0v-8.34A96.14,96.14,0,0,0,223.66,136H232a8,8,0,0,0,0-16Zm-96,87.6V200a8,8,0,0,0-16,0v7.6A80.15,80.15,0,0,1,48.4,136H56a8,8,0,0,0,0-16H48.4A80.15,80.15,0,0,1,120,48.4V56a8,8,0,0,0,16,0V48.4A80.15,80.15,0,0,1,207.6,120H200a8,8,0,0,0,0,16h7.6A80.15,80.15,0,0,1,136,207.6ZM128,88a40,40,0,1,0,40,40A40,40,0,0,0,128,88Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,152Z\"/>",
+};
+const ic = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 256 256" fill="currentColor" style="display:inline-block;vertical-align:-0.15em;flex-shrink:0">${PH_ICONS[n] || ""}</svg>`;
+
 export const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -383,7 +411,7 @@ const PMR_CSS = `
   :root{--ink:#232532;--muted:#757A97;--muted2:#8E93AF;--line:#EEF0F7;--line2:#E3E7F2;--primary:#3661ED;--purple:#6E56CF;--purple-bg:#F5F3FF;--purple-line:#D9CFF5;--green:#08BD50;--green-bg:#EBFFF3;--red:#F93D3D;--red-bg:#FFF2F2;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Poppins',system-ui,-apple-system,sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:1080px;margin:0 auto;padding:28px 26px 72px;}
+  .wrap{max-width:none;margin:0;padding:28px 26px 72px;}
   .mini-lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);font-weight:600;}
   .mini-val{font-size:13px;font-weight:600;color:var(--ink);margin-top:3px;}
   s{color:var(--muted);}
@@ -563,7 +591,7 @@ const PMR_SEC_JOURNEYS = `
 
 const PMR_SEC_METHOD = `
     <div class="method">
-      <div class="method-title">ⓘ Methodology &amp; Honest Limits</div>
+      <div class="method-title">${ic('info',15)} Methodology &amp; Honest Limits</div>
       <ul>
         <li>~78% of closed-won deals have no paid lead source and aren't credited to paid channels.</li>
         <li>Attribution follows opportunity.leadsource (tenant-defined) — a channel is credited fully to the leadsource on the opportunity.</li>
@@ -841,7 +869,638 @@ DASHBOARD_MANIFEST.widgets = Object.fromEntries(
 );
 
 // Extra workspace files the viewers/tree may request.
+// ─────────────────────────────────────────────────────────────────────────
+// Creative & Ad Performance dashboard — cross-platform (Facebook / Google /
+// LinkedIn) creative + spend view. Mock data: numbers are invented and do not
+// represent any real account. No customer/company names appear (platform-level
+// only); campaign names are generic stock labels.
+// ─────────────────────────────────────────────────────────────────────────
+const CAP_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+  :root{--fb:#7B61FF;--gg:#08BD50;--li:#2F6BFF;--ink:#1a1f36;--muted:#6b7280;--line:#e9ebf2;--bg:#f4f6fb;--card:#fff;--warn:#E0A422;--down:#E5484D;--up:#12b76a;--radius:14px;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:13px;}
+  .wrap{max-width:none;margin:0;padding:24px 26px 72px;display:flex;flex-direction:column;gap:22px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;}
+  .sec-title{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;margin:0;}
+  .sec-sub{font-size:12.5px;color:var(--muted);margin:4px 0 18px;}
+  .sec-sub i{font-style:italic;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:stretch;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .up{color:var(--up);}.down{color:var(--down);}
+  s{color:var(--muted);}
+
+  /* hero */
+  .hero{border-radius:18px;padding:26px 30px;color:#fff;background:linear-gradient(120deg,#3a2c86 0%,#241a68 60%,#1c1550 100%);position:relative;overflow:hidden;}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero h1{margin:0;font-size:26px;font-weight:700;display:flex;align-items:center;gap:10px;}
+  .hero-win{margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.72);}
+  .hero-win b{color:#fff;font-weight:600;}
+  .plats{display:flex;gap:8px;}
+  .plat{padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);}
+  .plat.fb{box-shadow:inset 0 -2px 0 var(--fb);}.plat.gg{box-shadow:inset 0 -2px 0 var(--gg);}.plat.li{box-shadow:inset 0 -2px 0 var(--li);}
+  .hero-warn{margin-top:20px;background:rgba(224,164,34,.14);border:1px solid rgba(224,164,34,.4);border-radius:12px;padding:13px 16px;font-size:12.5px;color:#ffe9bd;line-height:1.55;}
+  .hero-warn b{color:#fff;}
+
+  /* key metrics */
+  .km-head{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;}
+  .km-head .t{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .km-head .m{font-size:12px;color:var(--muted);}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
+  .kpi.warn{border:1px solid rgba(224,164,34,.5);background:#fffdf6;}
+  .kpi-lbl{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
+  .kpi-val{font-size:28px;font-weight:700;margin:6px 0 4px;letter-spacing:-.02em;}
+  .kpi-d{font-size:12.5px;font-weight:600;}
+  .kpi-cap{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.45;}
+  .kpi-warn-txt{font-size:12px;color:var(--warn);font-weight:600;margin-top:4px;}
+
+  /* platform spend mini-cards */
+  .pcards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+  .pcard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfbfe;}
+  .pcard .p{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .pcard .v{font-size:24px;font-weight:700;margin:6px 0 2px;}
+  .pcard .s{font-size:11.5px;color:var(--muted);}
+
+  /* tables */
+  table.t{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.t th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);}
+  table.t td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.t tr:last-child td{border-bottom:none;}
+  table.t .cap{display:block;font-size:10.5px;color:var(--muted);font-style:italic;margin-top:2px;}
+  table.t .rowh{font-weight:600;}
+  .th-fb{color:var(--fb);}.th-gg{color:var(--gg);}.th-li{color:var(--li);}
+  .foot{font-size:11px;color:var(--muted);font-style:italic;margin-top:12px;line-height:1.5;}
+  .warnmini{color:var(--warn);font-weight:600;}
+  .pcomp-scroll{max-height:238px;overflow-y:auto;}
+  .pcomp-scroll table.t thead th{position:sticky;top:0;background:#fff;z-index:1;}
+
+  /* weekly grouped table */
+  .scroll{overflow-x:auto;}
+  table.wk{width:100%;border-collapse:collapse;font-size:12px;min-width:1040px;}
+  table.wk th{padding:7px 9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);border-bottom:1px solid var(--line);text-align:right;}
+  table.wk th.w,table.wk td.w{text-align:left;}
+  table.wk th.gfb{color:var(--fb);border-left:3px solid var(--fb);}
+  table.wk th.ggg{color:var(--gg);border-left:3px solid var(--gg);}
+  table.wk th.gli{color:var(--li);border-left:3px solid var(--li);}
+  table.wk td{padding:9px 9px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;}
+  table.wk td.gfb{border-left:3px solid var(--fb);}table.wk td.ggg{border-left:3px solid var(--gg);}table.wk td.gli{border-left:3px solid var(--li);}
+  table.wk tr:nth-child(even) td{background:#fafbfe;}
+
+  /* engagement */
+  .eng-bar{height:8px;border-radius:6px;background:#eef0f6;overflow:hidden;}
+  .eng-bar span{display:block;height:100%;border-radius:6px;}
+
+  /* video info cards */
+  .vids{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .vcard{border-radius:12px;padding:13px 15px;font-size:12px;line-height:1.5;}
+  .vcard.fb{background:#f4f1ff;border:1px solid #e3dcff;}
+  .vcard.li{background:#eef3ff;border:1px solid #d9e5ff;}
+  .vcard .h{font-weight:700;margin-bottom:6px;}
+  .vcard.fb .h{color:var(--fb);}.vcard.li .h{color:var(--li);}
+  .vcard .note{color:var(--muted);font-style:italic;margin-top:6px;}
+
+  /* campaigns */
+  .cbar{display:inline-block;width:70px;height:5px;border-radius:4px;background:#eef0f6;overflow:hidden;vertical-align:middle;margin-right:10px;}
+  .cbar span{display:block;height:100%;background:var(--fb);border-radius:4px;}
+  .banner-ok{display:flex;align-items:center;gap:8px;background:#eafaf1;border:1px solid #bfe9cf;color:#137a43;border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:10px;}
+  .banner-flag{font-size:11.5px;color:var(--muted);margin-bottom:12px;}
+
+  /* metric defs */
+  .defs{display:flex;flex-wrap:wrap;gap:10px;}
+  .def{background:#f3f1fb;border:1px solid #e6e2f6;border-radius:10px;padding:9px 14px;font-family:'SFMono-Regular',ui-monospace,Menlo,monospace;font-size:12px;color:#4b3fa6;}
+  .def b{color:var(--ink);font-weight:600;}
+
+  /* caveats */
+  .cav-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .cav{border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:#fff;}
+  .cav .h{font-weight:700;font-size:13px;margin-bottom:6px;}
+  .cav .b{font-size:11.5px;color:var(--muted);line-height:1.55;}
+  @media(max-width:1100px){.two,.vids{grid-template-columns:1fr;}.cav-grid{grid-template-columns:1fr 1fr;}}
+`;
+
+const CAP_KPIS = [
+  { lbl: "Total Spend", val: "$84,210", d: "+16.1% vs prior 30d", up: true, cap: "", ac: "var(--fb)" },
+  { lbl: "FB Link Clicks", val: "71,940", d: "-31.8% vs prior 30d", up: false, cap: "Facebook: inline link clicks", ac: "var(--fb)" },
+  { lbl: "Google Clicks", val: "142,880", d: "+64.2% vs prior 30d", up: true, cap: "Google: all clicks", ac: "var(--gg)" },
+  { lbl: "LinkedIn Clicks", val: "6,410", d: "+4.1% vs prior 30d", up: true, cap: "LinkedIn: clicks (excl. Message Ads from rates)", ac: "var(--li)" },
+  { lbl: "FB Reach", val: "6,912,540", d: "-35.4% vs prior 30d", up: false, cap: "Facebook only — Google & LinkedIn: N/A", ac: "var(--fb)" },
+  { lbl: "FB Primary Convs", val: "1,602", d: "-23.1% vs prior 30d", up: false, cap: "Facebook: leads (on-site + off-site)", ac: "var(--fb)" },
+  { lbl: "Google Convs", val: "0", warn: "0 reported conversions — verify tracking status", cap: "Google: conversions (0 in L30d; 8,704 historically)", ac: "var(--gg)", warnCard: true },
+  { lbl: "LinkedIn Convs", val: "163", d: "-14.2% vs prior 30d", up: false, cap: "LinkedIn: conversion events (on-site leads + ext. website)", ac: "var(--li)" },
+  { lbl: "FB CPL", val: "$16.40", d: "+34.5% vs prior 30d", up: false, cap: "Facebook: spend / leads", ac: "var(--fb)" },
+  { lbl: "LI CPL", val: "$98.20", d: "+25.9% vs prior 30d", up: false, cap: "LinkedIn: spend / conversion events", ac: "var(--li)" },
+];
+const capKpis = CAP_KPIS.map((k) => k.warnCard
+  ? `<div class="kpi warn"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val} ⚠</div><div class="kpi-warn-txt">${k.warn}</div><div class="kpi-cap">${k.cap}</div></div>`
+  : `<div class="kpi"><div class="kpi-lbl">${k.lbl}</div><div class="kpi-val">${k.val}</div>${k.d ? `<div class="kpi-d ${k.up ? "up" : "down"}">${k.up ? "↗" : "↘"} ${k.d}</div>` : ""}${k.cap ? `<div class="kpi-cap">${k.cap}</div>` : ""}</div>`
+).join("");
+
+// Weekly: [week, fbSpend,fbImpr,fbClk,fbLead,  ggSpend,ggImpr,ggClk,ggConv,  liSpend,liImpr,liClk,liConv]
+const CAP_WEEKS = [
+  ["Jul 13", "$5,140", "1.3M", "15K", 214, "$9,180", "902K", "39K", 0, "$3,620", "158K", "2K", 15],
+  ["Jul 6", "$8,910", "2.0M", "18K", 348, "$13,240", "1.4M", "48K", 0, "$5,310", "241K", "1K", 39],
+  ["Jun 29", "$4,880", "1.6M", "12K", 341, "$6,870", "372K", "12K", 0, "$2,470", "106K", "962", 24],
+  ["Jun 22", "$7,260", "3.2M", "23K", 528, "$8,320", "1.3M", "36K", 0, "$4,690", "205K", "2K", 68],
+  ["Jun 15", "$7,640", "3.7M", "27K", 519, "$10,060", "1.6M", "40K", 0, "$4,710", "184K", "2K", 56],
+  ["Jun 8", "$7,660", "3.8M", "31K", 583, "$10,240", "1.2M", "33K", 0, "$4,710", "181K", "2K", 51],
+  ["Jun 1", "$8,850", "5.1M", "39K", 701, "$5,540", "5K", "742", 0, "$4,710", "177K", "2K", 59],
+  ["May 25", "$300", "142K", "1K", 37, "$434", "70K", "2K", 0, "$97", "2K", "17", 1],
+  ["May 18", "$7,840", "3.6M", "27K", 578, "$10,820", "1.8M", "38K", 0, "$4,710", "159K", "1K", 52],
+  ["May 11", "$7,070", "3.6M", "28K", 552, "$10,540", "1.9M", "44K", 0, "$4,650", "164K", "1K", 51],
+  ["May 4", "$6,920", "4.0M", "29K", 544, "$11,350", "1.6M", "41K", 0, "$4,570", "165K", "1K", 39],
+  ["Apr 27", "$5,940", "2.9M", "17K", 665, "$10,910", "1.4M", "42K", 0, "$4,510", "150K", "2K", 45],
+  ["Apr 20", "$5,150", "2.5M", "15K", 580, "$8,690", "1.6M", "39K", 0, "$3,820", "129K", "1K", 55],
+];
+const capWeeks = CAP_WEEKS.map((r) => `<tr>
+  <td class="w rowh">${r[0]}</td>
+  <td class="gfb">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
+  <td class="ggg">${r[5]}</td><td>${r[6]}</td><td>${r[7]}</td><td>${r[8]}</td>
+  <td class="gli">${r[9]}</td><td>${r[10]}</td><td>${r[11]}</td><td>${r[12]}</td>
+</tr>`).join("");
+
+// Engagement: [icon,label,count,pct,color]
+const CAP_ENG = [
+  ["▶", "Video Views", "301,240", 76.8, "var(--fb)"],
+  ["🖱", "Link Clicks", "70,180", 17.9, "var(--gg)"],
+  ["🗔", "LP Views", "9,510", 2.4, "var(--li)"],
+  ["♡", "Reactions", "7,020", 1.8, "var(--warn)"],
+  ["🗒", "Registrations", "1,602", 0.4, "var(--down)"],
+  ["⛊", "Onsite Leads", "1,204", 0.3, "#9aa0ab"],
+  ["👤", "Leads", "1,204", 0.3, "#9aa0ab"],
+  ["🔖", "Saves", "258", 0.1, "#9aa0ab"],
+  ["💬", "Comments", "66", 0.0, "#9aa0ab"],
+];
+const capEng = CAP_ENG.map(([ic, lb, ct, pc, cl]) => `<tr>
+  <td class="rowh">${ic} ${lb}</td>
+  <td class="num rowh">${ct}</td>
+  <td class="num">${pc.toFixed(1)}%</td>
+  <td style="width:180px"><div class="eng-bar"><span style="width:${Math.max(pc, 1.2)}%;background:${cl}"></span></div></td>
+</tr>`).join("");
+
+// Campaigns: [name, spend, spendPct, impr, reach, clicks, cpm, ctr, cpc]
+const CAP_CAMPS = [
+  ["FB_Prospecting_Video_Q3", "$5,410.20", 100, "381K", "259K", "2K", "$14.20", "0.59%", "$2.41"],
+  ["FB_Broad_Reach_NA", "$3,020.55", 56, "372K", "295K", "3K", "$8.11", "0.72%", "$1.18"],
+  ["FB_ABM_Enterprise", "$2,940.10", 54, "664K", "434K", "4K", "$3.04", "0.66%", "$0.49"],
+  ["FB_Retarget_WebVisitors", "$1,988.44", 37, "108K", "88K", "545", "$18.41", "0.71%", "$1.94"],
+  ["FB_Lookalike_1pct", "$1,362.90", 25, "175K", "115K", "884", "$7.30", "0.52%", "$1.44"],
+  ["FB_Case_Study_Promo", "$1,318.05", 24, "104K", "89K", "534", "$12.60", "0.53%", "$2.44"],
+  ["FB_Reels_Demo", "$1,206.70", 22, "116K", "95K", "492", "$11.10", "0.85%", "$0.11"],
+  ["FB_Free_Trial_Push", "$1,132.40", 21, "1.0M", "742K", "5K", "$1.08", "0.51%", "$0.20"],
+  ["FB_Testimonial_Video", "$1,096.15", 20, "1.0M", "781K", "5K", "$1.05", "0.49%", "$0.21"],
+  ["FB_Carousel_Product", "$824.60", 15, "690K", "631K", "9K", "$1.16", "1.31%", "$0.09"],
+  ["FB_Event_Webinar", "$792.30", 14, "606K", "548K", "10K", "$1.29", "1.65%", "$0.08"],
+  ["FB_Interest_SaaS", "$698.15", 13, "561K", "512K", "9K", "$1.19", "1.33%", "$0.08"],
+  ["FB_Brand_Awareness_NA", "$588.72", 11, "35K", "29K", "281", "$16.60", "0.79%", "$2.03"],
+  ["FB_LeadGen_Whitepaper", "$561.30", 10, "63K", "50K", "372", "$8.30", "0.61%", "$1.36"],
+  ["FB_Cart_Abandon_Retarget", "$524.90", 10, "30K", "24K", "268", "$17.20", "0.88%", "$1.92"],
+];
+const capCamps = CAP_CAMPS.map((c) => `<tr>
+  <td><span class="cbar"><span style="width:${c[2]}%"></span></span>${c[0]}</td>
+  <td class="num rowh">${c[1]}</td>
+  <td class="num">${c[3]}</td><td class="num">${c[4]}</td><td class="num">${c[5]}</td>
+  <td class="num">${c[6]}</td><td class="num">${c[7]}</td><td class="num">${c[8]}</td>
+  <td class="num" style="color:var(--muted)">—</td>
+</tr>`).join("");
+
+// Caveats: [icon,color,title,body]
+const CAP_CAVEATS = [
+  ["cursor", "var(--fb)", "Click definitions differ by platform", "Facebook: inline link clicks (not all clicks). Google: all clicks on the ad. LinkedIn: clicks on the ad unit (Message Ads excluded from rate metrics). These are not equivalent — do not compare CTR or CPC directly across platforms."],
+  ["funnel", "var(--gg)", "Primary Conversions — platform-specific definitions", "Facebook: leads (on-site lead form submissions + off-site pixel registrations). Google: conversions tracked via Google Ads tag (0 reported in L30d — verify tracking status). LinkedIn: conversion events (one-click lead form opens + external website conversions)."],
+  ["users", "var(--li)", "Reach — availability and definition vary", "Facebook: platform-reported unique reach for the period. Google: not available in the current data scope. LinkedIn: approximate member reach (available at campaign level but excluded from cross-platform reach comparisons). Use N/A rather than forcing comparison."],
+  ["envelope", "#E0498E", "LinkedIn Message Ads — zero-impression billing", "1,080 creative-day rows (= 910 campaign-day rows — same rows at different grain) had spend > 0 with impressions = 0. These are Message Ads billed per send, not per impression. Total affected spend: $66,120. CPM and CTR are set to null for these rows; all other metrics use full spend."],
+  ["warning", "var(--warn)", "Google conversion tracking — status unknown", "Google shows 8,704 conversions ($5.1M value) historically, but zero in the current 30-day window. This is treated as a tracking-status issue, not a performance result. Verify that conversion tags are firing correctly before drawing conclusions."],
+  ["clock", "var(--fb)", "Attribution windows differ", "Facebook: 7-day click, 1-day view (default). Google: 30-day click window (search), varies by channel. LinkedIn: 30-day click, 7-day view. Conversions reported under different lookback windows are not directly comparable across platforms."],
+  ["video", "#0FA5A5", "Video view definitions are not equivalent", "Facebook: a video view is ≥ 3 seconds. LinkedIn: video_starts are counted on autoplay (intent not confirmed); video_views are engaged views. Completion rates are measured differently. Do not compare video engagement rates across platforms."],
+  ["database", "#4b5563", "Data grain and completeness", "Facebook: campaign × date. Google: campaign × ad-group × date × device × network. LinkedIn: creative × date. Google has no ad-level creative table in scope — creative analysis is not available for Google. All windows aligned to the most recent common date across platforms."],
+];
+const capCaveats = CAP_CAVEATS.map(([icn, cl, h, b]) => `<div class="cav"><div class="h" style="color:${cl}">${ic(icn, 15)} ${h}</div><div class="b">${b}</div></div>`).join("");
+
+export const CREATIVE_AD_PERF_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Creative & Ad Performance</title>
+<style>${CAP_CSS}</style></head>
+<body><div class="wrap">
+
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <h1>${ic('chart-bar',24)} Creative &amp; Ad Performance</h1>
+        <p class="hero-win">Window: <b>Last 30 days</b> (latest common date across all platforms) · vs prior 30 days</p>
+      </div>
+      <div class="plats"><span class="plat fb">Facebook</span><span class="plat gg">Google</span><span class="plat li">LinkedIn</span></div>
+    </div>
+    <div class="hero-warn">⚠ <b>Metrics are comparable within each platform only.</b> Cross-platform figures are directional: click definitions, conversion counting, reach measurement, attribution windows, and Message Ad billing differ across Facebook, Google, and LinkedIn. Do not directly rank platforms by CTR, CPC, or CPL without accounting for these differences.</div>
+  </div>
+
+  <div class="card">
+    <div class="km-head"><span class="t">${ic('lightning',16)} Key Metrics</span><span class="m">Jun 21 – Jul 20, 2026 vs prior 30d · Within-platform comparison only</span></div>
+    <div class="kpis">${capKpis}</div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2 class="sec-title">${ic('table',16)} Platform Comparison</h2>
+      <p class="sec-sub">Jun 21 – Jul 20, 2026 · <i>Metric definitions differ by platform — not directly comparable</i></p>
+      <div class="pcards">
+        <div class="pcard"><div class="p">Facebook</div><div class="v">$27,850</div><div class="s">33% of total</div></div>
+        <div class="pcard"><div class="p">Google</div><div class="v">$39,410</div><div class="s">47% of total</div></div>
+        <div class="pcard"><div class="p">LinkedIn</div><div class="v">$16,950</div><div class="s">20% of total</div></div>
+      </div>
+      <div class="pcomp-scroll">
+      <table class="t">
+        <thead><tr><th>Metric</th><th class="num th-fb">Facebook</th><th class="num th-gg">Google</th><th class="num th-li">LinkedIn</th></tr></thead>
+        <tbody>
+          <tr><td class="rowh">Spend</td><td class="num">$27,850</td><td class="num">$39,410</td><td class="num">$16,950</td></tr>
+          <tr><td class="rowh">Impressions</td><td class="num">8.6M</td><td class="num">4.2M</td><td class="num">742K</td></tr>
+          <tr><td class="rowh">Reach</td><td class="num">6.9M<span class="cap">Platform-reported reach</span></td><td class="num" style="color:var(--muted)">N/A<span class="cap">not available</span></td><td class="num" style="color:var(--muted)">Approx.<span class="cap">not used for cross-platform comparison</span></td></tr>
+          <tr><td class="rowh">Clicks</td><td class="num">72K<span class="cap">Link Clicks</span></td><td class="num">143K<span class="cap">Clicks</span></td><td class="num">6K<span class="cap">Clicks (excl. Message Ads from rates)</span></td></tr>
+          <tr><td class="rowh">Primary Conversions</td><td class="num">1,602<span class="cap">Leads (on-site + off-site)</span></td><td class="num"><span class="warnmini">0 ⚠</span><span class="cap">0 reported in L30d — verify tracking status</span></td><td class="num">163<span class="cap">Conversion events</span></td></tr>
+          <tr><td class="rowh">CPM</td><td class="num">$3.24<span class="cap">All impressions</span></td><td class="num">$9.38<span class="cap">All impressions</span></td><td class="num">$22.84<span class="cap">Message Ad rows (imp=0) excluded</span></td></tr>
+          <tr><td class="rowh">CTR</td><td class="num">0.84%<span class="cap">Link clicks / impressions</span></td><td class="num">3.40%<span class="cap">Clicks / impressions</span></td><td class="num">0.86%<span class="cap">Clicks / impressions, excl. Message Ads</span></td></tr>
+          <tr><td class="rowh">CPC</td><td class="num">$0.39<span class="cap">Spend / link clicks</span></td><td class="num">$0.28<span class="cap">Spend / clicks</span></td><td class="num">$2.64<span class="cap">Spend / clicks (all spend)</span></td></tr>
+          <tr><td class="rowh">CPL</td><td class="num">$16.40</td><td class="num" style="color:var(--muted)">—</td><td class="num">$98.20</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="foot">CPM/CTR/CPC are within-platform metrics only. LinkedIn rates exclude Message Ad rows (zero impressions). Google CPL unavailable — zero conversions in L30d. LinkedIn ROAS not tracked.</p>
+    </div>
+
+    <div class="card">
+      <h2 class="sec-title">${ic('trend-up',16)} Spend Change vs Prior 30d</h2>
+      <p class="sec-sub">Current vs prior 30-day period</p>
+      <table class="t">
+        <thead><tr><th>Metric</th><th class="num th-fb">Facebook</th><th class="num th-gg">Google</th><th class="num th-li">LinkedIn</th></tr></thead>
+        <tbody>
+          <tr><td class="rowh">${ic('dollar',13)} Spend (L30d)</td><td class="num">$27,850<span class="cap up">↗ +2.9% vs prior</span></td><td class="num">$39,410<span class="cap up">↗ +32.4% vs prior</span></td><td class="num">$16,950<span class="cap up">↗ +7.1% vs prior</span></td></tr>
+          <tr><td class="rowh">${ic('target',13)} Impressions</td><td class="num">8.6M</td><td class="num">4.2M</td><td class="num">742K</td></tr>
+          <tr><td class="rowh">${ic('trend-up',13)} Link Clicks</td><td class="num">72K</td><td class="num">143K</td><td class="num">6K</td></tr>
+          <tr><td class="rowh">${ic('funnel',13)} Primary Convs</td><td class="num">1,602</td><td class="num warnmini">0</td><td class="num">163</td></tr>
+          <tr><td class="rowh">${ic('chart-bar',13)} CPM</td><td class="num">$3.24</td><td class="num">$9.38</td><td class="num">$22.84</td></tr>
+          <tr><td class="rowh">${ic('percent',13)} CTR (link)</td><td class="num">0.84%</td><td class="num">3.40%</td><td class="num">0.86%</td></tr>
+          <tr><td class="rowh">${ic('cursor',13)} CPC (link)</td><td class="num">$0.39</td><td class="num">$0.28</td><td class="num">$2.64</td></tr>
+          <tr><td class="rowh">${ic('crosshair',13)} CPL</td><td class="num">$16.40</td><td class="num" style="color:var(--muted)">—</td><td class="num">$98.20</td></tr>
+        </tbody>
+      </table>
+      <p class="foot">* Google CPL unavailable — zero conversions in last 30 days  |  LinkedIn ROAS not tracked</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="sec-title">${ic('table',16)} Weekly Performance by Platform</h2>
+    <p class="sec-sub">Last 13 weeks · Spend, Impressions, Link Clicks, Leads</p>
+    <div class="scroll">
+      <table class="wk">
+        <thead>
+          <tr>
+            <th class="w">Week</th>
+            <th class="gfb">FB Spend</th><th>Impr.</th><th>Link Clicks</th><th>Leads</th>
+            <th class="ggg">GG Spend</th><th>Impr.</th><th>Clicks</th><th>Convs</th>
+            <th class="gli">LI Spend</th><th>Impr.</th><th>Clicks</th><th>Convs</th>
+          </tr>
+        </thead>
+        <tbody>${capWeeks}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2 class="sec-title">${ic('chart-bar',16)} Engagement Breakdown (Facebook)</h2>
+      <p class="sec-sub">Action types · Last 30 days · Total: 392,410</p>
+      <table class="t">
+        <thead><tr><th>Action Type</th><th class="num">Count</th><th class="num">% of Total</th><th>Share</th></tr></thead>
+        <tbody>${capEng}</tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2 class="sec-title">${ic('video',16)} Video Performance</h2>
+      <p class="sec-sub">Jun 21 – Jul 20, 2026 · <i>Facebook and LinkedIn video definitions are not equivalent — do not compare directly</i></p>
+      <div class="vids">
+        <div class="vcard fb"><div class="h">Facebook</div>Video views ≥ 3 seconds (ThruPlay not tracked at campaign level)<div class="note">Completion-rate breakdown not available at campaign-day grain</div></div>
+        <div class="vcard li"><div class="h">LinkedIn</div>video_starts counted on autoplay; video_views = engaged views. Completion = full play.<div class="note">Starts may exceed views due to autoplay counting before intent is confirmed</div></div>
+      </div>
+      <table class="t">
+        <thead><tr><th>Stage</th><th class="num th-fb">Facebook</th><th class="num th-li">LinkedIn (count)</th><th class="num th-li">LinkedIn (% of starts)</th></tr></thead>
+        <tbody>
+          <tr><td class="rowh">Video Starts</td><td class="num" style="color:var(--muted)">N/A</td><td class="num">10,240</td><td class="num" style="color:var(--muted)">—</td></tr>
+          <tr><td class="rowh">Video Views</td><td class="num">301,240</td><td class="num">3,610</td><td class="num" style="color:var(--muted)">—</td></tr>
+          <tr><td class="rowh">25% Viewed (Q1)</td><td class="num" style="color:var(--muted)">N/A</td><td class="num" style="color:var(--muted)">—</td><td class="num">11.8%</td></tr>
+          <tr><td class="rowh">50% Viewed (Mid)</td><td class="num" style="color:var(--muted)">N/A</td><td class="num" style="color:var(--muted)">—</td><td class="num">5.1%</td></tr>
+          <tr><td class="rowh">75% Viewed (Q3)</td><td class="num" style="color:var(--muted)">N/A</td><td class="num" style="color:var(--muted)">—</td><td class="num">3.2%</td></tr>
+          <tr><td class="rowh">Completions (100%)</td><td class="num" style="color:var(--muted)">N/A</td><td class="num">168</td><td class="num">1.6%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="sec-title">${ic('table',16)} Top Facebook Campaigns</h2>
+    <p class="sec-sub">Jun 21 – Jul 20, 2026 · Click/CTR/CPC = link clicks only · Sorted by spend</p>
+    <div class="banner-ok">✓ All 20 campaigns exceed minimum volume thresholds (Spend ≥ $100, Impressions ≥ 1,000).</div>
+    <p class="banner-flag">⚑ Low-volume flags: <b>Spend &lt; $100</b> or <b>Impressions &lt; 1,000</b> — CTR/CPC may be statistically unreliable.</p>
+    <table class="t">
+      <thead><tr><th>Campaign</th><th class="num">Spend ↓</th><th class="num">Impr.</th><th class="num">Reach</th><th class="num">Link Clicks</th><th class="num">CPM</th><th class="num">CTR (link)</th><th class="num">CPC (link)</th><th class="num">Flags</th></tr></thead>
+      <tbody>${capCamps}</tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="sec-title">${ic('function',16)} Metric Definitions <span style="font-size:12px;font-weight:400;color:var(--muted)">(applied consistently within each platform)</span></h2>
+    <div class="defs" style="margin-top:10px">
+      <span class="def"><b>CTR_link</b> = link_clicks / impressions</span>
+      <span class="def"><b>CPC_link</b> = spend / link_clicks</span>
+      <span class="def"><b>CPM</b> = spend / impressions × 1,000</span>
+      <span class="def"><b>CVR</b> = primary_conversions / clicks</span>
+      <span class="def"><b>CPL</b> = spend / primary_conversions</span>
+      <span class="def"><b>ROAS</b> = conversion_value / spend</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="sec-title">${ic('info',16)} Platform Caveats &amp; Data Notes</h2>
+    <div class="cav-grid" style="margin-top:16px">${capCaveats}</div>
+  </div>
+
+</div></body></html>`;
+
+// ─────────────────────────────────────────────────────────────────────────
+// Target Account Journey — ABM account funnel (first ad impression → closed-won),
+// named target accounts only, across all paid channels. Mock data: numbers are
+// invented/tweaked for demo and do not represent any real account. Company names
+// are generic stock/faker-style labels.
+// ─────────────────────────────────────────────────────────────────────────
+const TAJ_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+  :root{--pc:#7C5CFC;--mql:#5B6EF0;--sql:#3B82F6;--ao:#F59E0B;--cl:#EF5350;--cw:#22C55E;--g:#34A853;--li:#2F6BFF;--me:#4267B2;--ink:#151a2e;--muted:#6b7280;--line:#e9ebf2;--bg:#f4f6fb;--radius:14px;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:13px;}
+  .wrap{max-width:none;margin:0;padding:22px 26px 72px;display:flex;flex-direction:column;gap:20px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;}
+  .sec-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0;}
+  .sec-sub{font-size:12px;color:var(--muted);margin:4px 0 16px;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#eef1f8;color:var(--muted);}
+
+  /* hero */
+  .hero{border-radius:16px;padding:24px 28px;color:#fff;background:linear-gradient(120deg,#6d4be0 0%,#5b47d6 45%,#4536b8 100%);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:6px;}
+  .hero h1{margin:6px 0 6px;font-size:26px;font-weight:700;}
+  .hero .sub{font-size:13px;color:rgba(255,255,255,.8);}
+  .hero-right{text-align:right;font-size:12px;color:rgba(255,255,255,.8);}
+  .hero-right .as{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.6);}
+  .hero-right .d{font-size:17px;font-weight:700;color:#fff;margin:2px 0 8px;}
+
+  /* kpis */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 16px;}
+  .kpi.warn{border-color:rgba(245,158,11,.4);background:#fffdf6;}
+  .kpi .ic{width:30px;height:30px;border-radius:8px;background:#f1f0fb;color:var(--pc);display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:10px;}
+  .kpi.warn .ic{background:#fdf3e0;color:var(--ao);}
+  .kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em;}
+  .kpi .l{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:3px 0 4px;}
+  .kpi .s{font-size:11.5px;color:var(--muted);line-height:1.4;}
+  .kpi .v.up{color:var(--cw);}
+
+  /* funnel */
+  .funnel{display:flex;flex-direction:column;align-items:center;gap:3px;margin:6px 0 16px;}
+  .fstage{color:#fff;text-align:center;padding:11px 8px;border-radius:6px;font-weight:600;line-height:1.15;}
+  .fstage .fn{font-size:13px;}
+  .fstage .fc{font-size:15px;font-weight:700;}
+  .fconv{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .fconv div{font-size:11.5px;color:var(--muted);}
+  .fconv b{color:var(--ink);}
+
+  /* stalled */
+  .stall-card{border:1px solid rgba(239,83,80,.35);border-radius:var(--radius);}
+  .stall-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 6px;}
+  .stall-head .t{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:#c0392b;}
+  .stall-head .b{font-size:11px;font-weight:600;color:#c0392b;background:#fdecea;padding:3px 10px;border-radius:20px;}
+  .stall-list{padding:4px 12px 12px;display:flex;flex-direction:column;gap:8px;}
+  .stall{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;}
+  .stall-n{font-size:13.5px;font-weight:600;}
+  .stall-m{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .stall-r{text-align:right;}
+  .stall-days{font-size:12.5px;font-weight:700;color:var(--cl);}
+  .stall-riskrow{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:3px;}
+  .stall-risk{font-size:11.5px;color:var(--muted);}
+
+  /* channel chips */
+  .chch{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:20px;padding:2px 8px;}
+  .chdot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+
+  /* on-path */
+  .op-tabs{display:inline-flex;gap:4px;background:#f4f5f9;border-radius:8px;padding:3px;margin-bottom:12px;}
+  .op-tab{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:6px;color:var(--muted);}
+  .op-tab.on{background:#fff;color:var(--pc);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .op{border-top:1px solid var(--line);padding:12px 2px;}
+  .op-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .op-nm{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .op-won{font-size:10px;font-weight:700;color:var(--cw);background:#e8f9ef;padding:2px 7px;border-radius:5px;}
+  .op-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  .op-score{font-size:12px;font-weight:700;}
+  .op-sub{font-size:11px;color:var(--muted);}
+  .op-bar{height:3px;border-radius:3px;background:#eef0f6;margin-top:8px;overflow:hidden;}
+  .op-bar span{display:block;height:100%;background:var(--cw);border-radius:3px;}
+
+  /* spend bars */
+  .spend{display:flex;align-items:flex-end;justify-content:space-around;gap:24px;height:230px;padding:16px 8px 0;}
+  .sp-col{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;height:100%;justify-content:flex-end;}
+  .sp-v{font-size:14px;font-weight:700;}
+  .sp-bar{width:70%;border-radius:8px 8px 0 0;}
+  .sp-l{font-size:12px;font-weight:600;color:var(--muted);}
+
+  /* industry stacked */
+  .ind-wrap{display:flex;align-items:flex-end;gap:18px;height:210px;padding:8px 8px 0;overflow-x:auto;}
+  .ind-col{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:64px;}
+  .ind-bar{width:40px;height:180px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:4px;overflow:hidden;}
+  .ind-lbl{font-size:10.5px;color:var(--muted);text-align:center;transform:rotate(-12deg);white-space:nowrap;}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:14px;font-size:11px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .ldot{width:9px;height:9px;border-radius:3px;}
+
+  /* table */
+  .tbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .search{flex:1;min-width:240px;height:34px;border:1px solid var(--line);border-radius:8px;background:#fbfbfe;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--muted);font-size:12.5px;}
+  .stabs{display:flex;gap:5px;flex-wrap:wrap;}
+  .stab{font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;background:#f2f3f8;color:var(--muted);}
+  .stab.on{background:var(--pc);color:#fff;}
+  table.t{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.t th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.t td{padding:11px 10px;border-bottom:1px solid var(--line);}
+  table.t tr:nth-child(even) td{background:#fafbfe;}
+  .stpill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#e8f9ef;color:#178a4e;}
+  .won{color:var(--cw);font-weight:600;}
+  .tfoot{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted);margin-top:12px;}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr);}.two{grid-template-columns:1fr;}}
+`;
+
+const tajCh = (ch) => { const c = ch === "Google" ? "var(--g)" : ch === "LinkedIn" ? "var(--li)" : "var(--me)"; return `<span class="chch"><span class="chdot" style="background:${c}"></span>${ch}</span>`; };
+
+const TAJ_KPIS = [
+  { ic: "buildings", v: "124", l: "Target Accounts", s: "124 named accounts" },
+  { ic: "target", v: "97.6%", l: "Paid Coverage", s: "121 of 124 accounts reached" },
+  { ic: "trend-up", v: "112", l: "Progressed to SQL+", s: "92.6% of paid-reached accounts", up: true },
+  { ic: "dollar", v: "$1.12M", l: "Active Pipeline", s: "10 accounts with open opps" },
+  { ic: "trophy", v: "$1.24M", l: "Won Revenue", s: "29 accounts · 42.0% opp win rate" },
+  { ic: "warning", v: "8", l: "Stalled / At Risk", s: "Active opps, 60+ days no movement", warn: true },
+];
+const tajKpis = TAJ_KPIS.map((k) => `<div class="kpi${k.warn ? " warn" : ""}"><div class="ic">${ic(k.ic, 16)}</div><div class="v${k.up ? " up" : ""}">${k.v}</div><div class="l">${k.l}</div><div class="s">${k.s}</div></div>`).join("");
+
+const TAJ_FUNNEL = [
+  { n: "Paid Contact", c: 121, w: 100, col: "var(--pc)" },
+  { n: "MQL", c: 119, w: 95, col: "var(--mql)" },
+  { n: "SQL", c: 112, w: 87, col: "var(--sql)" },
+  { n: "Active Opportunity", c: 78, w: 62, col: "var(--ao)" },
+  { n: "Closed Won", c: 29, w: 32, col: "var(--cw)" },
+];
+const tajFunnel = TAJ_FUNNEL.map((f) => `<div class="fstage" style="width:${f.w}%;background:${f.col}"><div class="fn">${f.n}</div><div class="fc">${f.c}</div></div>`).join("");
+
+const TAJ_STALLED = [
+  ["Acme Corp", "Finance · NA-East", "Proposal", "131d stuck", "$98K at risk", ["Google", "LinkedIn"]],
+  ["Ferrell, Jones and Lewis", "Media · NA-East", "Proposal", "142d stuck", "$116K at risk", ["Google", "LinkedIn", "Meta"]],
+  ["Garcia-James", "Manufacturing · NA-East", "Proposal", "149d stuck", "$144K at risk", ["Google", "LinkedIn", "Meta"]],
+  ["Henderson-Bernard", "Technology · APAC", "Demo", "188d stuck", "$14K at risk", ["Google"]],
+  ["Jones-Young", "Healthcare · NA-East", "Demo", "171d stuck", "$71K at risk", ["Google", "LinkedIn", "Meta"]],
+  ["Nolan and Sons", "Technology · NA-East", "Discovery", "158d stuck", "$37K at risk", ["Google"]],
+  ["Perez Inc", "Manufacturing · APAC", "Negotiation", "139d stuck", "$112K at risk", ["LinkedIn", "Meta"]],
+  ["Tran, Jordan and Williams", "Education · EMEA", "Discovery", "118d stuck", "$196K at risk", ["Google", "LinkedIn", "Meta"]],
+];
+const tajStalled = TAJ_STALLED.map(([n, m, st, d, r, chs]) => `<div class="stall">
+  <div><div class="stall-n">${n}</div><div class="stall-m">${m} · Stage: <b>${st}</b></div></div>
+  <div class="stall-r"><div class="stall-days">${d}</div><div class="stall-riskrow"><span class="stall-risk">${r}</span>${chs.map(tajCh).join("")}</div></div>
+</div>`).join("");
+
+const TAJ_ONPATH = [
+  ["Doyle Ltd", "Education · NA-East", 100, "9 contacts"],
+  ["Novak PLC", "Education · APAC", 97, "13 contacts"],
+  ["Hoffman, Baker and Richa…", "Media · APAC", 80, "8 contacts"],
+  ["Patterson, Smith and Jones", "Finance · NA-East", 80, "9 contacts"],
+  ["Shields, Cochran and Adams", "Finance · NA-West", 80, "8 contacts"],
+  ["Frazier Inc", "Healthcare · NA-East", 79, "6 contacts"],
+];
+const tajOnpath = TAJ_ONPATH.map(([n, m, sc, ct]) => `<div class="op">
+  <div class="op-top"><div class="op-nm">${n} <span class="op-won">Closed Won</span></div><div class="op-score">Score: ${sc}</div></div>
+  <div class="op-top"><div class="op-meta">${m}</div><div class="op-sub">${ct}</div></div>
+  <div class="op-bar"><span style="width:${sc}%"></span></div>
+</div>`).join("");
+
+const TAJ_SPEND = [["Google", 624, "$624K", "var(--g)"], ["LinkedIn", 508, "$508K", "var(--li)"], ["Meta", 208, "$208K", "var(--me)"]];
+const SP_MAX = 640;
+const tajSpend = TAJ_SPEND.map(([n, v, lbl, c]) => `<div class="sp-col"><div class="sp-v">${lbl}</div><div class="sp-bar" style="height:${(v / SP_MAX * 190).toFixed(0)}px;background:${c}"></div><div class="sp-l">${n}</div></div>`).join("");
+
+// industry stacks: [pc, mql, sql, ao, cl, cw]
+const TAJ_IND = [
+  ["Education", [3, 2, 2, 2, 3, 4]], ["Finance", [2, 2, 3, 3, 3, 5]], ["Healthcare", [4, 3, 3, 4, 5, 4]],
+  ["Manufacturing", [3, 3, 4, 4, 4, 6]], ["Media", [2, 1, 2, 2, 3, 3]], ["Professional Services", [2, 1, 1, 1, 2, 2]],
+  ["Retail", [1, 1, 1, 1, 2, 2]], ["Technology", [2, 2, 2, 3, 3, 4]],
+];
+const IND_MAX = 24, IND_H = 180;
+const IND_COL = { pc: "var(--pc)", mql: "var(--mql)", sql: "var(--sql)", ao: "var(--ao)", cl: "var(--cl)", cw: "var(--cw)" };
+const tajInd = TAJ_IND.map(([name, d]) => {
+  const [pc, mql, sql, ao, cl, cw] = d;
+  const seg = (v, c) => v > 0 ? `<div style="height:${(v / IND_MAX * IND_H).toFixed(1)}px;background:${c}"></div>` : "";
+  return `<div class="ind-col"><div class="ind-bar">${seg(cw, IND_COL.cw)}${seg(cl, IND_COL.cl)}${seg(ao, IND_COL.ao)}${seg(sql, IND_COL.sql)}${seg(mql, IND_COL.mql)}${seg(pc, IND_COL.pc)}</div><div class="ind-lbl">${name}</div></div>`;
+}).join("");
+
+// table: [account, industry, region, contacts, channels[], score, oppValue, won]
+const TAJ_TABLE = [
+  ["Anderson Group", "Manufacturing", "NA-East", 5, ["Google"], 61, "$128K", "$119K"],
+  ["Baxter Inc", "Media", "NA-West", 11, ["Google", "LinkedIn", "Meta"], 55, "$88K", "$8K"],
+  ["Dickson-Brady", "Finance", "NA-West", 9, ["Google", "Meta"], 72, "$9K", "$9K"],
+  ["Doyle Ltd", "Education", "NA-East", 9, ["Google", "LinkedIn", "Meta"], 100, "$10K", "$10K"],
+  ["Dudley Group", "Manufacturing", "EMEA", 6, ["Google", "LinkedIn"], 62, "$92K", "$10K"],
+  ["Edwards, Baker and Anderson", "Finance", "NA-East", 6, ["Google"], 54, "$22K", "$22K"],
+  ["Frazier Inc", "Healthcare", "NA-East", 7, ["Google", "LinkedIn"], 79, "$11K", "$11K"],
+  ["Gonzalez Group", "Manufacturing", "NA-West", 9, ["Google", "Meta"], 66, "$42K", "$42K"],
+  ["Guzman, Hoffman and Baldwin", "Technology", "NA-West", 5, ["LinkedIn", "Meta"], 73, "$198K", "$31K"],
+  ["Harrell LLC", "Manufacturing", "EMEA", 4, ["Google"], 55, "$15K", "$15K"],
+  ["Hoffman, Baker and Richards", "Media", "APAC", 8, ["Google"], 81, "$102K", "$102K"],
+  ["House-Glover", "Healthcare", "NA-East", 8, ["Google", "LinkedIn", "Meta"], 78, "$26K", "$13K"],
+  ["Martin, Rose and Obrien", "Healthcare", "NA-East", 6, ["Google"], 56, "$47K", "$47K"],
+  ["Mckee, Gardner and Davenport", "Finance", "NA-East", 5, ["LinkedIn"], 60, "$110K", "$110K"],
+  ["Newton and Sons", "Technology", "NA-West", 8, ["Google", "LinkedIn"], 78, "$10K", "$10K"],
+];
+const tajTable = TAJ_TABLE.map((r) => `<tr>
+  <td style="font-weight:600">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+  <td><span class="stpill">Closed Won</span></td>
+  <td class="num">${r[3]}</td>
+  <td>${r[4].map(tajCh).join(" ")}</td>
+  <td class="num">${r[5]}</td>
+  <td class="num">${r[6]}</td>
+  <td class="num won">${r[7]}</td>
+</tr>`).join("");
+
+export const TARGET_ACCOUNT_JOURNEY_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Target Account Journey</title>
+<style>${TAJ_CSS}</style></head>
+<body><div class="wrap">
+
+  <div class="hero">
+    <div>
+      <div class="eyebrow">${ic('funnel',13)} ABM Account Funnel</div>
+      <h1>Target Account Journey</h1>
+      <div class="sub">First ad impression through closed-won · Named target accounts only · All paid channels</div>
+    </div>
+    <div class="hero-right"><div class="as">As of</div><div class="d">Aug 10, 2026</div><div>ICP: target_account__c = True</div></div>
+  </div>
+
+  <div class="kpis">${tajKpis}</div>
+
+  <div class="two">
+    <div class="card">
+      <h2 class="sec-title">${ic('funnel',16)} ABM Funnel — All 124 Target Accounts</h2>
+      <p class="sec-sub">Accounts at each stage = reached that stage or higher · Closed Lost (40) excluded from flow</p>
+      <div class="funnel">${tajFunnel}</div>
+      <div class="fconv">
+        <div>↳ Paid Contact → MQL: <b>98.3%</b></div>
+        <div>↳ MQL → SQL: <b>94.1%</b></div>
+        <div>↳ SQL → Active Opportunity: <b>69.6%</b></div>
+        <div>↳ Active Opportunity → Closed Won: <b>37.2%</b></div>
+      </div>
+    </div>
+
+    <div class="card stall-card" style="padding:0">
+      <div class="stall-head"><span class="t">${ic('warning',16)} Stalled Accounts</span><span class="b">8 accounts</span></div>
+      <p class="sec-sub" style="padding:0 20px">Active opportunities with no stage movement for 60+ days — needs sales attention</p>
+      <div class="stall-list">${tajStalled}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="sec-title">${ic('chart-bar',16)} Funnel Stage by Industry</h2>
+    <p class="sec-sub">How target accounts are distributed across funnel stages, by industry</p>
+    <div class="ind-wrap">${tajInd}</div>
+    <div class="legend">
+      <span><span class="ldot" style="background:var(--pc)"></span>Paid Contact</span>
+      <span><span class="ldot" style="background:var(--mql)"></span>MQL</span>
+      <span><span class="ldot" style="background:var(--sql)"></span>SQL</span>
+      <span><span class="ldot" style="background:var(--ao)"></span>Active Opportunity</span>
+      <span><span class="ldot" style="background:var(--cl)"></span>Closed Lost</span>
+      <span><span class="ldot" style="background:var(--cw)"></span>Closed Won</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2 class="sec-title">${ic('table',16)} All Target Accounts — Funnel Position</h2><span class="badge">124 accounts</span></div>
+    <p class="sec-sub">Every named target account ranked by highest funnel stage reached · Sorted by stage (highest first)</p>
+    <div class="tbar">
+      <div class="search">${ic('search',15)} Search account or industry…</div>
+      <div class="stabs"><span class="stab on">All</span><span class="stab">Closed Won</span><span class="stab">Active Opportunity</span><span class="stab">SQL</span><span class="stab">MQL</span><span class="stab">Paid Contact</span><span class="stab">Closed Lost</span></div>
+    </div>
+    <table class="t">
+      <thead><tr><th>Account</th><th>Industry</th><th>Region</th><th>Stage</th><th class="num">Contacts</th><th>Paid Channels</th><th class="num">Lead Score</th><th class="num">Opp Value</th><th class="num">Won</th></tr></thead>
+      <tbody>${tajTable}</tbody>
+    </table>
+    <div class="tfoot"><span>Page 1 of 8 · 124 accounts</span><span>Prev · Next</span></div>
+  </div>
+
+</div></body></html>`;
+
 export const DASHBOARD_FILES = {
+  "output/dashboard/target_account_journey.html": { content: TARGET_ACCOUNT_JOURNEY_HTML, contentType: "text/html" },
+  "output/dashboard/creative_ad_performance.html": { content: CREATIVE_AD_PERF_HTML, contentType: "text/html" },
   // Skill-flow dashboard (assembled default) + its per-widget previews.
   "output/dashboard/skill_dashboard.html": { content: assembleSkillDashboard(), contentType: "text/html" },
   ...Object.fromEntries(SKILL_DASH_META.map((w) => [`output/dashboard/widgets/${w.id}.html`, { content: SKILL_WIDGET_DOCS[w.id], contentType: "text/html" }])),

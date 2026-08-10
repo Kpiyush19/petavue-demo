@@ -346,51 +346,16 @@ const parseMoney = (v) => {
 };
 const fmtMoney = (n) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`);
 
+// Recommendation lifecycle filters, keyed to rec.status. "Accepted" maps to our
+// internal "acted" status; "Archived" is a distinct filed-away state.
 const REC_FILTERS = [
-  { k: "all", label: "All" },
-  { k: "act-now", label: "Act now" },
-  { k: "needs-review", label: "Needs review" },
-  { k: "watchlist", label: "Watchlist" },
+  { k: "all", label: "All", status: null },
+  { k: "open", label: "Open", status: "open" },
+  { k: "snoozed", label: "Snoozed", status: "snoozed" },
+  { k: "accepted", label: "Accepted", status: "acted" },
+  { k: "rejected", label: "Rejected", status: "rejected" },
+  { k: "archived", label: "Archived", status: "archived" },
 ];
-
-// Compact filter — trigger shows the current filter + count; a portaled menu
-// lists all buckets with counts and a radio (same pattern as GoalFilterDropdown).
-function RecFilterDropdown({ value, onChange, counts }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState(null);
-  const ref = useRef(null);
-  const current = REC_FILTERS.find((f) => f.k === value) || REC_FILTERS[0];
-  const toggle = () => {
-    if (!open && ref.current) {
-      const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left, width: Math.max(220, r.width) });
-    }
-    setOpen((o) => !o);
-  };
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={toggle}
-        className="inline-flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer"
-      >
-        <span className="text-[14px] leading-[22px] font-normal text-[var(--text-primary)] whitespace-nowrap">{current.label}</span>
-        <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">{counts[current.k] || 0}</span>
-        <CaretDown size={16} className={cn("text-[var(--text-muted)] shrink-0 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && pos && (
-        <FilterMenu
-          pos={pos}
-          value={value}
-          onSelect={onChange}
-          onClose={() => setOpen(false)}
-          options={REC_FILTERS.map((f) => ({ id: f.k, label: f.label, count: counts[f.k] || 0 }))}
-        />
-      )}
-    </div>
-  );
-}
 
 // Queue card in our card language: goalPriority-style status chip, muted
 // category + rank, primary-50 hover / selected, and Impact · Why now in the
@@ -401,20 +366,20 @@ function RecCard({ item, selected, onClick }) {
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left rounded-[8px] border bg-white p-3.5 transition-all cursor-pointer",
+        "w-full text-left rounded-[8px] border bg-white p-3.5 transition-all cursor-pointer flex flex-col gap-2",
         selected
           ? "bg-primary-50 border-primary-500 shadow-[0_4px_4px_rgba(54,97,237,0.08)]"
           : "border-[var(--color-grey-100)] hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]",
         item.status !== "open" && !selected && "opacity-70"
       )}
     >
-      <div className="flex items-center gap-2 mb-1.5">
+      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{item.title}</p>
+      {item.tldr && <p className="text-[12px] text-[#757A97] leading-snug line-clamp-1">{item.tldr}</p>}
+      <div className="flex items-center gap-2">
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", m.cls)}>
           <m.icon size={10} weight="regular" />{m.label}
         </span>
       </div>
-      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{item.title}</p>
-      {item.tldr && <p className="text-[12px] text-[#757A97] leading-snug mt-1 line-clamp-1">{item.tldr}</p>}
     </button>
   );
 }
@@ -578,9 +543,10 @@ function RecommendationsPanel({ onOpenGoal }) {
   const selectedGoal = goalScope === "all" ? null : goalOptions.find((g) => g.id === goalScope) || null;
   const scoped = goalScope === "all" ? items : items.filter((i) => i.goalId === goalScope);
 
-  const counts = { all: scoped.length, "act-now": 0, "needs-review": 0, watchlist: 0, archived: 0 };
-  scoped.forEach((i) => { counts[recMeta(i).key] += 1; });
-  const filtered = filter === "all" ? scoped : scoped.filter((i) => recMeta(i).key === filter);
+  const counts = { all: scoped.length };
+  REC_FILTERS.forEach((f) => { if (f.status != null) counts[f.k] = scoped.filter((i) => i.status === f.status).length; });
+  const curF = REC_FILTERS.find((f) => f.k === filter) || REC_FILTERS[0];
+  const filtered = curF.status == null ? scoped : scoped.filter((i) => i.status === curF.status);
   const selected = filtered.find((i) => i.recId === sel) || filtered[0];
 
   // Summary strip — the paid-spend use case's headline signals. The first tile
@@ -633,8 +599,27 @@ function RecommendationsPanel({ onOpenGoal }) {
         <div className="flex-1 min-h-0 flex">
           {/* Left: filters + rich queue */}
           <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-            <div className="shrink-0 flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
-              <RecFilterDropdown value={filter} onChange={(k) => { setFilter(k); setSel(null); }} counts={counts} />
+            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 border-b border-[var(--color-grey-100)] overflow-x-auto">
+              {REC_FILTERS.map((f) => {
+                const active = filter === f.k;
+                const count = f.k === "all" ? counts.all : (counts[f.k] || 0);
+                return (
+                  <button
+                    key={f.k}
+                    type="button"
+                    onClick={() => { setFilter(f.k); setSel(null); }}
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium border transition-colors whitespace-nowrap cursor-pointer",
+                      active
+                        ? "bg-primary-50 border-primary-500 text-primary-700"
+                        : "bg-white border-[var(--color-grey-100)] text-[var(--text-muted)] hover:bg-grey-50"
+                    )}
+                  >
+                    {f.label}
+                    <span className={cn("tabular-nums text-[11px]", active ? "text-primary-600" : "text-[var(--text-muted)]")}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
               {filtered.length === 0 ? (

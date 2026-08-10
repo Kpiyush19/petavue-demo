@@ -691,8 +691,8 @@ export const CCDashboardView = ({ dashboardId, Skeleton, Input }) => {
           {/* Separator */}
           <div className="w-px h-6 bg-[var(--color-grey-200)]" />
 
-          {/* Data freshness — opens the Data Freshness popup */}
-          <PvButton variant="ghost" size="md" label="Data freshness" icon={Stack} onClick={() => setShowFreshness(true)} />
+          {/* Data freshness — hidden for now */}
+          {/* <PvButton variant="ghost" size="md" label="Data freshness" icon={Stack} onClick={() => setShowFreshness(true)} /> */}
 
           {isWorkflow && (
             <PvButton variant="secondary" size="md" label="Find out how" icon={Lightbulb} disabled={loading || !artifact?.latest_run} onClick={handleFindOutHow} />

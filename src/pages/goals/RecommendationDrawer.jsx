@@ -153,16 +153,16 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
 
       {/* Body */}
       <div className="px-5 pt-0 pb-4 flex flex-col gap-5 [&>*]:shrink-0">
-        {/* Impact tile — the estimated outcome, amber. Hidden when a richer
-            "Expected impact" scenario is present, so we don't stack two impact boxes. */}
-        {rec.impact && !rec.scenario && (
-          <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700">{rec.impact.label || "Estimated impact"}</p>
-              {rec.tier && <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white text-amber-700 border border-amber-200">Tier {rec.tier}</span>}
-            </div>
-            <p className="text-[24px] font-bold text-amber-900 leading-none mt-2">{rec.impact.value}</p>
-            {rec.impact.sub && <p className="text-[12px] text-amber-800 mt-1.5 leading-snug">{rec.impact.sub}</p>}
+        {/* Metric cards — same InsightCard UI as the Goals tab. */}
+        {(rec.metrics || []).length > 0 && (
+          <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
+            {rec.metrics.map((m, i) => (
+              <div key={i} className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3.5">
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{m.label}</span>
+                <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)] mb-1.5">{m.value}</span>
+                {m.note && <p className="text-[12px] text-[#757A97] leading-snug">{m.note}</p>}
+              </div>
+            ))}
           </div>
         )}
 
@@ -171,14 +171,14 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
         {/* Insight — why this recommendation is being made. */}
         {rec.body && (
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Insight</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Why this matters</p>
             <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.body}</p>
           </div>
         )}
 
-        {/* What to do — Action now, then Hold for now and Revisit when. */}
+        {/* What to do — Exact action, then Hold for now and Revisit when. */}
         <div>
-          {(rec.hold || rec.revisit) && <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Action now</p>}
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Exact action</p>
           <ul className="flex flex-col gap-2.5">
             {(rec.steps || [rec.tldr]).map((s, i) => (
               <li key={i} className="flex items-start gap-2.5">
@@ -214,8 +214,8 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
         {rec.scenario && (
           <div className="rounded-[8px] border border-primary-200 bg-primary-50 p-4">
             <p className="text-[12px] font-semibold uppercase tracking-wider text-primary-700 mb-2">Expected impact</p>
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 text-[12px] font-medium text-primary-600 mt-[3px]">Scenario estimate</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[12px] font-medium text-primary-600">Scenario estimate</span>
               <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{rec.scenario}</p>
             </div>
           </div>
@@ -250,20 +250,6 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
                     <ul className="flex flex-col gap-2 list-disc pl-4">
                       {rec.derivation.map((s, i) => <li key={i} className="text-[14px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
                     </ul>
-                  </div>
-                )}
-                {(rec.metrics || []).length > 0 && (
-                  <div>
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Key metrics</p>
-                    <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
-                      {rec.metrics.map((m, i) => (
-                        <div key={i} className="bg-white px-3 py-2.5">
-                          <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] leading-tight">{m.label}</p>
-                          <p className="text-[16px] font-semibold text-[var(--text-primary)] mt-1">{m.value}</p>
-                          {m.note && <p className="text-[12px] text-[#757A97] mt-0.5 leading-snug">{m.note}</p>}
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
                 {rec.trigger && (
@@ -413,9 +399,9 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
               </div>
             )}
             <p className="text-[12px] font-medium text-[var(--text-primary)]">
-              {pending.action === "rejected" ? "Why are you dismissing this? (optional)"
-                : pending.action === "acted" ? "What did you do? (optional)"
-                : "Anything to note? (optional)"}
+              {pending.action === "rejected" ? "Why are you dismissing this?"
+                : pending.action === "acted" ? "What did you do?"
+                : "Why are you snoozing this?"}
             </p>
             <textarea
               value={reason}
@@ -429,9 +415,9 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
               <PvButton
                 variant="primary" size="sm"
                 label={act.isPending ? "Saving…" : "Submit"}
-                disabled={act.isPending || (pending.action === "snoozed" && !snoozeFor.trim())}
+                disabled={act.isPending || !reason.trim() || (pending.action === "snoozed" && !snoozeFor.trim())}
                 onClick={() => doAct(
-                  { action: pending.action, snooze: snoozeFor.trim() || undefined, reason: reason.trim() || undefined },
+                  { action: pending.action, snooze: snoozeFor.trim() || undefined, reason: reason.trim() },
                   pending.action === "acted" ? "Marked done, monitoring for recovery" : pending.action === "rejected" ? "Dismissed, archived" : `Snoozed · ${snoozeFor.trim()}`
                 )}
               />
@@ -440,11 +426,11 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {rec.guardrails && <p className="text-[12px] text-[var(--text-muted)] leading-snug">Nothing changes until you decide, and every accepted move carries its reverse condition.</p>}
+            {rec.guardrails && <p className="text-[12px] text-[var(--text-muted)] leading-snug">Nothing runs until you act, and every decision is logged and reversible.</p>}
             <div className="flex items-center gap-2">
             <button onClick={() => { setReason(""); setPending({ action: "acted" }); }} disabled={act.isPending}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-green-600 hover:bg-green-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
-              <CheckCircle size={16} /> Acted
+              <CheckCircle size={16} /> Act
             </button>
             <button onClick={() => { setReason(""); setPending({ action: "rejected" }); }} disabled={act.isPending}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-rose-600 hover:bg-rose-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">

@@ -26,6 +26,7 @@ export const CCDashboardElement = ({
   const dashboardId = getDashboardId(artifact);
   const currentUserId = getCurrentUser()?.userId || ""
   const isOwner = artifact.created_by && artifact.created_by === currentUserId;
+  const isPlaceholder = !!artifact.placeholder;
 
   return (
     <div
@@ -33,8 +34,8 @@ export const CCDashboardElement = ({
       tabIndex={0}
       className="grid w-full px-3 h-[58px] shrink-0 items-center border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all text-left group cursor-pointer bg-white"
       style={{ gridTemplateColumns: GRID_COLUMNS }}
-      onClick={() => navigate(`${basePath}/${dashboardId}`)}
-      onKeyDown={(e) => {
+      onClick={isPlaceholder ? undefined : () => navigate(`${basePath}/${dashboardId}`)}
+      onKeyDown={isPlaceholder ? undefined : (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           navigate(`${basePath}/${dashboardId}`);
@@ -52,7 +53,7 @@ export const CCDashboardElement = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              navigate(`${basePath}/${dashboardId}`);
+              if (!isPlaceholder) navigate(`${basePath}/${dashboardId}`);
             }}
             onMouseEnter={onTooltipReset}
             className="text-xs truncate"
@@ -76,12 +77,21 @@ export const CCDashboardElement = ({
         className="flex items-center justify-center px-2"
         onClick={(e) => e.stopPropagation()}
       >
+        {isPlaceholder ? (
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-grey-400)] hover:text-[var(--color-grey-700)] hover:bg-[var(--color-grey-100)] rounded-lg bg-transparent border-none cursor-pointer"
+          >
+            <DotsThree size={18} weight="bold" />
+          </button>
+        ) : (
         <Popper
           buttonChildren={<DotsThree size={18} weight="bold" />}
           placement="bottom-end"
-          size="sm"
-          variant="ghost"
-          className="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-grey-400)] hover:text-[var(--color-grey-700)] hover:bg-[var(--color-grey-100)] rounded-lg"
+          btnSize="sm"
+          btnColor="ghost"
+          buttonClassName="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-grey-400)] hover:text-[var(--color-grey-700)] hover:bg-[var(--color-grey-100)] rounded-lg"
           popperClassName="w-48"
           closeOnClickInside
           zIndex={50}
@@ -130,6 +140,7 @@ export const CCDashboardElement = ({
             Delete
           </button>
         </Popper>
+        )}
       </span>
     </div>
   );
