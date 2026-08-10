@@ -37,6 +37,10 @@ function AnalyticsChatInner({
   className = '',
   initialInputValue = '',
   onInputChange,
+  welcomeSubtitle,
+  welcomeCtas,
+  followups,
+  inputPlaceholder,
 }) {
   // API and Pusher config is now automatic via app's centralized modules
   const session = useSession();
@@ -183,6 +187,9 @@ function AnalyticsChatInner({
           isCompacting={session.isCompacting}
           onSuggestionClick={(text) => session.sendMessage(text)}
           dashboardName={dashboardName}
+          welcomeSubtitle={welcomeSubtitle}
+          welcomeCtas={welcomeCtas}
+          followups={followups}
         />
         <InputArea
           onSend={session.sendMessage}
@@ -198,6 +205,7 @@ function AnalyticsChatInner({
           subscriptionError={subscriptionError}
           initialInputValue={initialInputValue}
           onInputChange={onInputChange}
+          placeholder={inputPlaceholder}
         />
       </div>
       {/* Artifact panel - overlay on top of chat */}
@@ -272,6 +280,12 @@ export default function AnalyticsChat({
   className = '',
   initialInputValue = '',
   onInputChange,
+  // Optional copy overrides so the same panel can serve non-dashboard contexts
+  // (e.g. Goals). Undefined → default dashboard copy/behavior.
+  welcomeSubtitle,
+  welcomeCtas,
+  followups,
+  inputPlaceholder,
 }) {
   return (
     <AnalyticsChatProvider
@@ -299,6 +313,10 @@ export default function AnalyticsChat({
         className={className}
         initialInputValue={initialInputValue}
         onInputChange={onInputChange}
+        welcomeSubtitle={welcomeSubtitle}
+        welcomeCtas={welcomeCtas}
+        followups={followups}
+        inputPlaceholder={inputPlaceholder}
       />
     </AnalyticsChatProvider>
   );

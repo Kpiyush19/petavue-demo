@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Sparkle, X, PaperPlaneRight, CircleNotch } from "@phosphor-icons/react";
 import { Button as PvButton } from "@/ui";
+import MarkdownRenderer from "@/utils/MarkdownRenderer";
 import { apiPost } from "../../api";
 import { cn } from "../../utils/cn";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
+import SuggestedQuestions from "../../components/sessions/components/SuggestedQuestions";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
@@ -38,10 +40,9 @@ function SageFab({ open, onClick }) {
 /* ── Sage chat body rendered inside the ChatOverlay panel. When `goal` is passed
       (goal detail page), Sage is scoped to that goal; otherwise it's portfolio-wide. ── */
 export function SageChat({ goal }) {
-  const greeting = goal
-    ? `Hi, I'm Sage. Ask me about “${goal.name}”: what's driving it, what to do next, or why a number moved.`
-    : "Hi, I'm Sage. Ask me what's wasting spend, where you're leaving demos on the table, or which goal to open first.";
-  const [chat, setChat] = useState([{ role: "assistant", text: greeting }]);
+  // Start empty so the chat opens on a centered welcome state (like the
+  // dashboard analytics chat) instead of a greeting bubble.
+  const [chat, setChat] = useState([]);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef(null);
   const taRef = useRef(null);
@@ -77,45 +78,65 @@ export function SageChat({ goal }) {
   // A pool of things to ask; we surface the ones not asked yet after each reply,
   // so the conversation keeps offering fresh, relevant follow-ups.
   const suggestionPool = goal
-    ? ["What should I do next?", "Why did the number move?", "How is this goal tracking?", "Which monitors are firing?", "What's the biggest waste here?", "Am I on pace to hit target?", "What's the cheapest demo source?"]
+    ? (goal.name === "Reduce inefficient daily paid spend by 5%"
+        ? ["Where's my paid budget leaking right now?", "Is LinkedIn CPL really over baseline?", "Should I cut Meta or wait?", "Which campaigns create pipeline vs just clicks?", "What's the single biggest move today?", "Are we on pace to hit $610 blended CPL?", "How much can I save this month?", "Which monitors are firing?"]
+        : ["What should I do next?", "Why did the number move?", "How is this goal tracking?", "Which monitors are firing?", "What's the biggest waste here?", "Am I on pace to hit target?", "What's the cheapest demo source?"])
     : ["What's wasting spend?", "Where am I losing demos?", "What should I open first?", "How are my goals doing?", "Which goal is most off track?", "Where should my next dollar go?", "What's on track?"];
   const asked = new Set(chat.filter((m) => m.role === "user").map((m) => m.text));
-  const followups = suggestionPool.filter((s) => !asked.has(s)).slice(0, 4);
+  const followups = suggestionPool.filter((s) => !asked.has(s)).slice(0, 3);
+  const followupQs = followups.map((s) => ({ question: s, grounded_in: goal ? goal.name : "Goals", grounded_type: "goal" }));
   const lastIsAssistant = chat[chat.length - 1]?.role === "assistant";
+  const isEmpty = chat.length === 0;
+
+  // Assistant turn — Petavue logo + markdown, matching the dashboard chat.
+  const AssistantRow = ({ children }) => (
+    <div className="flex gap-3 mt-2">
+      <div className="h-6 w-6 flex shrink-0">
+        <img src="/petavue-logo.svg" alt="petavue logo" className="h-5 w-5 my-auto" />
+      </div>
+      <div className="flex-1 min-w-0 text-[14px] text-[var(--text-primary)]">{children}</div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full">
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {chat.map((m, i) => (
-          <div
-            key={i}
-            className={cn(
-              "text-[14px] leading-relaxed px-3 py-2 rounded-2xl max-w-[85%]",
-              m.role === "user"
-                ? "self-end bg-primary-500 text-white rounded-br-md"
-                : "self-start bg-grey-100 text-[var(--text-primary)] rounded-bl-md"
+        {isEmpty ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-4">
+            <div className="relative">
+              <div className="absolute -inset-2 rounded-[16px] bg-[#3661ED] opacity-10 blur-[16px]" />
+              <div className="relative w-12 h-12 rounded-[16px] flex items-center justify-center bg-[#F5F8FF] border border-[rgba(54,97,237,0.2)]">
+                <Sparkle size={22} className="text-[#3661ED]" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-[16px] font-semibold text-[var(--text-primary)]">How can I help you today?</h3>
+              <p className="text-[14px] text-[#757A97] mt-1">
+                {goal ? "Ask a question about your goal to get started" : "Ask a question about your goals to get started"}
+              </p>
+            </div>
+            {followupQs.length > 0 && (
+              <div className="w-full text-left mt-1">
+                <SuggestedQuestions questions={followupQs} onSelect={sendSuggestion} />
+              </div>
             )}
-          >
-            {m.text}
           </div>
-        ))}
-        {ask.isPending && (
-          <div className="self-start bg-grey-100 text-[var(--text-muted)] rounded-2xl rounded-bl-md px-3 py-2">
-            <Spinner size={14} />
-          </div>
-        )}
-        {lastIsAssistant && !ask.isPending && followups.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-1">
-            {followups.map((s) => (
-              <button
-                key={s}
-                onClick={() => sendSuggestion(s)}
-                className="text-[12px] px-3 py-1.5 rounded-full border border-[var(--border-primary)] text-[#757A97] bg-white hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors"
-              >
-                {s}
-              </button>
+        ) : (
+          <>
+            {chat.map((m, i) => m.role === "user" ? (
+              <div key={i} className="self-end max-w-[85%] text-[14px] leading-relaxed px-4 py-2.5 rounded-2xl rounded-br-md bg-primary-500 text-white break-words">
+                {m.text}
+              </div>
+            ) : (
+              <AssistantRow key={i}><MarkdownRenderer content={m.text || ""} /></AssistantRow>
             ))}
-          </div>
+            {ask.isPending && (
+              <AssistantRow><span className="inline-flex text-[var(--text-muted)] pt-1"><Spinner size={14} /></span></AssistantRow>
+            )}
+            {lastIsAssistant && !ask.isPending && followupQs.length > 0 && (
+              <SuggestedQuestions questions={followupQs} onSelect={sendSuggestion} />
+            )}
+          </>
         )}
       </div>
       <div className="shrink-0 p-3 flex items-end gap-2">
@@ -125,7 +146,7 @@ export function SageChat({ goal }) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1}
-          placeholder={goal ? `Ask about ${goal.name}…` : "Ask about spend, demos, or what to fix first…"}
+          placeholder={goal ? "Ask a question about your goal…" : "Ask a question about your goals…"}
           style={{ minHeight: "32px", maxHeight: `${MAX_INPUT_H}px` }}
           className="flex-1 text-[14px] px-3 py-1.5 rounded-lg border border-[var(--border-primary)] focus:border-primary-500 outline-none resize-none"
         />

@@ -21,17 +21,19 @@ export default function InputArea({
   connectionStatus,
   subscriptionError,
   initialInputValue = "",
-  onInputChange
+  onInputChange,
+  placeholder: placeholderOverride,
 }) {
   const [showLog, setShowLog] = useState(false);
 
   // Compute disabled state and placeholder based on connection status
   const isConnectionIssue = connectionStatus && connectionStatus !== "connected" && !readOnly;
+  const defaultPlaceholder = placeholderOverride || "Ask a question about your data...";
 
   const getPlaceholder = () => {
-    if (readOnly) return "Ask a question about your data...";
+    if (readOnly) return defaultPlaceholder;
     if (!connectionStatus || connectionStatus === "connected") {
-      return "Ask a question about your data...";
+      return defaultPlaceholder;
     }
     switch (connectionStatus) {
       case "connecting":

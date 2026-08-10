@@ -11,13 +11,16 @@ import {
 import { toast } from "sonner";
 import { Tooltip } from "@/ui";
 import { Button as PvButton } from "@/ui";
-import { apiGet, apiPost, apiPut, apiDelete } from "../../api";
+import { apiGet, apiPost, apiPut, apiDelete, getApiBase, getAuthToken } from "../../api";
 import { cn } from "../../utils/cn";
 import { FilterMenu } from "./FilterMenu";
 import { RecommendationDetail } from "./RecommendationDrawer";
-import { SageChat, SAGE_GRADIENT } from "./SageWidget";
+import { SAGE_GRADIENT } from "./SageWidget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
+import { AnalyticsChat } from "../../components/dashboards/analytics-chat-widget";
+import { PUSHER_KEY, PUSHER_CLUSTER } from "../../config";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
+import "../../components/dashboards/analytics-chat-widget/styles.css";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
@@ -426,6 +429,49 @@ function GoalScopeDropdown({ value, onChange, goals }) {
   );
 }
 
+// Goal-scoped Sage using the SAME panel as the dashboard chat (AnalyticsChat):
+// opens a streaming session for the goal, hides the dashboard-only Files/Sessions
+// slots, and swaps in goal copy + follow-ups.
+const PAID_EFFICIENCY_GOAL = "Reduce inefficient daily paid spend by 5%";
+function goalFollowups(goal) {
+  const qs = goal.name === PAID_EFFICIENCY_GOAL
+    ? ["Explain this goal", "Where's my paid budget leaking right now?", "Should I cut Meta or wait?"]
+    : ["Explain this goal", "What should I do next?", "Which monitors are firing?"];
+  return qs.map((q) => ({ question: q, grounded_in: goal.name, grounded_type: "goal" }));
+}
+function GoalSagePanel({ goal }) {
+  const qc = useQueryClient();
+  const [sessionId, setSessionId] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setSessionId(null);
+    apiPost(`/api/goals/${goal.id}/chat`, {}).then((res) => {
+      if (alive) setSessionId(res?.session_id || res?.session?.session_id || null);
+    });
+    return () => { alive = false; };
+  }, [goal.id]);
+
+  if (!sessionId) {
+    return <div className="flex items-center justify-center h-full text-[13px] text-[var(--text-muted)]">Starting Sage…</div>;
+  }
+  return (
+    <AnalyticsChat
+      externalQueryClient={qc}
+      sessionId={sessionId}
+      dashboardName={goal.name}
+      apiUrl={getApiBase()}
+      authToken={getAuthToken()}
+      pusherKey={PUSHER_KEY}
+      pusherCluster={PUSHER_CLUSTER}
+      timezone="UTC"
+      welcomeSubtitle="Ask a question about your goal — what's driving it, what to do next, or why a number moved."
+      welcomeCtas={[]}
+      followups={goalFollowups(goal)}
+      inputPlaceholder="Ask a question about your goal…"
+    />
+  );
+}
+
 // Sage requires one goal for context. Rendered in the shared floaty ChatOverlay
 // (full page height); it never dead-ends: with no goal scoped it opens on a goal
 // picker, and once a goal is chosen it becomes the live Sage chat for that goal
@@ -434,21 +480,12 @@ function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
   return (
     <ChatOverlay isOpen={open} onClose={onClose} floating heading="Sage" title={selected ? selected.name : "Sage"}>
       {selected ? (
-        <div className="flex flex-col h-full">
-          <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-[var(--color-grey-100)] bg-grey-50">
-            <Target size={13} className="text-[var(--text-muted)] shrink-0" />
-            <span className="text-[12px] text-[#757A97] truncate flex-1">Context: <span className="font-medium text-[var(--text-primary)]">{selected.name}</span></span>
-            <button onClick={() => onSelect("all")} className="shrink-0 text-[12px] text-primary-600 hover:underline bg-transparent border-none cursor-pointer">Change</button>
-          </div>
-          <div className="flex-1 min-h-0">
-            <SageChat key={selected.id} goal={selected} />
-          </div>
-        </div>
+        <GoalSagePanel key={selected.id} goal={selected} />
       ) : (
         <div className="h-full overflow-y-auto p-4 flex flex-col gap-3">
           <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-3.5">
-            <p className="text-[13px] font-medium text-[var(--text-primary)]">Sage needs a goal for context</p>
-            <p className="text-[12px] text-[#757A97] mt-1 leading-relaxed">Pick the goal you want to ask about. Sage answers against that goal's target, monitors, and recommendations.</p>
+            <p className="text-[13px] font-medium text-[var(--text-primary)]">Choose a goal</p>
+            <p className="text-[12px] text-[#757A97] mt-1 leading-relaxed">Sage needs one goal context before it can answer. Choose a goal below, then ask anything.</p>
           </div>
           <div className="flex flex-col gap-2">
             {goals.map((g) => (

@@ -295,6 +295,10 @@ Ask me to explain the dashboard, which campaign is performing best, or anything 
 // Sage (Beta) — read-only analytics chat on a published dashboard. Answers are
 // grounded in the demo dashboard's numbers; it never edits the dashboard.
 function sageReply(userText, sessionId) {
+  // Goal Sage (opened from the Goals page) — session id carries the goal id
+  // ("sage-goal-<id>"); defer to the goal-scoped answers in the goals mock.
+  const goalMatch = String(sessionId).match(/^sage-goal-(.+)$/);
+  if (goalMatch) return Goals.sageChatGoal(goalMatch[1], userText).reply;
   // Route to the dashboard the chat was opened from (session id carries the
   // dashboard/workflow id, e.g. "sage-pub-dash-target-account-journey").
   if (/target-account/.test(String(sessionId))) return sageReplyTAJ(userText);
@@ -516,8 +520,8 @@ const handlers = [
   { method: "PATCH", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params, body }) => Goals.updateGoal(params[0], body || {}) },
   { method: "DELETE", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params }) => Goals.deleteGoal(params[0]) },
   { method: "POST", pattern: /\/api\/goals\/([^/]+)\/answer$/, handler: ({ params, body }) => Goals.answerGoal(params[0], body?.answers || {}) },
-  { method: "POST", pattern: /\/api\/goals\/sage$/, handler: ({ body }) => Goals.sageChat(body?.text || "") },
-  { method: "POST", pattern: /\/api\/goals\/([^/]+)\/sage$/, handler: ({ params, body }) => Goals.sageChatGoal(params[0], body?.text || "") },
+  { method: "POST", pattern: /\/api\/goals\/sage$/, handler: async ({ body }) => { await new Promise((r) => setTimeout(r, 700)); return Goals.sageChat(body?.text || ""); } },
+  { method: "POST", pattern: /\/api\/goals\/([^/]+)\/sage$/, handler: async ({ params, body }) => { await new Promise((r) => setTimeout(r, 700)); return Goals.sageChatGoal(params[0], body?.text || ""); } },
   { method: "POST", pattern: /\/api\/goals\/([^/]+)\/adjust$/, handler: ({ params, body }) => Goals.adjustGoal(params[0], body?.text || "") },
   { method: "POST", pattern: /\/api\/goals\/([^/]+)\/save$/, handler: ({ params, body }) => ({ goal: Goals.saveGoal(params[0], body?.name) }) },
   { method: "POST", pattern: /\/api\/goals\/([^/]+)\/check-in$/, handler: ({ params }) => Goals.runCheckIn(params[0]) },
@@ -867,6 +871,8 @@ const handlers = [
   // Sage (Beta) chat — open a read-only analytics chat for a dashboard.
   { method: "POST", pattern: /\/api\/workflows\/([^/]+)\/chat$/, handler: ({ params }) => startSageChat(`sage-wf-${params[0]}`) },
   { method: "POST", pattern: /\/api\/published\/([^/]+)\/chat$/, handler: ({ params }) => startSageChat(`sage-pub-${params[0]}`) },
+  // Goal Sage — open a streaming chat session scoped to one goal.
+  { method: "POST", pattern: /\/api\/goals\/([^/]+)\/chat$/, handler: ({ params }) => startSageChat(`sage-goal-${params[0]}`) },
   { method: "GET", pattern: /\/api\/workflows\/dashboards\/all$/, handler: () => ({ dashboards: db.dashboards }) },
   { method: "GET", pattern: /\/api\/workflows\/dashboards\/([^/]+)\/explanation$/, handler: ({ params }) => {
     const toolType = (t) => (t === "query_athena" ? "athena_query" : t === "execute_code" ? "python_code" : "write_file");

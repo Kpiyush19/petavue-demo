@@ -1322,12 +1322,108 @@ export function sageChat(text) {
   return { reply: `You have ${summaries.length} goal${summaries.length !== 1 ? "s" : ""}, ${attention.length} need action, ${onTrack.length} on track. Ask me what's wasting spend, where you're losing demos, or what to open first.` };
 }
 
+// Tailored, markdown-rich Sage answers for the hero demo goal ("Reduce
+// inefficient daily paid spend by 5%"). Grounded in that goal's real numbers so
+// the demo reads like a live analyst, with variety across the common questions.
+// Returns a reply string, or null to fall through to the generic handler.
+const PAID_EFFICIENCY_GOAL = "Reduce inefficient daily paid spend by 5%";
+const PAID_EFFICIENCY_QA = [
+  [/leak|wast|burn|bleed|where.*budget|where.*money|inefficien/, `**Three leaks, ~$12.8K/mo in play:**
+
+| Source | What to do | Signal |
+| --- | --- | --- |
+| LinkedIn CPL over baseline | Cap ~12% | $1,140 vs $940 (+21%) |
+| Prospecting with 0 qualified opps | Reallocate ~$7.4K/mo | $18.4K → 46 conv, **0 opps** |
+| Audience Network + APAC | Cut $3.5K/mo | 27% of enterprise spend, 0 opps |
+| Research-intent search terms | Cut $1.9K/mo | 47 terms, 892 clicks, 0 SAO |
+
+Start with **LinkedIn** — it's the only *fired* monitor. Want the reallocation plan?`],
+  [/linkedin|li\b/, `**Yes — LinkedIn is genuinely over baseline.** Trailing 7-day Salesforce CPL is **$1,140 vs a $940 90-day baseline (+21%)**, with spend above $1,500 and a complete lookback — so it clears the confirmation bar and is the fired monitor on this goal.
+
+Recommended move: **cap LinkedIn daily budget ~12%** until the trailing CPL walks back toward $940, then reassess. Nothing else on LinkedIn needs touching yet.`],
+  [/meta|facebook/, `**Hold Meta — don't cut yet.** Meta's CPL is drifting above its 90-day baseline, but it hasn't cleared the minimum-spend + lookback window, so it's flagged **watch**, not **act**. Cutting now risks reacting to one-day noise.
+
+Give it the **3-day confirmation window**; if it's still above baseline after that, cap it the same way as LinkedIn.`],
+  [/campaign.*pipeline|pipeline.*vs|vs.*click|just click|qualified|which campaign|creating pipeline/, `**Clicks ≠ pipeline — retargeting is the one actually working:**
+
+| Cohort | Spend / 30d | Platform conv. | Qualified opps |
+| --- | --- | --- | --- |
+| Prospecting (2 campaigns) | $18.4K | 46 | **0** |
+| Retargeting | $6.7K | — | **12** · $284K influenced |
+
+Retargeting is producing **2.1× more qualified pipeline per dollar**. The move: shift **~$7.4K/mo** out of the two prospecting campaigns into retargeting, inside the approved ceiling.`],
+  [/biggest|single|today|do next|what.*next|first move|one thing|priorit/, `**Today's move: reallocate prospecting spend into retargeting.** The two prospecting campaigns burned **$18.4K over 30 days for 0 qualified opps**, while retargeting is running at **2.1× pipeline per dollar**.
+
+Cut them ~40% (**~$7.4K/mo**) and move it to retargeting. Highest-value, lowest-risk change on the board — and it doesn't touch your approved monthly ceiling.`],
+  [/pace|610|642|target|on track|blended|hit target|forecast|reach/, `**Blended Salesforce CPL is $642 vs a $610 target — off, but reachable.** That's a 5% efficiency path, and you don't need new budget to get there.
+
+Clearing the **LinkedIn drift (+21%)**, the **$3.5K/mo** Audience Network/APAC waste, and the **$1.9K/mo** research-term spend removes most of the gap. Two monitors sit between you and target right now.`],
+  [/save|saving|how much|recover|free up|cut.*cost/, `**Roughly $12–13K/mo is recoverable without losing pipeline:**
+
+- **~$7.4K/mo** — prospecting reallocated to retargeting (0 qualified opps today)
+- **$3.5K/mo** — Audience Network + out-of-coverage APAC (0 opps)
+- **$1.9K/mo** — 47 research-intent search terms (0 sales-accepted opps)
+- **LinkedIn cap ~12%** — until CPL returns toward the $940 baseline
+
+None of it touches a channel that's producing qualified opportunities.`],
+  [/brand search|incrementa|organic|lift/, `**Don't scale Brand Search yet — the lift isn't proven.** "CISO Brand Search - NAM" conversions move with organic demand **79% of the time**, so platform credit likely overstates true incremental lift. It carries **$164K sourced pipeline** this quarter, which is why it's a *watch*, not a cut.
+
+Run a **2-region geo holdout for 4 weeks** with a $12K pipeline-lift threshold as the go/no-go before adding budget.`],
+];
+function paidEfficiencyReply(t) {
+  for (const [re, reply] of PAID_EFFICIENCY_QA) if (re.test(t)) return reply;
+  return null;
+}
+
+// Structured "explain this goal" breakdown — markdown with a Targets table and
+// Guardrails, grounded in the goal's own fields (mirrors the product's output).
+function explainGoalReply(g) {
+  const L = [];
+  L.push("Here's a clear breakdown of this goal:");
+  L.push("");
+  L.push(`### Goal: ${g.name}`);
+  if (g.statement) {
+    L.push("");
+    L.push("**🎯 What it's trying to do**");
+    L.push("");
+    L.push(g.statement);
+  }
+  const targets = (g.targets || []).filter((x) => x.label);
+  if (targets.length) {
+    L.push("");
+    L.push("**📊 The Targets**");
+    L.push("");
+    L.push("| Metric | Current | Target |");
+    L.push("| --- | --- | --- |");
+    targets.forEach((x) => L.push(`| ${x.label} | ${x.current ?? "—"} | ${x.target ?? "—"} |`));
+  }
+  const guards = (g.conditions || []).filter((c) => c.label);
+  if (guards.length) {
+    L.push("");
+    L.push("**🛡️ The Guardrails (what we watch)**");
+    L.push("");
+    guards.forEach((c) => L.push(`- ${c.label}`));
+  }
+  const moves = (g.moves || []).filter((m) => m.label);
+  if (moves.length) {
+    L.push("");
+    L.push("**🔧 Moves on the table**");
+    L.push("");
+    moves.forEach((m) => L.push(`- ${m.label}`));
+  }
+  return L.join("\n").trim();
+}
+
 // Sage scoped to a single goal (the goal detail page) — answers about this goal
 // specifically, grounded in its own findings, monitors, and target.
 export function sageChatGoal(id, text) {
   const g = find(id);
   if (!g) return { reply: "I couldn't find that goal." };
   const t = (text || "").toLowerCase().trim();
+  if (g.name === PAID_EFFICIENCY_GOAL && t) {
+    const tailored = paidEfficiencyReply(t);
+    if (tailored) return { reply: tailored };
+  }
   const last = g.checkIns[0];
   const openRecs = last ? last.recommendations.filter((r) => r.status === "open") : [];
   const actNow = openRecs.filter((r) => r.severity === "act-now");
@@ -1336,6 +1432,11 @@ export function sageChatGoal(id, text) {
 
   if (!t) {
     return { reply: `Ask me about “${g.name}”: what's driving it, what to do next, or why a number moved.` };
+  }
+  // "Explain this goal" — a structured, markdown breakdown built from the goal's
+  // own fields (statement, targets, guardrails, moves), like the product does.
+  if (/explain|break ?down|overview|walk me through|what.*(this|the) goal|tell me about (this|the) goal/.test(t)) {
+    return { reply: explainGoalReply(g) };
   }
   // Biggest waste / most impactful thing to fix.
   if (/wast|biggest|most impact|worth|roi|where.*money|save/.test(t)) {
