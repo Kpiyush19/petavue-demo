@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, CaretDown, Lightning, Eye, FlowArrow, MagnifyingGlass, Sparkle, Funnel, Warning,
+  X, CheckCircle, CaretDown, Lightning, Eye, FlowArrow, MagnifyingGlass, Sparkle, Funnel, Warning,
 } from "@phosphor-icons/react";
 import {
   apiGet, apiPost, getApiBase, getAuthToken,
@@ -141,60 +141,12 @@ function RecCard({ item, selected, onClick }) {
         </span>
         {item.workflowName && (
           <span className="flex items-center gap-1.5 min-w-0 ml-auto">
-            {item.agent && <AgentMark agentKey={item.agent} size={18} ring={false} />}
+            {item.agent && <AgentMark agentKey={item.agent} size={16} />}
             <span className="text-[11px] text-[#757A97] truncate">{item.workflowName}</span>
           </span>
         )}
       </div>
     </button>
-  );
-}
-
-// Workflow scope — the same filter-button pattern as the status filter, so the
-// two read as one control group. Recommendations are scoped by the workflow
-// that produced them: goals stopped being the organising axis in the Aug-2026
-// pivot.
-function WorkflowScopeDropdown({ value, onChange, workflows, counts }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState(null);
-  const ref = useRef(null);
-  const allLabel = "All workflows";
-  const current = value === "all" ? allLabel : (workflows.find((w) => w.id === value)?.name || allLabel);
-  const count = value === "all" ? counts.all : counts[value] || 0;
-  const toggle = () => {
-    if (!open && ref.current) {
-      const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 8, left: r.left, width: Math.max(260, r.width) });
-    }
-    setOpen((o) => !o);
-  };
-  return (
-    <div ref={ref} className="shrink-0">
-      <button
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={toggle}
-        className="inline-flex items-center gap-1.5 max-w-[280px] h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-[var(--color-grey-200)] text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
-      >
-        <FlowArrow size={14} className="text-[var(--text-muted)] shrink-0" />
-        <span className="truncate">{current}</span>
-        <span className="tabular-nums text-[var(--text-muted)]">{count}</span>
-        <CaretDown size={13} className={cn("shrink-0 text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
-      </button>
-      {open && pos && (
-        <FilterMenu
-          pos={pos}
-          value={value}
-          onSelect={onChange}
-          onClose={() => setOpen(false)}
-          minWidth={260}
-          searchable
-          searchPlaceholder="Search workflows…"
-          options={[{ id: "all", label: allLabel, count: counts.all }, ...workflows.map((w) => ({ id: w.id, label: w.name, count: counts[w.id] || 0 }))]}
-        />
-      )}
-    </div>
   );
 }
 
@@ -334,14 +286,12 @@ function RecommendationsPanel({ onOpenGoal }) {
     .filter(([id]) => id)
     .map(([id, name]) => ({ id, name }));
   const scoped = scope === "all" ? items : items.filter((i) => i.workflowId === scope);
+  const scopedWorkflow = scope === "all" ? null : workflowOptions.find((w) => w.id === scope) || null;
   // Sage still talks to a goal-scoped endpoint underneath; the label the user
   // sees is the scope they chose.
   const sageContext = scoped.length
     ? { id: scoped[0].goalId, name: scope === "all" ? "All workflows" : (workflowOptions.find((w) => w.id === scope)?.name || "Recommendations") }
     : null;
-
-  const workflowCounts = { all: items.length };
-  workflowOptions.forEach((w) => { workflowCounts[w.id] = items.filter((i) => i.workflowId === w.id).length; });
 
   const counts = { all: scoped.length };
   REC_FILTERS.forEach((f) => { if (f.status != null) counts[f.k] = scoped.filter((i) => i.status === f.status).length; });
@@ -358,80 +308,100 @@ function RecommendationsPanel({ onOpenGoal }) {
   };
 
   return (
-    <div className="relative flex flex-col h-full">
-      {/* One control group: which workflow, which status, then Ask Sage. */}
-      <div className="shrink-0 border-b border-[var(--color-grey-100)] px-4 py-3.5">
-        <div className="flex items-center justify-end gap-2">
-          <WorkflowScopeDropdown
-            value={scope}
-            onChange={scopeSelect}
-            workflows={workflowOptions}
-            counts={workflowCounts}
-          />
-          <div className="flex items-center gap-2 shrink-0">
-            <RecFilterDropdown
-              value={filter}
-              onChange={(k) => { setFilter(k); setSel(null); }}
-              counts={counts}
-            />
-            <button
-              type="button"
-              onClick={() => setSageOpen(true)}
-              className="inline-flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-[8px] text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"
-              style={{ background: SAGE_GRADIENT }}
-            >
-              <Sparkle size={14} weight="fill" /> Ask Sage
-            </button>
-          </div>
-        </div>
+    <div className="flex flex-col w-full h-full">
+      {/* Standard page header — the same bar Workflows and Agents use. Ask Sage
+          lives here rather than over the list: it answers questions about the
+          whole surface, not about whatever the queue is filtered to. */}
+      <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
+        <span className="text-[16px] leading-[24px] font-medium">Recommendations</span>
+        <button
+          type="button"
+          onClick={() => setSageOpen(true)}
+          className="inline-flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-[8px] text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"
+          style={{ background: SAGE_GRADIENT }}
+        >
+          <Sparkle size={14} weight="fill" /> Ask Sage
+        </button>
       </div>
 
       <RecSageDrawer open={sageOpen} onClose={() => setSageOpen(false)} context={sageContext} />
 
-      {isLoading ? (
-        <RecSkeleton />
-      ) : items.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
-          <CheckCircle size={26} weight="fill" className="text-green-500" />
-          <p className="text-[16px] font-medium text-[var(--text-primary)]">You're all caught up</p>
-          <p className="text-[14px] text-[#757A97] max-w-[380px]">No moves to make right now. We'll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 flex">
-          {/* Left: filters + rich queue */}
-          <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-              {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
-                  <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
-                  <p className="text-[13px] text-[#757A97]">Nothing in this filter.</p>
-                </div>
-              ) : (
-                filtered.map((it) => (
-                  <RecCard key={it.recId} item={it} selected={selected?.recId === it.recId} onClick={() => setSel(it.recId)} />
-                ))
-              )}
+      {/* Dashboards-style frame: grey-50 padded area with the page in a white panel */}
+      <div className="flex-1 min-h-0 p-4 bg-grey-50 overflow-hidden">
+        <div className="flex flex-col w-full h-full bg-white rounded-xl border border-[var(--color-grey-100)] overflow-hidden">
+          {isLoading ? (
+            <RecSkeleton />
+          ) : items.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
+              <CheckCircle size={26} weight="fill" className="text-green-500" />
+              <p className="text-[16px] font-medium text-[var(--text-primary)]">You&rsquo;re all caught up</p>
+              <p className="text-[14px] text-[#757A97] max-w-[380px]">No moves to make right now. We&rsquo;ll flag anything wasting spend or leaving demand on the table the moment it shows up.</p>
             </div>
-          </div>
-          {/* Right: decision detail (+ its own View details drawer) */}
-          <div className="flex-1 min-w-0">
-            {selected && (
-              <RecommendationDetail
-                key={selected.recId}
-                goalId={selected.goalId}
-                recId={selected.recId}
-                onOpenGoal={onOpenGoal}
-                source={{
-                  workflowId: selected.workflowId,
-                  workflowName: selected.workflowName,
-                  agent: selected.agent,
-                  onOpenWorkflow: (id) => navigate(`/workflows/${id}`),
-                }}
-              />
-            )}
-          </div>
+          ) : (
+            <div className="flex-1 min-h-0 flex">
+              {/* Left: the queue, under a heading that stays put while it scrolls. */}
+              <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
+                <div className="shrink-0 flex items-center justify-between gap-2 h-[52px] px-3 border-b border-[var(--color-grey-100)]">
+                  {scopedWorkflow ? (
+                    <span className="inline-flex items-center gap-1.5 min-w-0 h-7 pl-2.5 pr-1 rounded-[8px] text-[12px] font-medium bg-primary-50 border border-primary-200 text-primary-700">
+                      <FlowArrow size={14} className="shrink-0" />
+                      <span className="truncate">{scopedWorkflow.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => scopeSelect("all")}
+                        aria-label="Show all workflows"
+                        className="grid place-items-center w-5 h-5 shrink-0 rounded bg-transparent border-none cursor-pointer text-primary-600 hover:bg-primary-100"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="min-w-0 truncate text-[13px] font-medium text-[var(--text-primary)]">
+                      From your workflows
+                    </span>
+                  )}
+                  <RecFilterDropdown
+                    value={filter}
+                    onChange={(k) => { setFilter(k); setSel(null); }}
+                    counts={counts}
+                  />
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                  {filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
+                      <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
+                      <p className="text-[13px] text-[#757A97]">Nothing in this filter.</p>
+                    </div>
+                  ) : (
+                    filtered.map((it) => (
+                      <RecCard key={it.recId} item={it} selected={selected?.recId === it.recId} onClick={() => setSel(it.recId)} />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right: decision detail (+ its own View details drawer) */}
+              <div className="flex-1 min-w-0">
+                {selected && (
+                  <RecommendationDetail
+                    key={selected.recId}
+                    goalId={selected.goalId}
+                    recId={selected.recId}
+                    onOpenGoal={onOpenGoal}
+                    source={{
+                      workflowId: selected.workflowId,
+                      workflowName: selected.workflowName,
+                      agent: selected.agent,
+                      onOpenWorkflow: (id) => navigate(`/workflows/${id}`),
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -446,19 +416,5 @@ export default function GoalsPage() {
     if (id) navigate(`/goals/${id}`);
   };
 
-  return (
-    <div className="flex flex-col w-full h-full">
-      {/* Standard page header — the same bar Workflows and Agents use. */}
-      <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
-        <span className="text-[16px] leading-[24px] font-medium">Recommendations</span>
-      </div>
-
-      {/* Dashboards-style frame: grey-50 padded area with the page in a white panel */}
-      <div className="flex-1 min-h-0 p-4 bg-grey-50 overflow-hidden">
-        <div className="flex flex-col w-full h-full bg-white rounded-xl border border-[var(--color-grey-100)] overflow-hidden">
-          <RecommendationsPanel onOpenGoal={openGoal} />
-        </div>
-      </div>
-    </div>
-  );
+  return <RecommendationsPanel onOpenGoal={openGoal} />;
 }

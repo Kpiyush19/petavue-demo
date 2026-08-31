@@ -10,7 +10,7 @@ import { AgentMark } from "../../components/AgentMark";
 // The headers are doing real work: read left to right and they answer the three
 // questions a prospect has in the first ten seconds — what is it automating,
 // how does it do it, what do I get.
-const COLS = "minmax(0,1.5fr) 150px minmax(0,1.4fr) 110px 130px 84px 28px";
+const COLS = "minmax(0,1.5fr) 150px minmax(0,1.4fr) 110px 130px 28px";
 
 const STATUS = {
   active: { label: "Live", dot: "bg-green-500", text: "text-green-600" },
@@ -21,17 +21,15 @@ const STATUS = {
   },
 };
 
-/* ── Overlapping stack of the agents a workflow deploys. Identity only — each
-   mark carries its family's icon and names itself on hover; what each one did
+/* ── The agents a workflow deploys. Identity only — each mark is its family's
+   icon in the family's colour and names itself on hover; what each one did
    lives inside the workflow. ── */
 function AgentStack({ steps }) {
   const keys = [...new Set(steps.filter((s) => s.agent).map((s) => s.agent))];
   return (
-    <span className="flex items-center pl-1.5">
-      {keys.map((k, i) => (
-        <span key={k} className="-ml-1.5" style={{ zIndex: keys.length - i }}>
-          <AgentMark agentKey={k} />
-        </span>
+    <span className="flex items-center gap-2">
+      {keys.map((k) => (
+        <AgentMark key={k} agentKey={k} size={20} />
       ))}
     </span>
   );
@@ -83,16 +81,6 @@ function Row({ wf, onOpen }) {
 
       <span className="px-2 text-[12px] text-[#757A97] truncate">
         {live ? wf.lastRun : "Not scheduled"}
-      </span>
-
-      <span className="px-2 flex justify-start">
-        {wf.pending > 0 ? (
-          <span className="grid place-items-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-primary-50 text-primary-600 text-[12px] font-semibold tabular-nums">
-            {wf.pending}
-          </span>
-        ) : (
-          <span className="text-[12px] text-[var(--color-grey-300)]">—</span>
-        )}
       </span>
 
       <span className="flex justify-center text-[var(--text-muted)]">
@@ -214,7 +202,6 @@ export default function WorkflowsPage() {
                     <HeaderCell label="What you get" />
                     <HeaderCell label="Status" />
                     <HeaderCell label="Last run" />
-                    <HeaderCell label="To approve" />
                     <span />
                   </div>
 

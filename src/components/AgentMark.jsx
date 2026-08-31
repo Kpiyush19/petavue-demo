@@ -24,20 +24,19 @@ export function agentIcon(agentKey) {
 }
 
 /**
- * One agent family as a round, coloured mark carrying its own icon.
- * Hover names the family — note our Tooltip takes `title`, not `content`.
+ * One agent family's icon, filled and in the family's own colour — the same
+ * treatment as the Agents grid and the workflow graph, so a family looks
+ * identical everywhere it appears. Hover names it; note our Tooltip takes
+ * `title`, not `content`.
  */
-export function AgentMark({ agentKey, size = 22, ring = true }) {
+export function AgentMark({ agentKey, size = 20 }) {
   const a = AGENTS[agentKey];
   if (!a) return null;
   const Icon = agentIcon(agentKey);
   return (
     <Tooltip title={`${a.label} agent`}>
-      <span
-        className={`grid place-items-center rounded-full text-white cursor-default${ring ? " ring-2 ring-white" : ""}`}
-        style={{ background: a.color, width: size, height: size }}
-      >
-        <Icon size={Math.round(size * 0.58)} weight="fill" />
+      <span className="inline-flex shrink-0 cursor-default" aria-label={`${a.label} agent`}>
+        <Icon size={size} weight="fill" style={{ color: a.color }} />
       </span>
     </Tooltip>
   );

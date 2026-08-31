@@ -339,7 +339,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
           {source?.workflowName ? (
             <span className="min-w-0 inline-flex items-center gap-2 text-[12px] text-[#757A97]">
               Found by
-              {source.agent && <AgentMark agentKey={source.agent} size={18} ring={false} />}
+              {source.agent && <AgentMark agentKey={source.agent} size={18} />}
               {source.agent && <span className="text-[var(--text-primary)]">{AGENTS[source.agent]?.label}</span>}
               <span>in</span>
               <button
