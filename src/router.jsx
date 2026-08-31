@@ -463,12 +463,19 @@ export const router = createBrowserRouter([
                 ]
               },
           {
-            path: "goals",
+            // The section is Recommendations now — goals stopped being the
+            // organising axis in the Aug-2026 pivot. /goals still resolves so
+            // older links and the goal detail pages below keep working.
+            path: "recommendations",
             element: (
               <SuspenseWrapper variant="goals">
                 <GoalsPage />
               </SuspenseWrapper>
             )
+          },
+          {
+            path: "goals",
+            element: <Navigate to="/recommendations" replace />
           },
           {
             path: "goals/new",

@@ -20,10 +20,17 @@ export const NAV_ROUTES = {
   "dashboards-pv": "/dashboards",
   "data-hub": "/data-hub",
   skills: "/skills",
-  goals: "/goals",
+  recommendations: "/recommendations",
   workflows: "/workflows",
   agents: "/agents",
   settings: "/settings",
+};
+
+// Paths that belong to a nav section but don't sit under its own route.
+// Goal detail pages are still served from /goals/:id while the section itself
+// is now Recommendations, so they must keep the same item highlighted.
+export const NAV_ALT_ROUTES = {
+  recommendations: ["/goals"],
 };
 
 export default function MenuBarNav() {
@@ -58,11 +65,13 @@ export default function MenuBarNav() {
   // Prefer the longest matching route so nested paths (e.g. /skills/:id)
   // highlight the deeper item (Skills). The bare /new page matches nothing → no
   // highlight, which is what we want for the Create-New page.
+  const routesFor = (id) => [NAV_ROUTES[id], ...(NAV_ALT_ROUTES[id] || [])].filter(Boolean);
+  const matchLen = (id) => routesFor(id).filter((r) => pathname.startsWith(r)).reduce((n, r) => Math.max(n, r.length), 0);
   const activeId = isChatRoute
     ? null
     : NAV_ITEMS
-        .filter((item) => { const r = NAV_ROUTES[item.id]; return r && pathname.startsWith(r); })
-        .sort((a, b) => NAV_ROUTES[b.id].length - NAV_ROUTES[a.id].length)[0]?.id || null;
+        .filter((item) => matchLen(item.id) > 0)
+        .sort((a, b) => matchLen(b.id) - matchLen(a.id))[0]?.id || null;
 
   // Mock demo: a scripted, populated history (only the first item opens the
   // live session). Non-mock: real recents from the sessions query, so this nav

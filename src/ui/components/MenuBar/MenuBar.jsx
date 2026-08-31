@@ -29,7 +29,7 @@ import './MenuBar.css';
 export const CANONICAL_NAV = [
   { id: 'workflows', label: 'Workflows', icon: 'workflows' },
   { id: 'agents', label: 'Agents', icon: 'agents' },
-  { id: 'goals', label: 'Goals', icon: 'goals' },
+  { id: 'recommendations', label: 'Recommendations', icon: 'goals' },
   { id: 'dashboard-live', label: 'Dashboard', icon: 'dashboard' },
   { id: 'skills', label: 'Skills', icon: 'skills' },
   { id: 'data-hub', label: 'Data Hub', icon: 'data-hub' },

@@ -24,7 +24,7 @@ export const AGENTS = {
     key: "measurement", label: "Measurement & attribution", mark: "ME", color: "#3661ED", tint: "#E0EBFE",
     icon: "ChartLineUp", platforms: ["Google Search", "LinkedIn", "Web", "CRM"],
     owns: "What actually happened, and what it cost",
-    blurb: "Rebuilds the numbers from source every run, joined back to your funnel KPI rather than the platform's.",
+    blurb: "Joins ad spend and exposure to CRM outcomes on every run, so the numbers match your funnel and not the platform's.",
     does: [
       "Joins ad platform spend to CRM outcomes",
       "Benchmarks cost per KPI, per campaign",
@@ -35,7 +35,7 @@ export const AGENTS = {
     key: "budget", label: "Budget & allocation", mark: "BU", color: "#0F7B6C", tint: "#E3F4F1",
     icon: "Wallet", platforms: ["Google Search", "LinkedIn"],
     owns: "Where the money should sit",
-    blurb: "Sizes the move — where a cheaper KPI is still scalable, and what each change actually frees up.",
+    blurb: "Works out where budget should sit: which campaigns have a cheaper cost per KPI and room to scale.",
     does: [
       "Sizes reallocations between campaigns",
       "Quantifies spend released by an exclusion",
@@ -46,7 +46,7 @@ export const AGENTS = {
     key: "delivery", label: "Campaign & delivery", mark: "CD", color: "#E0620D", tint: "#FDEEE2",
     icon: "Broadcast", platforms: ["Google Search", "LinkedIn"],
     owns: "Who sees the ad, when and where",
-    blurb: "Goes through day-part, geography and frequency at a depth nobody has time for by hand.",
+    blurb: "Checks delivery in detail: day-part, geography, frequency, and which accounts are taking more than their share.",
     does: [
       "Trends performance by day-part and geo",
       "Finds accounts soaking up impressions",
@@ -57,7 +57,7 @@ export const AGENTS = {
     key: "demand", label: "Demand selection", mark: "DS", color: "#C4106A", tint: "#FCE7F1",
     icon: "Target", platforms: ["Google Search", "LinkedIn", "Web"],
     owns: "Which accounts and intent are worth paying for",
-    blurb: "Reads intent against your ICP — the terms triggering your ads, and the accounts behaving as in-market.",
+    blurb: "Matches search intent and account behaviour against your ICP to decide what is worth paying for.",
     does: [
       "Classifies search intent behind the spend",
       "Scores delivered audiences against ICP bands",
@@ -68,7 +68,7 @@ export const AGENTS = {
     key: "creative", label: "Creative & message", mark: "CR", color: "#643BCF", tint: "#EBE3FA",
     icon: "PaintBrush", platforms: ["LinkedIn", "Google Search"],
     owns: "Which message keeps working",
-    blurb: "Watches message decay asset by asset and protects the control, so a rotation can be judged on its own.",
+    blurb: "Tracks how each creative is wearing out and protects the best performer so a rotation can be judged fairly.",
     does: [
       "Separates creative decay from audience change",
       "Protects the winning control asset",
@@ -79,7 +79,7 @@ export const AGENTS = {
     key: "conversion", label: "Conversion", mark: "CO", color: "#8A5524", tint: "#F5EBE1",
     icon: "FunnelSimple", platforms: ["Web", "CRM", "Pipeline"],
     owns: "What happens after the click",
-    blurb: "Follows the session past the ad, to tell a media problem apart from a landing-page one.",
+    blurb: "Follows what happens after the click, so a media problem can be told apart from a landing-page one.",
     does: [
       "Reads awareness from session and form behaviour",
       "Isolates where a funnel leak actually starts",
@@ -138,12 +138,14 @@ export const platformOf = (id) => PLATFORMS[id] || { label: id, short: id };
 export const WORKFLOWS = [
   {
     id: "icp-guardrails",
+    nextRun: "Tomorrow, 7:00 AM",
+    reads: ["LinkedIn Ads", "CRM"],
     runs: [
-      { at: "Today, 7:04 AM", status: "success", ms: 8180, produced: "12 attributes flagged" },
-      { at: "Yesterday, 7:03 AM", status: "success", ms: 7920, produced: "9 attributes flagged" },
-      { at: "Sat, 7:05 AM", status: "success", ms: 8410, produced: "11 attributes flagged" },
-      { at: "Fri, 7:04 AM", status: "failed", ms: 2100, produced: "LinkedIn API rate limit" },
-      { at: "Thu, 7:03 AM", status: "success", ms: 8050, produced: "14 attributes flagged" },
+      { at: "Today, 7:04 AM", status: "success", ms: 8180, produced: "12 attributes flagged" , evaluated: "1,842 campaigns · 96 audience facets" },
+      { at: "Yesterday, 7:03 AM", status: "success", ms: 7920, produced: "9 attributes flagged" , evaluated: "1,780 campaigns · 94 audience facets" },
+      { at: "Sat, 7:05 AM", status: "success", ms: 8410, produced: "11 attributes flagged" , evaluated: "1,795 campaigns · 95 audience facets" },
+      { at: "Fri, 7:04 AM", status: "failed", ms: 2100, produced: "LinkedIn API rate limit" , evaluated: "—" },
+      { at: "Thu, 7:03 AM", status: "success", ms: 8050, produced: "14 attributes flagged" , evaluated: "1,760 campaigns · 92 audience facets" },
     ],
     recommendation: {
       headline: "Exclude 12 audience attributes across 4 campaigns",
@@ -161,7 +163,7 @@ export const WORKFLOWS = [
     name: "ICP guardrails",
     platform: "linkedin",
     // "What it automates" — the grunt work, in the practitioner's words.
-    automates: "Reads your ICP, then checks every campaign for exposure landing outside the relevant bands.",
+    automates: "Checks every campaign for exposure landing outside your ICP.",
     // "What you get" — the concrete deliverable. Never a percentage promise.
     deliverable: "Audience attributes to exclude, per campaign",
     status: "active",
@@ -187,12 +189,14 @@ export const WORKFLOWS = [
   },
   {
     id: "audience-sharpening",
+    nextRun: "Tomorrow, 7:00 AM",
+    reads: ["LinkedIn Ads", "Target account list"],
     runs: [
-      { at: "Today, 7:06 AM", status: "success", ms: 7040, produced: "9 accounts capped" },
-      { at: "Yesterday, 7:06 AM", status: "success", ms: 6890, produced: "7 accounts capped" },
-      { at: "Sat, 7:07 AM", status: "success", ms: 7250, produced: "8 accounts capped" },
-      { at: "Fri, 7:06 AM", status: "success", ms: 6980, produced: "6 accounts capped" },
-      { at: "Thu, 7:05 AM", status: "success", ms: 7110, produced: "9 accounts capped" },
+      { at: "Today, 7:06 AM", status: "success", ms: 7040, produced: "9 accounts capped" , evaluated: "3,410 target accounts" },
+      { at: "Yesterday, 7:06 AM", status: "success", ms: 6890, produced: "7 accounts capped" , evaluated: "3,388 target accounts" },
+      { at: "Sat, 7:07 AM", status: "success", ms: 7250, produced: "8 accounts capped" , evaluated: "3,395 target accounts" },
+      { at: "Fri, 7:06 AM", status: "success", ms: 6980, produced: "6 accounts capped" , evaluated: "3,362 target accounts" },
+      { at: "Thu, 7:05 AM", status: "success", ms: 7110, produced: "9 accounts capped" , evaluated: "3,344 target accounts" },
     ],
     recommendation: {
       headline: "Cap 9 over-delivered accounts, free reach for 38 more",
@@ -209,7 +213,7 @@ export const WORKFLOWS = [
     n: 5,
     name: "Audience sharpening",
     platform: "linkedin",
-    automates: "Finds the over-engaged accounts soaking up impressions and starving everyone else.",
+    automates: "Finds accounts taking more impressions than their share, leaving others unseen.",
     deliverable: "Per-account impression caps, refreshed daily",
     status: "active",
     cadence: "Daily · 7:00 AM",
@@ -234,12 +238,14 @@ export const WORKFLOWS = [
   },
   {
     id: "sales-handoff",
+    nextRun: "Tomorrow, 8:00 AM",
+    reads: ["LinkedIn Ads", "Website", "CRM"],
     runs: [
-      { at: "Today, 8:03 AM", status: "success", ms: 9230, produced: "14 accounts prioritised" },
-      { at: "Yesterday, 8:02 AM", status: "success", ms: 8870, produced: "11 accounts prioritised" },
-      { at: "Sat, 8:04 AM", status: "success", ms: 9410, produced: "13 accounts prioritised" },
-      { at: "Fri, 8:03 AM", status: "success", ms: 9050, produced: "10 accounts prioritised" },
-      { at: "Thu, 8:02 AM", status: "success", ms: 8990, produced: "12 accounts prioritised" },
+      { at: "Today, 8:03 AM", status: "success", ms: 9230, produced: "14 accounts prioritised" , evaluated: "12,640 web sessions · 3,410 accounts" },
+      { at: "Yesterday, 8:02 AM", status: "success", ms: 8870, produced: "11 accounts prioritised" , evaluated: "12,180 web sessions · 3,388 accounts" },
+      { at: "Sat, 8:04 AM", status: "success", ms: 9410, produced: "13 accounts prioritised" , evaluated: "12,905 web sessions · 3,395 accounts" },
+      { at: "Fri, 8:03 AM", status: "success", ms: 9050, produced: "10 accounts prioritised" , evaluated: "11,870 web sessions · 3,362 accounts" },
+      { at: "Thu, 8:02 AM", status: "success", ms: 8990, produced: "12 accounts prioritised" , evaluated: "12,240 web sessions · 3,344 accounts" },
     ],
     recommendation: {
       headline: "Hand 14 accounts to sales this week",
@@ -256,7 +262,7 @@ export const WORKFLOWS = [
     n: 6,
     name: "Sales handoff signals",
     platform: "linkedin-web",
-    automates: "Joins site visits, leads and ad engagement to find accounts that are already solution- and brand-aware.",
+    automates: "Joins site visits, leads and ad engagement to find accounts already aware of you.",
     deliverable: "A prioritised account list for sales to work",
     status: "active",
     cadence: "Daily · 8:00 AM",
@@ -281,12 +287,13 @@ export const WORKFLOWS = [
   },
   {
     id: "wasted-spend",
+    reads: ["Google Ads", "CRM"],
     specialists: 6,
     approvalRequired: true,
     n: 1,
     name: "Wasted-spend cleanup",
     platform: "google-search",
-    automates: "Reads every search term you paid for and separates the relevant from the irrelevant.",
+    automates: "Reads every search term you paid for and separates relevant from irrelevant.",
     deliverable: "Negative keywords to add, per campaign",
     status: "available",
     cadence: "Not scheduled",
@@ -302,12 +309,13 @@ export const WORKFLOWS = [
   },
   {
     id: "spend-to-pipeline",
+    reads: ["Google Ads", "CRM"],
     specialists: 5,
     approvalRequired: true,
     n: 2,
     name: "Spend-to-pipeline rebalancing",
     platform: "google-search",
-    automates: "Benchmarks every campaign on your KPI and what that KPI actually costs.",
+    automates: "Benchmarks each campaign on your KPI and what that KPI costs.",
     deliverable: "A sized budget move, campaign to campaign",
     status: "available",
     cadence: "Not scheduled",
@@ -322,12 +330,13 @@ export const WORKFLOWS = [
   },
   {
     id: "delivery-leaks",
+    reads: ["Google Ads"],
     specialists: 7,
     approvalRequired: true,
     n: 3,
     name: "Leak detection in campaign delivery",
     platform: "google-search",
-    automates: "Goes through day-parting and geo performance at a depth nobody has time for by hand.",
+    automates: "Works through day-part and geography performance campaign by campaign.",
     deliverable: "Day, time and geo exclusions, per campaign",
     status: "available",
     cadence: "Not scheduled",
@@ -345,8 +354,8 @@ export const WORKFLOWS = [
 
 // Portfolio counters for the header strip. Kept derived so the numbers can
 // never drift from the list underneath them.
-export function summary() {
-  const live = WORKFLOWS.filter((w) => w.status === "active");
+export function summary(recItems) {
+  const live = listWorkflows(recItems).filter((w) => w.status === "active");
   return {
     pending: live.reduce((n, w) => n + w.pending, 0),
     live: live.length,
@@ -362,6 +371,59 @@ export function summary() {
   };
 }
 
-export function listWorkflows() {
-  return WORKFLOWS;
+// ── Which workflow produced a recommendation ─────────────────────────
+//
+// Under the pivot every recommendation is the output of a workflow — that is
+// the whole model: the workflow runs, the agents do the grunt work, and one
+// specific action comes out the other side for you to approve. So a
+// recommendation with no workflow behind it has no place in the queue.
+//
+// The goals mock predates all of this and keys its findings by `category`.
+// This table is the join. `agent` is the family that did the finding, so the
+// queue can say who found it rather than leaving it anonymous.
+//
+// Deliberately partial: categories that no live workflow could have produced
+// (creative fatigue, landing-page conversion, growth experiments) are absent
+// and get filtered out rather than being attributed to a workflow that would
+// never have looked for them.
+export const REC_SOURCE = {
+  "Audience & ICP":      { workflowId: "icp-guardrails",      agent: "demand" },
+  Attribution:           { workflowId: "icp-guardrails",      agent: "measurement" },
+  Incrementality:        { workflowId: "icp-guardrails",      agent: "measurement" },
+  "Budget pacing":       { workflowId: "icp-guardrails",      agent: "budget" },
+  Suppression:           { workflowId: "audience-sharpening", agent: "demand" },
+  "Segment performance": { workflowId: "audience-sharpening", agent: "delivery" },
+  Forecasting:           { workflowId: "audience-sharpening", agent: "budget" },
+  "Warm accounts":       { workflowId: "sales-handoff",       agent: "demand" },
+  "Lead quality":        { workflowId: "sales-handoff",       agent: "conversion" },
+};
+
+// Stamp a recommendation with the workflow and agent behind it. Returns null
+// for anything no workflow produced, so callers can drop it.
+export function attributeRecommendation(item) {
+  const src = REC_SOURCE[item.category];
+  if (!src) return null;
+  const wf = WORKFLOWS.find((w) => w.id === src.workflowId);
+  if (!wf) return null;
+  return { ...item, workflowId: wf.id, workflowName: wf.name, workflowPlatform: wf.platform, agent: src.agent };
+}
+
+export function attributeRecommendations(items) {
+  return items.map(attributeRecommendation).filter(Boolean);
+}
+
+// Pending counts come FROM the queue rather than being written by hand, so a
+// workflow row and the recommendations surface can never disagree about how
+// many decisions are waiting.
+export function listWorkflows(recItems) {
+  if (!recItems) return WORKFLOWS;
+  const open = attributeRecommendations(recItems).filter((r) => r.status === "open");
+  return WORKFLOWS.map((w) => {
+    const pending = open.filter((r) => r.workflowId === w.id).length;
+    return {
+      ...w,
+      pending,
+      recommendation: w.recommendation ? { ...w.recommendation, waiting: pending } : w.recommendation,
+    };
+  });
 }

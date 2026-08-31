@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   CaretLeft, CaretDown, Database, Code, Brain, FileText,
-  Sparkle, Play, ArrowSquareOut, ShieldCheck, Lightning, CheckCircle, XCircle,
+  Sparkle, Play, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle,
 } from "@phosphor-icons/react";
-import { Button as PvButton, Toggle } from "@/ui";
+import { Button as PvButton } from "@/ui";
 import { apiGet } from "../../api";
 import { cn } from "../../utils/cn";
 import { AGENTS, platformOf } from "../../mocks/agentWorkflows";
@@ -77,12 +77,7 @@ function FamilyNode({ agentKey, text, steps, selected, onSelect }) {
       style={selected ? { outline: `2px solid ${a.color}`, outlineOffset: "-1px" } : undefined}
     >
       <div className="flex items-center gap-2.5 mb-2">
-        <span
-          className="grid place-items-center w-8 h-8 rounded-lg shrink-0 text-white"
-          style={{ background: a.color }}
-        >
-          <Icon size={16} weight="fill" />
-        </span>
+        <Icon size={22} weight="fill" style={{ color: a.color }} className="shrink-0" />
         <span className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{a.label}</span>
       </div>
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
@@ -152,25 +147,17 @@ function AgentConfig({ family, accent }) {
   );
 }
 
-function AgentGraph({ families, specialists, system, platform, approval, onApprovalChange, selected, onSelect }) {
+function AgentGraph({ families, specialists, system, platform, selected, onSelect }) {
   const n = families.length;
   const cols = { gridTemplateColumns: `repeat(${n}, minmax(0,1fr))` };
   return (
-    <div className="rounded-lg border border-[var(--color-grey-100)] bg-[var(--color-grey-50)] px-6 py-6">
+    <div className="w-full rounded-lg border border-[var(--color-grey-100)] bg-[var(--color-grey-50)] px-8 py-6">
       {/* Sage — the orchestrator */}
       <div className="flex justify-center">
         <div className="inline-flex items-center gap-3 px-4 py-3 bg-white border border-[var(--color-primary-100)] rounded-lg">
-          <span
-            className="grid place-items-center w-8 h-8 rounded-lg shrink-0 text-white"
-            style={{ background: "linear-gradient(135deg, #3661ed 0%, #6d5ef0 48%, #a855f7 100%)" }}
-          >
-            <Sparkle size={16} weight="fill" />
-          </span>
+          <Sparkle size={22} weight="fill" className="shrink-0 text-primary-500" />
           <span className="flex flex-col">
-            <span className="flex items-baseline gap-2">
-              <span className="text-[13px] font-semibold text-[var(--text-primary)]">Sage</span>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary-600">Orchestration</span>
-            </span>
+            <span className="text-[13px] font-semibold text-[var(--text-primary)]">Sage</span>
             <span className="text-[12px] text-[#757A97]">
               Deployed {n} {n === 1 ? "family" : "families"} · {specialists} specialist agents
             </span>
@@ -207,37 +194,21 @@ function AgentGraph({ families, specialists, system, platform, approval, onAppro
       </div>
       <Drop />
 
-      {/* The gate. Turn it off and it stops being a gate — the point Prasanna
-          makes about trusting an agent enough to drop approval. */}
+      {/* The gate. Always on — Abiram is explicit that human approval is
+          required initially, so this is a fact about the workflow, not a
+          setting. Removing it is a future capability, not a demo affordance. */}
       <div className="flex justify-center">
         <div
-          className={cn(
-            "inline-flex items-center gap-3 px-4 py-3 bg-white rounded-lg border",
-            !approval && "border-dashed"
-          )}
-          style={{ borderColor: approval ? "#08BD5055" : "var(--color-grey-200)" }}
+          className="inline-flex items-center gap-3 px-4 py-3 bg-white rounded-lg border"
+          style={{ borderColor: "#08BD5055" }}
         >
-          <span
-            className="grid place-items-center w-8 h-8 rounded-lg shrink-0"
-            style={
-              approval
-                ? { background: "#EBFFF3", color: "#08BD50" }
-                : { background: "var(--color-grey-100)", color: "var(--text-muted)" }
-            }
-          >
-            {approval ? <ShieldCheck size={16} weight="fill" /> : <Lightning size={16} weight="fill" />}
-          </span>
+          <ShieldCheck size={22} weight="fill" className="shrink-0" style={{ color: "#08BD50" }} />
           <span className="flex flex-col">
-            <span className="text-[13px] font-medium text-[var(--text-primary)]">
-              {approval ? "Your approval" : "Approval removed"}
-            </span>
+            <span className="text-[13px] font-medium text-[var(--text-primary)]">Your approval</span>
             <span className="text-[12px] text-[#757A97]">
-              {approval
-                ? `Nothing reaches ${platform.short} until you approve`
-                : `Actions execute on ${platform.short} automatically`}
+              Nothing reaches {platform.short} until you approve
             </span>
           </span>
-          <Toggle checked={approval} onChange={(e) => onApprovalChange(e?.target?.checked ?? !approval)} />
         </div>
       </div>
 
@@ -246,9 +217,7 @@ function AgentGraph({ families, specialists, system, platform, approval, onAppro
           <Drop />
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-2.5 px-4 py-3 bg-white border border-[var(--color-grey-100)] rounded-lg">
-              <span className="grid place-items-center w-8 h-8 rounded-lg shrink-0 bg-grey-100 text-[var(--text-secondary)]">
-                <ArrowSquareOut size={16} />
-              </span>
+              <ArrowSquareOut size={22} weight="fill" className="shrink-0 text-[var(--text-secondary)]" />
               <span className="flex flex-col">
                 <span className="text-[13px] font-medium text-[var(--text-primary)]">{system.label}</span>
                 <span className="text-[12px] text-[#757A97]">{system.detail}</span>
@@ -269,7 +238,7 @@ function RunHistory({ runs }) {
   return (
     <div className="rounded-lg border border-[var(--color-grey-100)] overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--color-grey-100)]">
-        <span className="text-[13px] font-medium text-[var(--text-primary)]">Runs</span>
+        <span className="text-[13px] font-medium text-[var(--text-primary)]">Run history</span>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -292,7 +261,12 @@ function RunHistory({ runs }) {
                 {ok ? <CheckCircle size={13} weight="fill" /> : <XCircle size={13} weight="fill" />}
                 {ok ? "Succeeded" : "Failed"}
               </span>
-              <span className="text-[12px] text-[#757A97] truncate">{r.produced}</span>
+              <span className="min-w-0 truncate">
+                <span className="text-[12px] text-[var(--text-primary)]">{r.produced}</span>
+                {r.evaluated && r.evaluated !== "—" && (
+                  <span className="text-[12px] text-[#757A97]"> · from {r.evaluated}</span>
+                )}
+              </span>
               <span className="text-[12px] text-[#757A97] tabular-nums text-right">{(r.ms / 1000).toFixed(1)}s</span>
             </div>
           );
@@ -302,12 +276,99 @@ function RunHistory({ runs }) {
   );
 }
 
+/* ── The context that used to be a banner across the top, plus the workflow's
+   own state. Everything here is real data — no invented filler. ── */
+function RailBlock({ label, children }) {
+  return (
+    <div className="bg-white border border-[var(--color-grey-100)] rounded-lg px-3.5 py-3">
+      <span className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2.5">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function RailRow({ k, v, tone, stack }) {
+  if (stack) {
+    return (
+      <div className="flex flex-col gap-0.5 py-1">
+        <span className="text-[12px] text-[#757A97]">{k}</span>
+        <span className={cn("text-[12px]", tone || "text-[var(--text-primary)]")}>{v}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1">
+      <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
+      <span className={cn("text-[12px] text-right", tone || "text-[var(--text-primary)]")}>{v}</span>
+    </div>
+  );
+}
+
+function WorkflowRail({ wf, platform, families, live, onReview }) {
+  const last = wf.runs?.[0];
+  const ok = last?.status === "success";
+  return (
+    <aside className="w-[300px] shrink-0 self-start sticky top-0 flex flex-col gap-3 p-3 bg-grey-50 border border-grey-100/70 rounded-xl">
+      <RailBlock label="Status">
+        <div className="flex items-center gap-1.5 mb-2">
+          <i className={cn("w-[6px] h-[6px] rounded-full", live ? "bg-green-500" : "bg-[var(--color-grey-300)]")} />
+          <span className={cn("text-[13px] font-medium", live ? "text-green-600" : "text-[var(--text-muted)]")}>
+            {live ? "Live" : "Available"}
+          </span>
+        </div>
+        <RailRow k="Schedule" v={live ? wf.cadence : "Not scheduled"} />
+        {live && wf.nextRun && <RailRow k="Next run" v={wf.nextRun} />}
+      </RailBlock>
+
+      {live && last && (
+        <RailBlock label="Latest run">
+          <div className="flex items-center gap-1.5 mb-2">
+            {ok ? <CheckCircle size={14} weight="fill" className="text-green-500" />
+                : <XCircle size={14} weight="fill" className="text-rose-500" />}
+            <span className={cn("text-[13px] font-medium", ok ? "text-green-600" : "text-rose-600")}>
+              {ok ? "Succeeded" : "Failed"}
+            </span>
+            <span className="text-[12px] text-[#757A97]">· {last.at}</span>
+          </div>
+          {last.evaluated && last.evaluated !== "—" && <RailRow k="Scanned" v={last.evaluated} stack />}
+          <RailRow k="Duration" v={`${(last.ms / 1000).toFixed(1)}s`} />
+        </RailBlock>
+      )}
+
+      <RailBlock label="Output">
+        <p className="text-[13px] text-[var(--text-primary)] leading-snug mb-2">{wf.deliverable}</p>
+        {live && wf.recommendation && (
+          <>
+            <p className="text-[12px] text-[#757A97] leading-snug mb-2.5">
+              Latest: {wf.recommendation.headline}
+            </p>
+            <PvButton
+              variant="secondary"
+              size="sm"
+              label={`Review${wf.recommendation.waiting ? ` (${wf.recommendation.waiting})` : ""}`}
+              icon={ArrowSquareOut}
+              iconPosition="suffix"
+              onClick={onReview}
+            />
+          </>
+        )}
+      </RailBlock>
+
+      <RailBlock label="Setup">
+        <RailRow k="Reads" v={(wf.reads || []).join(" · ")} />
+        <RailRow k="Acts on" v={platform.label} />
+        <RailRow k="Agents" v={`${families.length} families · ${wf.specialists} specialists`} />
+      </RailBlock>
+    </aside>
+  );
+}
+
 export default function WorkflowDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selected, setSelected] = useState(null);
-  // Local only: flipping approval is a demo affordance, not persisted.
-  const [approvalOverride, setApprovalOverride] = useState(null);
   const { data, isLoading } = useQuery({ queryKey: ["agent-workflows"], queryFn: () => apiGet("/api/agent-workflows") });
   const wf = (data?.workflows || []).find((w) => w.id === id);
 
@@ -323,7 +384,6 @@ export default function WorkflowDetail() {
 
   const live = wf.status === "active";
   const platform = platformOf(wf.platform);
-  const rec = wf.recommendation;
   const system = wf.steps.find((s) => s.kind === "system");
   const stepsFor = (agent) => wf.steps.filter((s) => s.agent === agent);
   const families = (
@@ -331,7 +391,6 @@ export default function WorkflowDetail() {
     [...new Set(wf.steps.filter((s) => s.agent).map((s) => s.agent))].map((a) => ({ agent: a, text: "" }))
   ).map((f) => ({ ...f, steps: stepsFor(f.agent) }));
   const selectedFamily = families.find((f) => f.agent === selected) || null;
-  const approval = approvalOverride ?? wf.approvalRequired !== false;
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -355,48 +414,21 @@ export default function WorkflowDetail() {
         <div className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]" style={{ height: "calc(100% - 60px)" }}>
           <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
             <div className="w-full h-full overflow-y-auto">
-              <div className="w-full px-6 py-6">
+              <div className="w-full px-6 py-6 flex gap-5 items-start">
+                <div className="flex-1 min-w-0">
 
-                {/* The outcome leads. This is what the workflow produced today. */}
-                {live && rec ? (
-                  <div className="rounded-xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)] p-5 mb-7">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-primary-600 mb-2">
-                      Latest output
-                    </span>
-                    <h2 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-[-0.02em] leading-snug mb-1.5">
-                      {rec.headline}
-                    </h2>
-                    <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed mb-4">{rec.impact}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <PvButton
-                        variant="secondary"
-                        size="md"
-                        label={`Review in Recommendations${rec.waiting > 1 ? ` (${rec.waiting})` : ""}`}
-                        icon={ArrowSquareOut}
-                        iconPosition="suffix"
-                        onClick={() => navigate("/goals")}
-                      />
-                    </div>
+                {/* One line of intent, then the diagram. No banner — the
+                    output and state live in the rail. */}
+                <div className="flex items-baseline justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <h3 className="text-[14px] font-medium text-[var(--text-primary)]">
+                      {live ? "How this workflow runs" : "Agents this workflow deploys"}
+                    </h3>
+                    <p className="text-[12px] text-[#757A97] leading-snug mt-0.5 max-w-[560px]">{wf.automates}</p>
                   </div>
-                ) : (
-                  <div className="rounded-xl border border-[var(--color-grey-100)] bg-grey-50 p-5 mb-7">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                      Not running yet
-                    </span>
-                    <h2 className="text-[18px] font-semibold text-[var(--text-primary)] tracking-[-0.02em] leading-snug mb-1.5">
-                      {wf.deliverable}
-                    </h2>
-                    <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed mb-4">{wf.automates}</p>
-                    <PvButton variant="primary" size="md" label="Activate workflow" icon={Play} />
-                  </div>
-                )}
-
-                {/* The team Sage assembled for this outcome. */}
-                <div className="flex items-baseline justify-between gap-3 mb-3">
-                  <h3 className="text-[14px] font-medium text-[var(--text-primary)]">
-                    {live ? "How this was found" : "Agents this workflow deploys"}
-                  </h3>
-                  <span className="text-[12px] text-[#757A97]">acts on {platform.label}</span>
+                  {!live && (
+                    <PvButton variant="primary" size="sm" label="Activate workflow" icon={Play} />
+                  )}
                 </div>
 
                 <AgentGraph
@@ -404,8 +436,6 @@ export default function WorkflowDetail() {
                   specialists={wf.specialists}
                   system={system}
                   platform={platform}
-                  approval={approval}
-                  onApprovalChange={setApprovalOverride}
                   selected={selected}
                   onSelect={setSelected}
                 />
@@ -414,8 +444,16 @@ export default function WorkflowDetail() {
                   <AgentConfig family={selectedFamily} accent={AGENTS[selectedFamily.agent].color} />
                 )}
 
-                <div className="mt-6"><RunHistory runs={wf.runs} /></div>
+                  <div className="mt-6"><RunHistory runs={wf.runs} /></div>
+                </div>
 
+                <WorkflowRail
+                  wf={wf}
+                  platform={platform}
+                  families={families}
+                  live={live}
+                  onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
+                />
               </div>
             </div>
           </div>

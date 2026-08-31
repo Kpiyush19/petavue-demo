@@ -118,7 +118,6 @@ export default function WorkflowsPage() {
     queryFn: () => apiGet("/api/agent-workflows"),
   });
   const workflows = data?.workflows || [];
-  const s = data?.summary;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

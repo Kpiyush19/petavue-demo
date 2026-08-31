@@ -17,12 +17,12 @@ function AgentCard({ agent }) {
   const deployed = agent.liveCount > 0;
   return (
     <div className="group flex flex-col gap-2 h-full p-5 bg-white border border-grey-100 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-150 hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]">
-      <span
-        className="grid place-items-center w-10 h-10 rounded-[10px] shrink-0 text-white"
-        style={{ background: agent.color }}
-      >
-        <Icon size={20} weight="fill" />
-      </span>
+      <Icon
+        size={28}
+        weight="fill"
+        style={{ color: agent.color }}
+        className="shrink-0"
+      />
 
       <h3 className="text-[16px] font-semibold leading-snug tracking-[-0.2px] text-[var(--text-primary)] mt-1">
         {agent.label}

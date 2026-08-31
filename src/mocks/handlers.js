@@ -514,7 +514,10 @@ const handlers = [
   { method: "GET", pattern: /\/api\/goals\/config$/, handler: () => Goals.getConfig() },
   { method: "PUT", pattern: /\/api\/goals\/config$/, handler: ({ body }) => Goals.saveConfig(body) },
   { method: "GET", pattern: /\/api\/goals\/attention$/, handler: () => Goals.attentionFeed() },
-  { method: "GET", pattern: /\/api\/goals\/recommendations$/, handler: () => Goals.allRecommendations() },
+  // Every recommendation carries the workflow and agent that produced it.
+  // Findings no live workflow could have produced are dropped rather than
+  // shown without a source.
+  { method: "GET", pattern: /\/api\/goals\/recommendations$/, handler: () => ({ items: AgentWf.attributeRecommendations(Goals.allRecommendations().items) }) },
   { method: "GET", pattern: /\/api\/goals$/, handler: () => ({ goals: Goals.listGoals() }) },
   { method: "POST", pattern: /\/api\/goals$/, handler: ({ body }) => ({ goal: Goals.createGoal(body || {}) }) },
   { method: "GET", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params }) => Goals.getGoal(params[0]) || { detail: "not found" } },
@@ -928,7 +931,9 @@ const handlers = [
   } },
   // Agentic workflows surface (the six paid-media pilot use cases). Separate
   // from /api/workflows, which is the existing step-based workflow engine.
-  { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => ({ workflows: AgentWf.listWorkflows(), summary: AgentWf.summary() }) },
+  // Workflow rows read their pending count from the live recommendation queue,
+  // so a row and the Recommendations page can never claim different numbers.
+  { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => { const recs = Goals.allRecommendations().items; return { workflows: AgentWf.listWorkflows(recs), summary: AgentWf.summary(recs) }; } },
   { method: "GET", pattern: /\/api\/agents$/, handler: () => ({ agents: AgentWf.listAgents(), orchestrator: AgentWf.ORCHESTRATOR }) },
   { method: "GET", pattern: /\/api\/workflows$/, handler: () => ({ workflows: db.workflows }) },
   { method: "GET", pattern: /\/api\/workflows\/([^/]+)$/, handler: ({ params }) => db.workflows.find((w) => w.workflow_id === params[0]) || db.workflows[0] },

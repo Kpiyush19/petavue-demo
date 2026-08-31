@@ -1,19 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "motion/react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "motion/react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  X, Target, CheckCircle, ClockCounterClockwise, Play, CircleNotch, CaretRight, CaretDown, Lightning,
-  DotsThree, XCircle, ArrowSquareOut, Lightbulb, Eye, Clock, Flag, Pulse, FlowArrow, MagnifyingGlass, Trash,
-  Sparkle, PaperPlaneRight, Funnel, Info, Warning, ArrowsClockwise,
+  CheckCircle, CaretDown, Lightning, Eye, FlowArrow, MagnifyingGlass, Sparkle, Funnel, Warning,
 } from "@phosphor-icons/react";
-import { toast } from "sonner";
-import { Tooltip } from "@/ui";
-import { Button as PvButton } from "@/ui";
-import { apiGet, apiPost, apiPut, apiDelete, getApiBase, getAuthToken } from "../../api";
+import {
+  apiGet, apiPost, getApiBase, getAuthToken,
+} from "../../api";
 import { cn } from "../../utils/cn";
 import { FilterMenu } from "./FilterMenu";
+import { AgentMark } from "../../components/AgentMark";
 import { RecommendationDetail } from "./RecommendationDrawer";
 import { SAGE_GRADIENT } from "./SageWidget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
@@ -22,165 +19,10 @@ import { PUSHER_KEY, PUSHER_CLUSTER } from "../../config";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import "../../components/dashboards/analytics-chat-widget/styles.css";
 
-const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
-const HEALTH = {
-  attention: { dot: "bg-rose-500", label: "Act now", text: "text-rose-600" },
-  ontrack: { dot: "bg-green-500", label: "On track", text: "text-green-600" },
-  setup: { dot: "bg-amber-500", label: "In setup", text: "text-amber-600" },
-};
-const SETUP_LABEL = { calibrating: "Calibrating", decisions: "Ready for review", review: "Ready for review" };
 
-const NEEDS_COLS = "minmax(0,1fr) 180px 200px 84px 36px";
-// Shared column layout for both goal lists: Goal · What we found · Priority ·
-// Activity · Checked · kebab.
-const GOALS_COLS = "minmax(0,1.3fr) minmax(0,1.9fr) 132px 150px 110px 44px";
 
-/* ── Row kebab menu (portaled so it escapes section overflow) ── */
-function RowMenu({ items, disabled }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState(null);
-  const btnRef = useRef(null);
-  const toggle = (e) => {
-    e.stopPropagation();
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 192) });
-    }
-    setOpen((o) => !o);
-  };
-  return (
-    <div className="flex justify-center">
-      <button ref={btnRef} onClick={toggle} disabled={disabled}
-        className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-grey-100 bg-transparent border-none cursor-pointer disabled:opacity-50" aria-label="Actions">
-        <DotsThree size={18} weight="bold" />
-      </button>
-      {createPortal(
-        <AnimatePresence>
-          {open && pos && (
-            <>
-              <div className="fixed inset-0 z-[60]" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-                className="fixed z-[61] w-48 bg-white border border-[var(--border-primary)] rounded-lg shadow-lg py-1"
-                style={{ top: pos.top, left: pos.left, transformOrigin: "top right" }}
-              >
-                {items.map((it) => (
-                  <button key={it.label} onClick={(e) => { e.stopPropagation(); it.onClick(); setOpen(false); }}
-                    className={cn("w-full flex items-center gap-2.5 px-3 py-2 text-[14px] text-left bg-transparent border-none cursor-pointer hover:bg-grey-50", it.danger ? "text-rose-600" : "text-[var(--text-primary)]")}>
-                    {it.icon && <it.icon size={15} />} {it.label}
-                  </button>
-                ))}
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
-    </div>
-  );
-}
 
-/* ── ThoughtSpot-style insight card: color-coded 2px top border, sharp corners,
-      subtle hover lift. Used for the portfolio "Highlights" row. ── */
-const INSIGHT_COLOR = {
-  red: { bar: "#ef4444", txt: "text-rose-600" },
-  amber: { bar: "#f59e0b", txt: "text-amber-600" },
-  green: { bar: "#22c55e", txt: "text-green-600" },
-  blue: { bar: "var(--color-primary-500)", txt: "text-primary-600" },
-};
-function InsightCard({ kind, color, icon: Icon, value, desc, foot, footIcon: FootIcon, onClick }) {
-  const c = INSIGHT_COLOR[color] || INSIGHT_COLOR.blue;
-  return (
-    <div className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3.5">
-      <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{kind}</span>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        {Icon && <Icon size={16} className={c.txt} />}
-        <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)]">{value}</span>
-      </div>
-      <p className="text-[12px] text-[#757A97] leading-snug">{desc}</p>
-    </div>
-  );
-}
-
-/* ── Column header cell with a Phosphor icon ── */
-function HeaderCell({ icon: Icon, label }) {
-  return (
-    <span className="flex items-center gap-1.5 text-[var(--color-grey-500)] font-medium text-xs px-2">
-      {Icon && <Icon size={13} />} {label}
-    </span>
-  );
-}
-
-/* ── Collapsible section with a proper heading ── */
-function Section({ title, icon: Icon, iconClass, count, badge, open, onToggle, headerRight, children }) {
-  return (
-    <section className="bg-white border border-[var(--color-grey-100)] rounded-lg overflow-hidden shadow-[0_1px_2px_rgba(16,24,40,0.04),0_12px_32px_-16px_rgba(16,24,40,0.14)]">
-      <div className="flex items-center justify-between px-5 py-4 cursor-pointer select-none hover:bg-grey-50/60 transition-colors" onClick={onToggle}>
-        <div className="flex items-center gap-2.5">
-          {Icon && <Icon size={18} weight="fill" className={cn("shrink-0", iconClass || "text-[var(--text-muted)]")} />}
-          <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">{title}</h2>
-          {typeof count === "number" && (
-            <span className={cn("px-1.5 py-0.5 text-[12px] font-semibold rounded-full", badge || "bg-grey-100 text-[var(--text-muted)]")}>{count}</span>
-          )}
-          <CaretDown size={15} className={cn("text-[var(--text-muted)] transition-transform ml-0.5", !open && "-rotate-90")} />
-        </div>
-        {headerRight}
-      </div>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.24, ease: [0.32, 0.72, 0, 1] }}
-            style={{ overflow: "hidden" }}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </section>
-  );
-}
-
-/* ── An "act now" recommendation row ── */
-function AttentionRow({ item, onOpen, onOpenRec }) {
-  const qc = useQueryClient();
-  const act = useMutation({
-    mutationFn: (action) => apiPost(`/api/goals/${item.goalId}/recommendations/${item.recId}/act`, { action, note: action === "snoozed" ? "Snoozed from home" : undefined }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["goals-attention"] }); qc.invalidateQueries({ queryKey: ["goals"] }); },
-  });
-  return (
-    <motion.div
-      layout
-      initial={false}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-      className="grid items-center gap-3 px-5 py-3 border-t border-[var(--color-grey-100)] hover:bg-grey-50/70 transition-colors overflow-hidden"
-      style={{ gridTemplateColumns: NEEDS_COLS }}
-    >
-      <button onClick={() => onOpenRec(item.goalId, item.recId)} className="flex items-center gap-2 min-w-0 bg-transparent border-none p-0 cursor-pointer text-left">
-        <Lightning size={14} weight="fill" className="text-rose-500 shrink-0" />
-        <span className="text-[14px] font-medium text-[var(--text-primary)] truncate hover:text-primary-600">{item.title}</span>
-      </button>
-      <button onClick={() => onOpen(item.goalId)} className="text-[12px] font-medium text-primary-600 hover:underline truncate text-left bg-transparent border-none p-0 cursor-pointer">{item.goalName}</button>
-      <span className="text-[12px] text-[#757A97] truncate">{item.groupLabel}</span>
-      <span className="text-[12px] text-[var(--text-muted)] whitespace-nowrap">{item.at}</span>
-      <RowMenu
-        disabled={act.isPending}
-        items={[
-          { label: "Mark done", icon: CheckCircle, onClick: () => act.mutate("acted") },
-          { label: "Snooze", icon: ClockCounterClockwise, onClick: () => act.mutate("snoozed") },
-          { label: "Dismiss", icon: XCircle, danger: true, onClick: () => act.mutate("rejected") },
-        ]}
-      />
-    </motion.div>
-  );
-}
 
 /* One mutually-exclusive bucket per goal — drives the "Your goals" filter tabs
    so a long list can be narrowed to a subset instead of scrolled. */
@@ -190,44 +32,8 @@ function goalBucket(g) {
   if (g.watching > 0) return "watching";
   return "ontrack";
 }
-const GOAL_FILTERS = [
-  { k: "all", label: "All" },
-  { k: "actnow", label: "Act now" },
-  { k: "attention", label: "Needs attention" },
-  { k: "ontrack", label: "On track" },
-  { k: "watching", label: "Watching" },
-];
 
-/* Filter for "Your goals" — design-system button trigger + portaled menu of
-   buckets with live counts. */
-function GoalFilterDropdown({ value, onChange, counts, total }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState(null);
-  const ref = useRef(null);
-  const current = GOAL_FILTERS.find((f) => f.k === value) || GOAL_FILTERS[0];
-  const toggle = () => {
-    if (!open && ref.current) {
-      const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: Math.max(8, r.right - 240) });
-    }
-    setOpen((o) => !o);
-  };
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <PvButton variant="secondary" size="md" icon={Funnel} aria-label={`Filter goals: ${current.label}`} onClick={toggle} />
-      {value !== "all" && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary-500 ring-2 ring-white pointer-events-none" />}
-      {open && pos && (
-        <FilterMenu
-          pos={pos}
-          value={value}
-          onSelect={onChange}
-          onClose={() => setOpen(false)}
-          options={GOAL_FILTERS.map((f) => ({ id: f.k, label: f.label, count: f.k === "all" ? total : (counts[f.k] || 0) }))}
-        />
-      )}
-    </div>
-  );
-}
+
 
 /* Priority pill — the first thing a triager reads: what should I do about this
    goal? Act now → Watch → On track → setup states. */
@@ -239,26 +45,6 @@ function goalPriority(goal) {
   return { label: "On track", icon: CheckCircle, cls: "bg-green-50 text-green-600" };
 }
 
-/* Shared row actions (open · delete) for both the triage cards and the table. */
-function useGoalRowMenu(goal, onFull) {
-  const qc = useQueryClient();
-  const del = useMutation({
-    mutationFn: () => apiDelete(`/api/goals/${goal.id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["goals"] });
-      qc.invalidateQueries({ queryKey: ["goals-attention"] });
-      qc.invalidateQueries({ queryKey: ["goals-recommendations"] });
-      toast.success("Goal deleted");
-    },
-    onError: (e) => toast.error("Couldn't delete: " + e.message),
-  });
-  const removeGoal = () => { if (window.confirm(`Delete “${goal.name}”? This can't be undone.`)) del.mutate(); };
-  const items = [
-    { label: "Open full view", icon: ArrowSquareOut, onClick: () => onFull(goal.id) },
-    { label: del.isPending ? "Deleting…" : "Delete goal", icon: Trash, danger: true, onClick: removeGoal },
-  ];
-  return { items };
-}
 
 /* ── Recommendation status filter — a single button that opens the shared
    menu, rather than a row of pills that had to scroll sideways. ── */
@@ -307,71 +93,6 @@ function RecFilterDropdown({ value, onChange, counts }) {
   );
 }
 
-/* ── Shared column header for both goal lists. ── */
-function GoalListHeader() {
-  return (
-    <div className="grid px-3 py-2 w-full" style={{ gridTemplateColumns: GOALS_COLS }}>
-      <HeaderCell label="Goal" />
-      <HeaderCell label="What we found" />
-      <HeaderCell label="Priority" />
-      <HeaderCell label="Activity" />
-      <HeaderCell label="Checked" />
-      <span />
-    </div>
-  );
-}
-
-/* ── The one goal row, used in BOTH "Where to act first" and "Your goals" so the
-      two read as the same object — same columns, 12px, priority as a bg chip.
-      Goal · Priority · Reason to open · Activity · Checked · menu. ── */
-function GoalRow({ goal, onOpen, onFull }) {
-  const { items: menuItems } = useGoalRowMenu(goal, onFull);
-  const p = goalPriority(goal);
-  const finding = goal.topFinding;
-  const inSetup = goal.health === "setup";
-
-  // Reason to open — the latest finding if there is one, otherwise a state line.
-  const reason = finding
-    ? finding.title
-    : inSetup
-      ? (goal.status === "calibrating" ? "Calibrating: reading your data" : "Ready for review: finish setup to start tracking")
-      : "On track. Nothing needs action this check-in";
-
-  return (
-    <div
-      className="grid items-center w-full px-3 h-[52px] shrink-0 bg-white border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all cursor-pointer"
-      style={{ gridTemplateColumns: GOALS_COLS }}
-      onClick={() => onOpen(goal)}
-    >
-      {/* Goal */}
-      <span className="text-[12px] font-medium text-[var(--text-primary)] truncate px-2">{goal.name}</span>
-      {/* What we found — secondary text */}
-      <span className="text-[12px] text-[#757A97] truncate px-2">{reason}</span>
-      {/* Priority — bg chip */}
-      <span className="px-2">
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap", p.cls)}><p.icon size={10} weight="fill" />{p.label}</span>
-      </span>
-      {/* Activity — parts joined by "|" */}
-      <span className="px-2 flex items-center gap-1.5 min-w-0 text-[12px] text-[var(--text-muted)]">
-        {(() => {
-          const parts = [];
-          if (goal.actNow > 0) parts.push(<span key="act" className="text-[var(--text-primary)] font-semibold whitespace-nowrap">{goal.actNow} to act</span>);
-          if (goal.watching > 0 && goal.actNow === 0) parts.push(<span key="watch" className="whitespace-nowrap">{goal.watching} watching</span>);
-          if (goal.firingCount > 0) parts.push(<span key="fire" className="whitespace-nowrap">{goal.firingCount} firing</span>);
-          if (parts.length === 0) return <span>—</span>;
-          return parts.flatMap((el, i) => i === 0 ? [el] : [<span key={`sep${i}`} className="text-[var(--color-grey-300)]">|</span>, el]);
-        })()}
-      </span>
-      {/* Checked */}
-      <span className="text-[12px] text-[var(--text-muted)] whitespace-nowrap truncate px-2">{goal.lastCheckIn || "Not run yet"}</span>
-      {/* Action — kebab (Run check-in / Open full view / Delete live inside it) */}
-      <div className="px-2 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-        <RowMenu items={menuItems} />
-      </div>
-    </div>
-  );
-}
-
 /* ── Recommendations tab: highlights + filters + queue + detail ── */
 
 // One bucket per recommendation — drives the status chip (our goalPriority
@@ -385,17 +106,6 @@ function recMeta(item) {
     return { key: "needs-review", label: "Review soon", cls: "text-amber-700 border border-amber-200", icon: Warning };
   return { key: "watchlist", label: "Watch", cls: "text-blue-700 border border-blue-200", icon: Eye };
 }
-
-const parseMoney = (v) => {
-  const m = String(v || "").match(/\$?\s*([\d.]+)\s*([KkMm])?/);
-  if (!m) return 0;
-  let n = parseFloat(m[1]);
-  if (/[Kk]/.test(m[2] || "")) n *= 1000;
-  if (/[Mm]/.test(m[2] || "")) n *= 1e6;
-  return n;
-};
-const fmtMoney = (n) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${Math.round(n)}`);
-
 // Recommendation lifecycle filters, keyed to rec.status. "Accepted" maps to our
 // internal "acted" status; "Archived" is a distinct filed-away state.
 const REC_FILTERS = [
@@ -429,37 +139,48 @@ function RecCard({ item, selected, onClick }) {
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", m.cls)}>
           <m.icon size={10} weight="regular" />{m.label}
         </span>
+        {item.workflowName && (
+          <span className="flex items-center gap-1.5 min-w-0 ml-auto">
+            {item.agent && <AgentMark agentKey={item.agent} size={18} ring={false} />}
+            <span className="text-[11px] text-[#757A97] truncate">{item.workflowName}</span>
+          </span>
+        )}
       </div>
     </button>
   );
 }
 
-// Goal scope — a listbox-style title dropdown (truncating trigger + chevron,
-// portaled radio menu), the product pattern rather than a native <select>.
-function GoalScopeDropdown({ value, onChange, goals }) {
+// Workflow scope — the same filter-button pattern as the status filter, so the
+// two read as one control group. Recommendations are scoped by the workflow
+// that produced them: goals stopped being the organising axis in the Aug-2026
+// pivot.
+function WorkflowScopeDropdown({ value, onChange, workflows, counts }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
-  const allLabel = `All goals`;
-  const label = value === "all" ? allLabel : (goals.find((g) => g.id === value)?.name || allLabel);
-  const options = [{ id: "all", name: allLabel }, ...goals];
+  const allLabel = "All workflows";
+  const current = value === "all" ? allLabel : (workflows.find((w) => w.id === value)?.name || allLabel);
+  const count = value === "all" ? counts.all : counts[value] || 0;
   const toggle = () => {
     if (!open && ref.current) {
       const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 8, left: r.left, width: Math.max(320, Math.min(460, r.width + 160)) });
+      setPos({ top: r.bottom + 8, left: r.left, width: Math.max(260, r.width) });
     }
     setOpen((o) => !o);
   };
   return (
-    <div ref={ref} className="min-w-0">
+    <div ref={ref} className="shrink-0">
       <button
+        type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggle}
-        className="flex items-center gap-1.5 min-w-0 max-w-[440px] bg-transparent border-none p-0 cursor-pointer"
+        className="inline-flex items-center gap-1.5 max-w-[280px] h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-[var(--color-grey-200)] text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
       >
-        <span className="block truncate text-[14px] leading-[22px] font-normal text-[var(--text-primary)]">{label}</span>
-        <CaretDown size={16} className={cn("shrink-0 text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
+        <FlowArrow size={14} className="text-[var(--text-muted)] shrink-0" />
+        <span className="truncate">{current}</span>
+        <span className="tabular-nums text-[var(--text-muted)]">{count}</span>
+        <CaretDown size={13} className={cn("shrink-0 text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
       </button>
       {open && pos && (
         <FilterMenu
@@ -467,9 +188,10 @@ function GoalScopeDropdown({ value, onChange, goals }) {
           value={value}
           onSelect={onChange}
           onClose={() => setOpen(false)}
+          minWidth={260}
           searchable
-          searchPlaceholder="Search goals…"
-          options={options.map((o) => ({ id: o.id, label: o.name }))}
+          searchPlaceholder="Search workflows…"
+          options={[{ id: "all", label: allLabel, count: counts.all }, ...workflows.map((w) => ({ id: w.id, label: w.name, count: counts[w.id] || 0 }))]}
         />
       )}
     </div>
@@ -482,8 +204,8 @@ function GoalScopeDropdown({ value, onChange, goals }) {
 const PAID_EFFICIENCY_GOAL = "Reduce inefficient daily paid spend by 5%";
 function goalFollowups(goal) {
   const qs = goal.name === PAID_EFFICIENCY_GOAL
-    ? ["Explain this goal", "Where's my paid budget leaking right now?", "Should I cut Meta or wait?"]
-    : ["Explain this goal", "What should I do next?", "Which monitors are firing?"];
+    ? ["Where's my paid budget leaking right now?", "Which campaigns are outside the ICP bands?", "What should I approve first?"]
+    : ["What did this workflow find?", "Which agent flagged this?", "What should I approve first?"];
   return qs.map((q) => ({ question: q, grounded_in: goal.name, grounded_type: "goal" }));
 }
 function GoalSagePanel({ goal }) {
@@ -511,42 +233,25 @@ function GoalSagePanel({ goal }) {
       pusherKey={PUSHER_KEY}
       pusherCluster={PUSHER_CLUSTER}
       timezone="UTC"
-      welcomeSubtitle="Ask a question about your goal — what's driving it, what to do next, or why a number moved."
+      welcomeSubtitle="Ask about what this workflow found — which agent flagged it, what the numbers are, or what to approve first."
       welcomeCtas={[]}
       followups={goalFollowups(goal)}
-      inputPlaceholder="Ask a question about your goal…"
+      inputPlaceholder="Ask about these recommendations…"
     />
   );
 }
 
-// Sage requires one goal for context. Rendered in the shared floaty ChatOverlay
-// (full page height); it never dead-ends: with no goal scoped it opens on a goal
-// picker, and once a goal is chosen it becomes the live Sage chat for that goal
-// (that choice also scopes the queue).
-function RecSageDrawer({ open, onClose, goals, selected, onSelect }) {
+// Sage, scoped to whatever the queue is showing. It used to refuse to open
+// until you picked a goal; there is nothing to pick now — the scope is the
+// workflow, and the goal id is only plumbing for the chat endpoint.
+function RecSageDrawer({ open, onClose, context }) {
   return (
-    <ChatOverlay isOpen={open} onClose={onClose} floating heading="Sage" title={selected ? selected.name : "Sage"}>
-      {selected ? (
-        <GoalSagePanel key={selected.id} goal={selected} />
+    <ChatOverlay isOpen={open} onClose={onClose} floating heading="Sage" title={context?.name || "Sage"}>
+      {context ? (
+        <GoalSagePanel key={context.id} goal={context} />
       ) : (
-        <div className="h-full overflow-y-auto p-4 flex flex-col gap-3">
-          <div className="rounded-lg border border-[var(--color-grey-100)] bg-grey-50 p-3.5">
-            <p className="text-[13px] font-medium text-[var(--text-primary)]">Choose a goal</p>
-            <p className="text-[12px] text-[#757A97] mt-1 leading-relaxed">Sage needs one goal context before it can answer. Choose a goal below, then ask anything.</p>
-          </div>
-          <div className="flex flex-col gap-2">
-            {goals.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => onSelect(g.id)}
-                className="flex items-center gap-2.5 text-left px-3.5 py-3 rounded-lg border border-[var(--color-grey-100)] bg-white hover:border-primary-400 hover:bg-primary-50 cursor-pointer transition-colors"
-              >
-                <Target size={15} className="text-[var(--text-muted)] shrink-0" />
-                <span className="text-[13px] font-medium text-[var(--text-primary)] flex-1 min-w-0">{g.name}</span>
-                <CaretRight size={14} className="text-[var(--text-muted)] shrink-0" />
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-center h-full text-[13px] text-[var(--text-muted)]">
+          Nothing to ask about yet.
         </div>
       )}
     </ChatOverlay>
@@ -614,18 +319,29 @@ function RecSkeleton() {
 }
 
 function RecommendationsPanel({ onOpenGoal }) {
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
   const items = data?.items || [];
   const [sel, setSel] = useState(null);
   const [filter, setFilter] = useState("all");
-  const [goalScope, setGoalScope] = useState("all");
+  const [params, setParams] = useSearchParams();
+  const [scope, setScope] = useState(params.get("workflow") || "all");
   const [sageOpen, setSageOpen] = useState(false);
 
-  // Distinct goals present in the queue — drive both the scope selector and the
-  // Sage goal picker so a single choice governs both.
-  const goalOptions = [...new Map(items.map((i) => [i.goalId, i.goalName])).entries()].map(([id, name]) => ({ id, name }));
-  const selectedGoal = goalScope === "all" ? null : goalOptions.find((g) => g.id === goalScope) || null;
-  const scoped = goalScope === "all" ? items : items.filter((i) => i.goalId === goalScope);
+  // Distinct workflows present in the queue. Every recommendation is the output
+  // of one, so this is the axis the queue is organised on.
+  const workflowOptions = [...new Map(items.map((i) => [i.workflowId, i.workflowName])).entries()]
+    .filter(([id]) => id)
+    .map(([id, name]) => ({ id, name }));
+  const scoped = scope === "all" ? items : items.filter((i) => i.workflowId === scope);
+  // Sage still talks to a goal-scoped endpoint underneath; the label the user
+  // sees is the scope they chose.
+  const sageContext = scoped.length
+    ? { id: scoped[0].goalId, name: scope === "all" ? "All workflows" : (workflowOptions.find((w) => w.id === scope)?.name || "Recommendations") }
+    : null;
+
+  const workflowCounts = { all: items.length };
+  workflowOptions.forEach((w) => { workflowCounts[w.id] = items.filter((i) => i.workflowId === w.id).length; });
 
   const counts = { all: scoped.length };
   REC_FILTERS.forEach((f) => { if (f.status != null) counts[f.k] = scoped.filter((i) => i.status === f.status).length; });
@@ -633,26 +349,25 @@ function RecommendationsPanel({ onOpenGoal }) {
   const filtered = curF.status == null ? scoped : scoped.filter((i) => i.status === curF.status);
   const selected = filtered.find((i) => i.recId === sel) || filtered[0];
 
-  // Summary strip — the paid-spend use case's headline signals. The first tile
-  // (Needs review) reflects the scoped act-now count; the rest read from the goal.
-  const actNowCount = scoped.filter((i) => recMeta(i).key === "act-now").length;
-  const summaryTiles = [
-    { kind: "Needs review", color: "red", icon: Lightning, value: String(actNowCount), desc: "act-now recommendations" },
-    { kind: "Inefficient spend", color: "amber", icon: Flag, value: "$2.4K", desc: "LinkedIn above CPL baseline / wk" },
-    { kind: "Blended CPL", color: "blue", icon: Target, value: "$642", desc: "target ≤ $610" },
-  ];
-
-  const scopeSelect = (id) => { setGoalScope(id); setSel(null); };
+  const scopeSelect = (id) => {
+    setScope(id);
+    setSel(null);
+    const next = new URLSearchParams(params);
+    if (id === "all") next.delete("workflow"); else next.set("workflow", id);
+    setParams(next, { replace: true });
+  };
 
   return (
     <div className="relative flex flex-col h-full">
-      {/* Scope + Ask Sage, then the summary strip */}
-      <div className="shrink-0 border-b border-[var(--color-grey-100)] px-4 py-3.5 flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <Target size={15} weight="bold" className="text-[var(--text-muted)] shrink-0" />
-            <GoalScopeDropdown value={goalScope} onChange={scopeSelect} goals={goalOptions} />
-          </div>
+      {/* One control group: which workflow, which status, then Ask Sage. */}
+      <div className="shrink-0 border-b border-[var(--color-grey-100)] px-4 py-3.5">
+        <div className="flex items-center justify-end gap-2">
+          <WorkflowScopeDropdown
+            value={scope}
+            onChange={scopeSelect}
+            workflows={workflowOptions}
+            counts={workflowCounts}
+          />
           <div className="flex items-center gap-2 shrink-0">
             <RecFilterDropdown
               value={filter}
@@ -669,14 +384,9 @@ function RecommendationsPanel({ onOpenGoal }) {
             </button>
           </div>
         </div>
-        <div className="hidden grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
-          {summaryTiles.map((t, i) => (
-            <InsightCard key={i} kind={t.kind} color={t.color} icon={t.icon} value={t.value} desc={t.desc} />
-          ))}
-        </div>
       </div>
 
-      <RecSageDrawer open={sageOpen} onClose={() => setSageOpen(false)} goals={goalOptions} selected={selectedGoal} onSelect={scopeSelect} />
+      <RecSageDrawer open={sageOpen} onClose={() => setSageOpen(false)} context={sageContext} />
 
       {isLoading ? (
         <RecSkeleton />
@@ -705,7 +415,20 @@ function RecommendationsPanel({ onOpenGoal }) {
           </div>
           {/* Right: decision detail (+ its own View details drawer) */}
           <div className="flex-1 min-w-0">
-            {selected && <RecommendationDetail key={selected.recId} goalId={selected.goalId} recId={selected.recId} onOpenGoal={onOpenGoal} />}
+            {selected && (
+              <RecommendationDetail
+                key={selected.recId}
+                goalId={selected.goalId}
+                recId={selected.recId}
+                onOpenGoal={onOpenGoal}
+                source={{
+                  workflowId: selected.workflowId,
+                  workflowName: selected.workflowName,
+                  agent: selected.agent,
+                  onOpenWorkflow: (id) => navigate(`/workflows/${id}`),
+                }}
+              />
+            )}
           </div>
         </div>
       )}
@@ -715,52 +438,9 @@ function RecommendationsPanel({ onOpenGoal }) {
 
 export default function GoalsPage() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [tab, setTab] = useState("recommendations");
-  const [goalFilter, setGoalFilter] = useState("all");
-  const [goalSearch, setGoalSearch] = useState("");
-  // "Run now" — force an immediate check-in instead of waiting for the schedule.
-  const [checking, setChecking] = useState(false);
-  const [ranJustNow, setRanJustNow] = useState(false);
-  const runNow = () => {
-    setChecking(true);
-    Promise.all([
-      qc.invalidateQueries({ queryKey: ["goals"] }),
-      qc.invalidateQueries({ queryKey: ["goals-recommendations"] }),
-      qc.invalidateQueries({ queryKey: ["goals-attention"] }),
-    ]).finally(() => { setChecking(false); setRanJustNow(true); toast.success("Check-in complete"); });
-  };
-  const { data: recData } = useQuery({ queryKey: ["goals-recommendations"], queryFn: () => apiGet("/api/goals/recommendations"), refetchInterval: 2500 });
-  const recCount = (recData?.items || []).filter((r) => r.status === "open").length;
-  const { data: goalsData } = useQuery({ queryKey: ["goals"], queryFn: () => apiGet("/api/goals"), refetchInterval: 2500 });
-  const { data: attn } = useQuery({ queryKey: ["goals-attention"], queryFn: () => apiGet("/api/goals/attention"), refetchInterval: 2500 });
-  const goals = goalsData?.goals || [];
-  const items = attn?.items || [];
-  const attentionGoals = goals.filter((g) => g.health === "attention").length;
-  const onTrack = goals.filter((g) => g.health === "ontrack").length;
-  const setup = goals.filter((g) => g.health === "setup").length;
 
-  // Portfolio "Highlights" — four lenses on the goal portfolio: what to do now,
-  // what's off track, what's healthy, and what's being watched (lower priority).
-  // Derived from the live check-in queue, so the counts stay honest: goals that
-  // need a decision, watch items awaiting confirmation, and goals still inside
-  // their guardrails.
-  const openRecs = (recData?.items || []).filter((r) => r.status === "open");
-  const monitoredGoalIds = new Set((recData?.items || []).map((r) => r.goalId));
-  const actNowGoalIds = new Set(openRecs.filter((r) => r.severity === "act-now").map((r) => r.goalId));
-  const needsReviewGoals = actNowGoalIds.size;
-  const watchlistCount = openRecs.filter((r) => r.severity === "watch" && (r.tier || 2) <= 2).length;
-  const onTrackGoals = Math.max(0, monitoredGoalIds.size - actNowGoalIds.size);
-  const insights = [
-    { kind: "Needs review", color: "red", icon: Lightning, value: String(needsReviewGoals),
-      desc: `goal${needsReviewGoals !== 1 ? "s" : ""} with act-now recommendations` },
-    { kind: "Watchlist", color: "blue", icon: Eye, value: String(watchlistCount),
-      desc: `recommendation${watchlistCount !== 1 ? "s" : ""} held for confirmation` },
-    { kind: "On track", color: "green", icon: CheckCircle, value: String(onTrackGoals),
-      desc: `goal${onTrackGoals !== 1 ? "s" : ""} currently within guardrails` },
-  ];
-
-  // Every goal opens its full detail page (no overlay).
+  // Goal detail pages still exist and are still reachable by URL; nothing on
+  // this page links to them any more. Kept so the drawer's older callers work.
   const openGoal = (goalOrId) => {
     const id = typeof goalOrId === "string" ? goalOrId : goalOrId?.id;
     if (id) navigate(`/goals/${id}`);
@@ -768,99 +448,17 @@ export default function GoalsPage() {
 
   return (
     <div className="flex flex-col w-full h-full">
-      {/* Sub-tab bar (Goals · Recommendations) */}
-      <div className="flex w-full shrink-0 bg-white border-b border-[var(--color-grey-100)]">
-        <div className="flex items-start gap-6 px-4">
-          {[{ k: "recommendations", label: "Recommendations" }, { k: "goals", label: "Goals" }].map((t) => (
-            <button
-              key={t.k}
-              onClick={() => setTab(t.k)}
-              className={cn(
-                "flex items-center gap-2 h-12 px-2 border-b-2 bg-transparent cursor-pointer text-[14px] transition-colors",
-                tab === t.k ? "text-primary-500 font-medium border-primary-500" : "text-[var(--text-primary)] border-transparent hover:text-primary-500"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* Standard page header — the same bar Workflows and Agents use. */}
+      <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
+        <span className="text-[16px] leading-[24px] font-medium">Recommendations</span>
       </div>
 
       {/* Dashboards-style frame: grey-50 padded area with the page in a white panel */}
       <div className="flex-1 min-h-0 p-4 bg-grey-50 overflow-hidden">
         <div className="flex flex-col w-full h-full bg-white rounded-xl border border-[var(--color-grey-100)] overflow-hidden">
-          {tab === "goals" ? (
-            <div className="w-full h-full overflow-y-auto">
-              <div className="flex flex-col w-full p-3">
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)] mb-8">
-                  {insights.map((ins) => <InsightCard key={ins.kind} {...ins} />)}
-                </div>
-
-                {/* ── Your goals — full list, columnar row + header ── */}
-                {(() => {
-                  const q = goalSearch.trim().toLowerCase();
-                  const counts = goals.reduce((m, g) => { const b = goalBucket(g); m[b] = (m[b] || 0) + 1; return m; }, {});
-                  const filtered = goals.filter((g) =>
-                    (goalFilter === "all" || goalBucket(g) === goalFilter) &&
-                    (!q || g.name.toLowerCase().includes(q))
-                  );
-                  return (
-                    <>
-                      <div id="your-goals" className="flex items-center gap-3 mb-3 scroll-mt-4 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                          <h2 className="text-[14px] font-normal text-[var(--text-primary)] tracking-[-0.01em]">Your goals</h2>
-                          <span className="px-1.5 py-0.5 text-[12px] font-semibold rounded-full bg-grey-100 text-[var(--text-muted)]">{goals.length}</span>
-                        </div>
-                        <div className="flex items-center gap-2 ml-auto">
-                          {goals.length > 0 && (
-                            <>
-                              {/* Search — consistent 320px design-system style */}
-                              <div className="flex items-center gap-2 w-80 h-8 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 px-3 transition-colors">
-                                <MagnifyingGlass size={16} weight="regular" className="text-grey-500 shrink-0" />
-                                <input
-                                  value={goalSearch}
-                                  onChange={(e) => setGoalSearch(e.target.value)}
-                                  placeholder="Search goals"
-                                  className="flex-1 min-w-0 border-none outline-none bg-transparent text-[14px] text-[var(--text-primary)] placeholder:text-grey-500 p-0"
-                                />
-                              </div>
-                              {/* Filter — 32×32 icon-only secondary button, after the search */}
-                              <GoalFilterDropdown value={goalFilter} onChange={setGoalFilter} counts={counts} total={goals.length} />
-                            </>
-                          )}
-                          <PvButton variant="primary" size="md" label="Manage Goals" icon={Target} onClick={() => {}} />
-                        </div>
-                      </div>
-
-                      {goals.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-2 py-14 border border-[var(--border-primary)] rounded-lg text-center">
-                          <Target size={24} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[#757A97] max-w-[460px]">No goals yet. Once a goal is set, we'll watch your paid spend for waste and the demand you're missing, and tell you where the next dollar should go.</p>
-                        </div>
-                      ) : filtered.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-1.5 py-10 border border-dashed border-[var(--border-primary)] rounded-lg text-center">
-                          <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
-                          <p className="text-[14px] text-[#757A97]">No goals match{q ? ` “${goalSearch.trim()}”` : " this filter"}.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col w-full">
-                          <GoalListHeader />
-                          <div className="flex flex-col gap-2">
-                            {filtered.map((g) => <GoalRow key={g.id} goal={g} onOpen={openGoal} onFull={(gid) => navigate(`/goals/${gid}`)} />)}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          ) : (
-            <RecommendationsPanel onOpenGoal={openGoal} />
-          )}
+          <RecommendationsPanel onOpenGoal={openGoal} />
         </div>
       </div>
-
     </div>
   );
 }

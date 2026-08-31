@@ -36,6 +36,7 @@ onboarding-v3.html
 # Internal docs (kept local, not part of the demo repo)
 /docs/
 /help-docs/
+DEMO-CONTEXT.md
 
 # Case-study UI export snippets
 exports/

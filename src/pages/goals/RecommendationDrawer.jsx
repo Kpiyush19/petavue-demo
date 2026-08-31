@@ -8,6 +8,8 @@ import { Button as PvButton, Tooltip } from "@/ui";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
+import { AgentMark } from "../../components/AgentMark";
+import { AGENTS } from "../../mocks/agentWorkflows";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
 
@@ -267,19 +269,9 @@ function renderInline(text) {
   });
 }
 
-/* A single fact cell in the recommendation header (label over value). */
-function Fact({ label, value, valueCls }) {
-  return (
-    <div className="bg-grey-50 px-3.5 py-2.5">
-      <div className="text-[12px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
-      <div className={cn("text-[12px] font-medium mt-0.5 text-[var(--text-primary)]", valueCls)}>{value}</div>
-    </div>
-  );
-}
-
 /* Inline recommendation detail — used both in the drawer and the Recommendations
    tab's right panel. Fills its container height (scroll body + pinned footer). */
-export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
+export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, source }) {
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
   const [thread, setThread] = useState([]);
@@ -344,8 +336,19 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           {onClose && <button onClick={onClose} className="shrink-0 -mt-1 -mr-1 p-1 rounded-md text-[var(--text-muted)] hover:bg-grey-100 bg-transparent border-none cursor-pointer" aria-label="Close"><X size={18} /></button>}
         </div>
         <div className="flex items-center justify-between gap-3">
-          {onOpenGoal && goal?.name ? (
-            <button onClick={() => onOpenGoal(goalId)} className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"><Target size={16} weight="bold" className="shrink-0" /><span className="truncate">{goal.name}</span></button>
+          {source?.workflowName ? (
+            <span className="min-w-0 inline-flex items-center gap-2 text-[12px] text-[#757A97]">
+              Found by
+              {source.agent && <AgentMark agentKey={source.agent} size={18} ring={false} />}
+              {source.agent && <span className="text-[var(--text-primary)]">{AGENTS[source.agent]?.label}</span>}
+              <span>in</span>
+              <button
+                onClick={() => source.onOpenWorkflow?.(source.workflowId)}
+                className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"
+              >
+                <span className="truncate">{source.workflowName}</span>
+              </button>
+            </span>
           ) : <span />}
         </div>
       </div>
@@ -409,17 +412,6 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
         )}
         </div>
 
-        {/* Expected impact — scenario estimate, blue. */}
-        {rec.scenario && (
-          <div className="rounded-[8px] border border-primary-200 bg-primary-50 p-4">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-primary-700 mb-2">Expected impact</p>
-            <div className="flex flex-col gap-1">
-              <span className="text-[12px] font-medium text-primary-600">Scenario estimate</span>
-              <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">{rec.scenario}</p>
-            </div>
-          </div>
-        )}
-
         {/* Full evidence — every number, interpreted (collapsible). */}
         {((rec.derivation || []).length > 0 || (rec.metrics || []).length > 0 || rec.trigger) && (
           <div className="rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden">
@@ -461,74 +453,6 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
               </motion.div>
             )}
             </AnimatePresence>
-          </div>
-        )}
-
-        {/* Guardrails — continue if / reverse if. */}
-        {rec.guardrails && ((rec.guardrails.continueIf || []).length > 0 || (rec.guardrails.reverseIf || []).length > 0) && (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Guardrails</p>
-            <div className="grid grid-cols-2 gap-3">
-              {(rec.guardrails.continueIf || []).length > 0 && (
-                <div className="rounded-[8px] border border-green-200 bg-green-50 p-4">
-                  <p className="text-[12px] font-semibold uppercase tracking-wider text-green-700 mb-2">Continue if</p>
-                  <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-green-400">
-                    {rec.guardrails.continueIf.map((s, i) => <li key={i} className="text-[14px] text-[var(--text-primary)] leading-snug">{s}</li>)}
-                  </ul>
-                </div>
-              )}
-              {(rec.guardrails.reverseIf || []).length > 0 && (
-                <div className="rounded-[8px] border border-rose-200 bg-rose-50 p-4">
-                  <p className="text-[12px] font-semibold uppercase tracking-wider text-rose-700 mb-2">Reverse if</p>
-                  <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-rose-400">
-                    {rec.guardrails.reverseIf.map((s, i) => <li key={i} className="text-[14px] text-[var(--text-primary)] leading-snug">{s}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Read before deciding — caveats, amber. */}
-        {(rec.readBeforeDeciding || []).length > 0 && (
-          <div className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700 mb-2">Read before deciding</p>
-            <ul className="flex flex-col gap-2 list-disc pl-4 marker:text-amber-500">
-              {rec.readBeforeDeciding.map((s, i) => <li key={i} className="text-[14px] text-amber-900 leading-snug">{s}</li>)}
-            </ul>
-          </div>
-        )}
-
-        {/* Timeline — test window / earliest mature review / reversible. */}
-        {rec.timeline && (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Timeline</p>
-            <div className="grid grid-cols-3 gap-px rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden bg-[var(--color-grey-100)]">
-              <Fact label="Test window" value={rec.timeline.window} />
-              <Fact label="Earliest mature review" value={rec.timeline.review} />
-              <Fact label="Reversible" value={rec.timeline.reversible} />
-            </div>
-          </div>
-        )}
-
-        {/* What happens next — if it works / fails / unclear. */}
-        {rec.whatHappensNext && (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">What happens next</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-green-700 mb-1.5">If it works</p>
-                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.works}</p>
-              </div>
-              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-rose-700 mb-1.5">If it fails</p>
-                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.fails}</p>
-              </div>
-              <div className="rounded-[8px] border border-[var(--color-grey-100)] p-3">
-                <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">If unclear</p>
-                <p className="text-[14px] text-[#757A97] leading-snug">{rec.whatHappensNext.unclear}</p>
-              </div>
-            </div>
           </div>
         )}
 
@@ -627,7 +551,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal }) {
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {rec.guardrails && <p className="text-[12px] text-[var(--text-muted)] leading-snug">Nothing runs until you accept, and every decision is logged and reversible.</p>}
+            <p className="text-[12px] text-[var(--text-muted)] leading-snug">Nothing runs until you accept, and every decision is logged and reversible.</p>
             <div className="flex items-center gap-2">
             <button onClick={() => { setReason(""); setPending({ action: "acted" }); }} disabled={act.isPending}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[14px] font-medium text-green-600 hover:bg-green-50 bg-transparent border border-[var(--border-primary)] cursor-pointer disabled:opacity-50 transition-colors">
