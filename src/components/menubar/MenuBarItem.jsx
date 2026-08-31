@@ -14,6 +14,7 @@ import {
   SquaresGridIcon,
   WorkflowsIcon,
   ContextsIcon,
+  AgentsIcon,
 } from './icons/NavIcons';
 
 /*
@@ -42,6 +43,7 @@ const ICON_MAP = {
   'grid': SquaresGridIcon,
   'workflows': WorkflowsIcon,
   'contexts': ContextsIcon,
+  'agents': AgentsIcon,
 };
 
 export function MenuBarItem({

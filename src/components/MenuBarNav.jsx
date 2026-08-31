@@ -7,22 +7,12 @@ import { useSessionsQuery } from "../hooks/useSessionsQuery";
 import { getSessionRowMeta } from "./sessions/sessionRowMeta";
 import { timeAgo } from "@/utils/relativeTimeDiff";
 
-// Navigation items (icon keys map to the MenuBar's Phosphor icon set).
-// Canonical nav — identical order/ids in both navbars (see petavue MenuBar) so
-// buttons never shift position between pages. Sage + live Dashboard open the
-// live app; the rest open the Petavue design-system pages.
-// Order matches the New chat button (rendered first by MenuBar) → Dashboard →
-// Skills → Goals → Contexts → Data Hub. "contexts" has no NAV_ROUTES entry, so
-// it doesn't navigate — it's a tooltip-only affordance (no page yet).
-export const NAV_ITEMS = [
-  { id: "dashboard-live", label: "Dashboard", icon: "dashboard" },
-  { id: "skills", label: "Skills", icon: "skills" },
-  { id: "goals", label: "Goals", icon: "goals" },
-  { id: "workflows", label: "Workflows", icon: "workflows" },
-  { id: "agents", label: "Agents", icon: "grid" },
-  { id: "contexts", label: "Contexts", icon: "contexts", title: "Contexts — add new (coming soon)" },
-  { id: "data-hub", label: "Data Hub", icon: "data-hub" },
-];
+// Nav items come from the design-system MenuBar's CANONICAL_NAV so the app
+// navbar and the standalone-page navbar can never drift apart — they used to
+// keep separate lists, which is exactly how they ended up with different items
+// in a different order. Add or reorder nav items THERE, not here.
+import { CANONICAL_NAV as NAV_ITEMS } from "@/ui/components/MenuBar/MenuBar";
+export { NAV_ITEMS };
 
 export const NAV_ROUTES = {
   new: "/new",

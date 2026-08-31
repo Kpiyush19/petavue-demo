@@ -6,13 +6,32 @@ import { SidebarToggle } from './icons/SidebarToggle';
 import { BrandLogo } from './icons/BrandLogo';
 import './MenuBar.css';
 
-// Canonical nav — identical to the app navbar (src/components/MenuBarNav) so the
-// sidebar is consistent on every screen.
-const CANONICAL_NAV = [
-  { id: 'skills', label: 'Skills', icon: 'skills' },
-  { id: 'goals', label: 'Goals', icon: 'goals' },
+// Canonical nav — the SINGLE source of truth for both navbars. The app navbar
+// (src/components/MenuBarNav) imports this rather than keeping its own copy, so
+// the two can't drift: previously each had its own list and they had already
+// diverged in both membership and order.
+//
+// Order is deliberate. The rail is read top-to-bottom in the first second and,
+// closed, position is the only hierarchy signal there is — so it leads with the
+// pitch: Workflows (what we automate), then Agents (how). Data Hub sits last as
+// the foundation layer. Dashboard and Skills are real capability but no longer
+// the headline, so they sit below.
+//
+// Every page that passes an `items` prop to <MenuBar> is ignored on purpose
+// (see below) — edit this list, not the caller.
+//
+// Goals sits with Workflows and Agents rather than among the older surfaces —
+// it's the same kind of thing (a monitored module that produces recommendations),
+// so it belongs in that group.
+//
+// Deliberately NOT in the nav (route still live, reachable by URL):
+//   contexts — no page yet; it was a tooltip-only affordance.
+export const CANONICAL_NAV = [
   { id: 'workflows', label: 'Workflows', icon: 'workflows' },
+  { id: 'agents', label: 'Agents', icon: 'agents' },
+  { id: 'goals', label: 'Goals', icon: 'goals' },
   { id: 'dashboard-live', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'skills', label: 'Skills', icon: 'skills' },
   { id: 'data-hub', label: 'Data Hub', icon: 'data-hub' },
 ];
 
@@ -124,6 +143,7 @@ export function MenuBar({
             label={item.label}
             isOpen={isOpen}
             isActive={activeId === item.id}
+            title={item.title}
             onClick={() => onItemClick && onItemClick(item.id)}
           />
         ))}

@@ -260,6 +260,53 @@ function useGoalRowMenu(goal, onFull) {
   return { items };
 }
 
+/* ── Recommendation status filter — a single button that opens the shared
+   menu, rather than a row of pills that had to scroll sideways. ── */
+function RecFilterDropdown({ value, onChange, counts }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+  const current = REC_FILTERS.find((f) => f.k === value) || REC_FILTERS[0];
+  const count = value === "all" ? counts.all : counts[value] || 0;
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 8, left: r.left, width: Math.max(200, r.width) });
+    }
+    setOpen((o) => !o);
+  };
+  return (
+    <div ref={ref} className="shrink-0">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={toggle}
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-[var(--color-grey-200)] text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
+      >
+        <Funnel size={14} className="text-[var(--text-muted)]" />
+        {current.label}
+        <span className="tabular-nums text-[var(--text-muted)]">{count}</span>
+        <CaretDown size={13} className={cn("text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
+      </button>
+      {open && pos && (
+        <FilterMenu
+          pos={pos}
+          value={value}
+          onSelect={onChange}
+          onClose={() => setOpen(false)}
+          minWidth={200}
+          options={REC_FILTERS.map((f) => ({
+            id: f.k,
+            label: f.label,
+            count: f.k === "all" ? counts.all : counts[f.k] || 0,
+          }))}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ── Shared column header for both goal lists. ── */
 function GoalListHeader() {
   return (
@@ -376,7 +423,7 @@ function RecCard({ item, selected, onClick }) {
         item.status !== "open" && !selected && "opacity-70"
       )}
     >
-      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug line-clamp-2">{item.title}</p>
+      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug truncate">{item.title}</p>
       {item.tldr && <p className="text-[12px] text-[#757A97] leading-snug line-clamp-1">{item.tldr}</p>}
       <div className="flex items-center gap-2">
         <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", m.cls)}>
@@ -606,14 +653,21 @@ function RecommendationsPanel({ onOpenGoal }) {
             <Target size={15} weight="bold" className="text-[var(--text-muted)] shrink-0" />
             <GoalScopeDropdown value={goalScope} onChange={scopeSelect} goals={goalOptions} />
           </div>
-          <button
-            type="button"
-            onClick={() => setSageOpen(true)}
-            className="inline-flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-[8px] text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"
-            style={{ background: SAGE_GRADIENT }}
-          >
-            <Sparkle size={14} weight="fill" /> Ask Sage
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <RecFilterDropdown
+              value={filter}
+              onChange={(k) => { setFilter(k); setSel(null); }}
+              counts={counts}
+            />
+            <button
+              type="button"
+              onClick={() => setSageOpen(true)}
+              className="inline-flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-[8px] text-[12px] font-medium text-white border-none cursor-pointer transition-[filter] hover:brightness-105"
+              style={{ background: SAGE_GRADIENT }}
+            >
+              <Sparkle size={14} weight="fill" /> Ask Sage
+            </button>
+          </div>
         </div>
         <div className="hidden grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
           {summaryTiles.map((t, i) => (
@@ -636,28 +690,6 @@ function RecommendationsPanel({ onOpenGoal }) {
         <div className="flex-1 min-h-0 flex">
           {/* Left: filters + rich queue */}
           <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 border-b border-[var(--color-grey-100)] overflow-x-auto">
-              {REC_FILTERS.map((f) => {
-                const active = filter === f.k;
-                const count = f.k === "all" ? counts.all : (counts[f.k] || 0);
-                return (
-                  <button
-                    key={f.k}
-                    type="button"
-                    onClick={() => { setFilter(f.k); setSel(null); }}
-                    className={cn(
-                      "shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[12px] font-medium border transition-colors whitespace-nowrap cursor-pointer",
-                      active
-                        ? "bg-primary-50 border-primary-500 text-primary-700"
-                        : "bg-white border-[var(--color-grey-100)] text-[var(--text-muted)] hover:bg-grey-50"
-                    )}
-                  >
-                    {f.label}
-                    <span className={cn("tabular-nums text-[11px]", active ? "text-primary-600" : "text-[var(--text-muted)]")}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
               {filtered.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">

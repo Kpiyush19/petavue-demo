@@ -11,7 +11,8 @@
 // Nothing here runs independently.
 
 // ── The six agent families (pilot deck) ──────────────────────────────
-// Colors are Petavue tokens, not ad-hoc hexes. `icon` is a Phosphor icon name
+// One deep, saturated hue per family — no two adjacent on the wheel — plus a
+// distinct Phosphor icon rendered filled. `icon` is a Phosphor icon name
 // resolved at the render site — families are told apart by icon first, colour
 // second, so the grid stays readable for anyone who can't separate the hues.
 //
@@ -20,10 +21,10 @@
 // grunt work a human would otherwise do by hand.
 export const AGENTS = {
   measurement: {
-    key: "measurement", label: "Measurement", mark: "ME", color: "#825CDE", tint: "#EBE3FA",
+    key: "measurement", label: "Measurement & attribution", mark: "ME", color: "#3661ED", tint: "#E0EBFE",
     icon: "ChartLineUp", platforms: ["Google Search", "LinkedIn", "Web", "CRM"],
     owns: "What actually happened, and what it cost",
-    blurb: "Rebuilds the numbers from source every run — spend, exposure and outcomes joined back to your funnel KPI rather than the platform's.",
+    blurb: "Rebuilds the numbers from source every run, joined back to your funnel KPI rather than the platform's.",
     does: [
       "Joins ad platform spend to CRM outcomes",
       "Benchmarks cost per KPI, per campaign",
@@ -31,10 +32,10 @@ export const AGENTS = {
     ],
   },
   budget: {
-    key: "budget", label: "Budget", mark: "BU", color: "#3661ED", tint: "#E0EBFE",
+    key: "budget", label: "Budget & allocation", mark: "BU", color: "#0F7B6C", tint: "#E3F4F1",
     icon: "Wallet", platforms: ["Google Search", "LinkedIn"],
     owns: "Where the money should sit",
-    blurb: "Sizes the move. Finds headroom where a cheaper KPI is still scalable, and quantifies what each proposed change actually frees up.",
+    blurb: "Sizes the move — where a cheaper KPI is still scalable, and what each change actually frees up.",
     does: [
       "Sizes reallocations between campaigns",
       "Quantifies spend released by an exclusion",
@@ -42,10 +43,10 @@ export const AGENTS = {
     ],
   },
   delivery: {
-    key: "delivery", label: "Delivery", mark: "DE", color: "#F87F00", tint: "#FEF3D5",
+    key: "delivery", label: "Campaign & delivery", mark: "CD", color: "#E0620D", tint: "#FDEEE2",
     icon: "Broadcast", platforms: ["Google Search", "LinkedIn"],
     owns: "Who sees the ad, when and where",
-    blurb: "Goes through delivery at a depth nobody has time for by hand — day-part, geography, frequency and the accounts quietly crowding everyone else out.",
+    blurb: "Goes through day-part, geography and frequency at a depth nobody has time for by hand.",
     does: [
       "Trends performance by day-part and geo",
       "Finds accounts soaking up impressions",
@@ -53,10 +54,10 @@ export const AGENTS = {
     ],
   },
   demand: {
-    key: "demand", label: "Demand", mark: "DM", color: "#08BD50", tint: "#EBFFF3",
-    icon: "Crosshair", platforms: ["Google Search", "LinkedIn", "Web"],
+    key: "demand", label: "Demand selection", mark: "DS", color: "#C4106A", tint: "#FCE7F1",
+    icon: "Target", platforms: ["Google Search", "LinkedIn", "Web"],
     owns: "Which accounts and intent are worth paying for",
-    blurb: "Reads intent against your ICP — the search terms actually triggering your ads, and the accounts whose behaviour says they are in market.",
+    blurb: "Reads intent against your ICP — the terms triggering your ads, and the accounts behaving as in-market.",
     does: [
       "Classifies search intent behind the spend",
       "Scores delivered audiences against ICP bands",
@@ -64,10 +65,10 @@ export const AGENTS = {
     ],
   },
   creative: {
-    key: "creative", label: "Creative", mark: "CR", color: "#B472F9", tint: "#F3E9FE",
+    key: "creative", label: "Creative & message", mark: "CR", color: "#643BCF", tint: "#EBE3FA",
     icon: "PaintBrush", platforms: ["LinkedIn", "Google Search"],
     owns: "Which message keeps working",
-    blurb: "Watches message decay asset by asset and protects the control, so a rotation can be judged on its own rather than blamed on the audience.",
+    blurb: "Watches message decay asset by asset and protects the control, so a rotation can be judged on its own.",
     does: [
       "Separates creative decay from audience change",
       "Protects the winning control asset",
@@ -75,10 +76,10 @@ export const AGENTS = {
     ],
   },
   conversion: {
-    key: "conversion", label: "Conversion", mark: "CO", color: "#24C1DA", tint: "#E4F8FB",
+    key: "conversion", label: "Conversion", mark: "CO", color: "#8A5524", tint: "#F5EBE1",
     icon: "FunnelSimple", platforms: ["Web", "CRM", "Pipeline"],
     owns: "What happens after the click",
-    blurb: "Follows the session past the ad — depth of visit, form behaviour and who is engaging — to tell a media problem apart from a landing-page one.",
+    blurb: "Follows the session past the ad, to tell a media problem apart from a landing-page one.",
     does: [
       "Reads awareness from session and form behaviour",
       "Isolates where a funnel leak actually starts",
@@ -98,7 +99,7 @@ export const ORCHESTRATOR = {
 // Which workflows each family currently works in — derived, so it can never
 // drift from the list below.
 export function agentUsage(key) {
-  return WORKFLOWS.filter((w) => w.pipeline.some((s) => s.kind === "agent" && s.agent === key));
+  return WORKFLOWS.filter((w) => w.steps.some((s) => s.agent === key));
 }
 
 export function listAgents() {
@@ -129,11 +130,33 @@ export const platformOf = (id) => PLATFORMS[id] || { label: id, short: id };
 // should read as having run just after 7:00), and they must not drift while a
 // demo is on screen.
 
-// Each workflow's `pipeline` is the sequence shown when the row is expanded:
-// agent steps, then the approval gate, then where the action lands.
+// Each workflow's `steps` is the real execution sequence — the same list the
+// engine runs (queries, code, model calls, writes), just tagged with the agent
+// family that owns each step. Consecutive steps by the same family group under
+// one agent heading on the detail page; behind it it's one sequence, which is
+// exactly how this is meant to be presented.
 export const WORKFLOWS = [
   {
     id: "icp-guardrails",
+    runs: [
+      { at: "Today, 7:04 AM", status: "success", ms: 8180, produced: "12 attributes flagged" },
+      { at: "Yesterday, 7:03 AM", status: "success", ms: 7920, produced: "9 attributes flagged" },
+      { at: "Sat, 7:05 AM", status: "success", ms: 8410, produced: "11 attributes flagged" },
+      { at: "Fri, 7:04 AM", status: "failed", ms: 2100, produced: "LinkedIn API rate limit" },
+      { at: "Thu, 7:03 AM", status: "success", ms: 8050, produced: "14 attributes flagged" },
+    ],
+    recommendation: {
+      headline: "Exclude 12 audience attributes across 4 campaigns",
+      impact: "$4,200 a week of exposure landing outside your ICP bands",
+      waiting: 2,
+    },
+    found: [
+      { agent: "measurement", text: "Joined 30 days of LinkedIn delivery to CRM outcomes", specialistNames: ["Campaign Mapping", "Entity Attribution", "Conversion Signal"], config: [["Attribution window", "90 days"], ["Qualified event", "Sales-accepted opportunity"], ["Sources joined", "LinkedIn Ads + CRM"], ["Refresh", "On every daily run"]] },
+      { agent: "demand", text: "Scored every delivered attribute against your ICP bands", specialistNames: ["LinkedIn Prof. Audience", "LinkedIn ABM"], config: [["ICP employee band", "200 to 2,000"], ["ICP industries", "B2B SaaS, Fintech"], ["Seniority floor", "Manager and above"], ["Geographies", "US, UK, DACH"]] },
+      { agent: "delivery", text: "Ranked the attributes carrying spend with no ICP relevance", specialistNames: ["Campaign Delivery", "Placement & Network"], config: [["Flag threshold", "Attribute over 2% of campaign spend"], ["Minimum exposure", "5,000 impressions"], ["Scope", "Campaign level"]] },
+    ],
+    specialists: 7,
+    approvalRequired: true,
     n: 4,
     name: "ICP guardrails",
     platform: "linkedin",
@@ -146,16 +169,43 @@ export const WORKFLOWS = [
     lastRun: "Today, 7:04 AM",
     lastRunOk: true,
     pending: 2,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Measure exposure", detail: "Impressions and spend by audience attribute, per campaign." },
-      { kind: "agent", agent: "demand", label: "Score ICP fit", detail: "Match delivered attributes against the ICP bands you supplied." },
-      { kind: "agent", agent: "delivery", label: "Isolate the leak", detail: "Rank the attributes carrying exposure with no ICP relevance." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Pull delivery by audience attribute", ms: 1840,
+        code: "SELECT campaign_id, facet_type, facet_value,\n       SUM(impressions) AS impr, SUM(cost) AS spend\nFROM linkedin_ad_delivery\nWHERE date >= CURRENT_DATE - INTERVAL '30' DAY\nGROUP BY 1,2,3" },
+      { agent: "measurement", type: "athena_query", label: "Join to CRM outcomes", ms: 960,
+        code: "SELECT a.account_id, o.stage, o.amount\nFROM ad_accounts a\nLEFT JOIN crm_opportunities o USING (account_id)" },
+      { agent: "demand", type: "python_code", label: "Score each attribute against the ICP bands", ms: 1420,
+        code: "bands = icp['bands']  # size, industry, seniority, geo\ndf['in_band'] = df.apply(lambda r: match(r, bands), axis=1)\ndf['out_of_band_spend'] = df.loc[~df.in_band, 'spend']" },
+      { agent: "demand", type: "ai_analyze", label: "Read ambiguous job titles against the ICP", ms: 3100,
+        prompt: "For each job-title facet, decide whether it plausibly sits inside the customer's stated ICP seniority band. Return in_band true/false with a one-line reason." },
+      { agent: "delivery", type: "python_code", label: "Rank attributes by wasted exposure", ms: 640,
+        code: "leak = df[~df.in_band].groupby('facet_value')\n         .agg(spend=('spend','sum'), impr=('impr','sum'))\n         .sort_values('spend', ascending=False)" },
+      { agent: "delivery", type: "write_file", label: "Draft the exclusion list per campaign", ms: 310 },
       { kind: "approval", label: "Your approval", detail: "Review the exclusions before anything touches the ad account." },
       { kind: "system", label: "LinkedIn Campaign Manager", detail: "Applies the approved attribute exclusions at campaign level." },
     ],
   },
   {
     id: "audience-sharpening",
+    runs: [
+      { at: "Today, 7:06 AM", status: "success", ms: 7040, produced: "9 accounts capped" },
+      { at: "Yesterday, 7:06 AM", status: "success", ms: 6890, produced: "7 accounts capped" },
+      { at: "Sat, 7:07 AM", status: "success", ms: 7250, produced: "8 accounts capped" },
+      { at: "Fri, 7:06 AM", status: "success", ms: 6980, produced: "6 accounts capped" },
+      { at: "Thu, 7:05 AM", status: "success", ms: 7110, produced: "9 accounts capped" },
+    ],
+    recommendation: {
+      headline: "Cap 9 over-delivered accounts, free reach for 38 more",
+      impact: "31% of impressions are going to 4% of your target list",
+      waiting: 3,
+    },
+    found: [
+      { agent: "measurement", text: "Measured frequency and share of voice per target account", specialistNames: ["Campaign Mapping", "Journey Measurement"], config: [["Window", "Active flight"], ["Unit", "Impressions per target account"], ["Sources joined", "LinkedIn Ads + target list"]] },
+      { agent: "delivery", text: "Found the accounts crowding others out of the auction", specialistNames: ["Campaign Delivery", "Placement & Network"], config: [["Crowding threshold", "Over 4% share of campaign impressions"], ["Frequency ceiling", "6 per account per week"], ["Minimum flight age", "7 days"]] },
+      { agent: "demand", text: "Sized the cap that frees reach without losing the account", specialistNames: ["LinkedIn ABM"], config: [["Cap formula", "60% of current impressions"], ["Protected accounts", "Open opportunities excluded"], ["Refresh", "Daily"]] },
+    ],
+    specialists: 6,
+    approvalRequired: true,
     n: 5,
     name: "Audience sharpening",
     platform: "linkedin",
@@ -166,16 +216,43 @@ export const WORKFLOWS = [
     lastRun: "Today, 7:06 AM",
     lastRunOk: true,
     pending: 3,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Measure frequency", detail: "Impressions per target account across the active flight." },
-      { kind: "agent", agent: "delivery", label: "Find the crowding", detail: "Accounts consuming share that other in-band accounts never see." },
-      { kind: "agent", agent: "demand", label: "Rebalance reach", detail: "Size the cap that frees impressions without losing the account." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Pull impressions per target account", ms: 2100,
+        code: "SELECT account_id, campaign_id,\n       SUM(impressions) AS impr, COUNT(DISTINCT member_id) AS reach\nFROM linkedin_ad_delivery\nWHERE flight_id = :flight\nGROUP BY 1,2" },
+      { agent: "measurement", type: "python_code", label: "Compute frequency and share of voice", ms: 780,
+        code: "df['frequency'] = df.impr / df.reach\ndf['share'] = df.impr / df.groupby('campaign_id').impr.transform('sum')" },
+      { agent: "delivery", type: "python_code", label: "Find the accounts crowding the auction", ms: 910,
+        code: "crowding = df[(df.share > 0.04) & (df.frequency > 6)]\nstarved  = target_list[~target_list.account_id.isin(df.account_id)]" },
+      { agent: "delivery", type: "ai_analyze", label: "Check the crowding isn't real demand", ms: 2600,
+        prompt: "For each over-delivered account, weigh engagement depth and pipeline stage. Flag any where high frequency is justified rather than wasteful." },
+      { agent: "demand", type: "python_code", label: "Size the cap that frees reach", ms: 520,
+        code: "caps = crowding.assign(cap=lambda d: (d.impr * 0.6).round())\nfreed = (crowding.impr - caps.cap).sum()" },
+      { agent: "demand", type: "write_file", label: "Draft daily include / exclude list", ms: 280 },
       { kind: "approval", label: "Your approval", detail: "Confirm the caps and the accounts they apply to." },
       { kind: "system", label: "LinkedIn Campaign Manager", detail: "Applies daily include/exclude against the approved caps." },
     ],
   },
   {
     id: "sales-handoff",
+    runs: [
+      { at: "Today, 8:03 AM", status: "success", ms: 9230, produced: "14 accounts prioritised" },
+      { at: "Yesterday, 8:02 AM", status: "success", ms: 8870, produced: "11 accounts prioritised" },
+      { at: "Sat, 8:04 AM", status: "success", ms: 9410, produced: "13 accounts prioritised" },
+      { at: "Fri, 8:03 AM", status: "success", ms: 9050, produced: "10 accounts prioritised" },
+      { at: "Thu, 8:02 AM", status: "success", ms: 8990, produced: "12 accounts prioritised" },
+    ],
+    recommendation: {
+      headline: "Hand 14 accounts to sales this week",
+      impact: "All 14 are solution-aware and have no open opportunity",
+      waiting: 1,
+    },
+    found: [
+      { agent: "measurement", text: "Resolved web sessions, form fills and ad engagement to accounts", specialistNames: ["Campaign Mapping", "Entity Attribution", "Journey Measurement"], config: [["Lookback", "14 days"], ["Identity resolution", "Identity graph + form fills"], ["Sources joined", "Web + LinkedIn + CRM"]] },
+      { agent: "conversion", text: "Read awareness from visit depth and who engaged", specialistNames: ["Landing Page Conversion", "Form Quality"], config: [["Awareness signal", "Pages viewed x avg. duration"], ["Repeat threshold", "More than 2 sessions"], ["Seniority floor", "Director and above"]] },
+      { agent: "demand", text: "Ranked by readiness and suppressed anything already in pipeline", specialistNames: ["LinkedIn ABM", "LinkedIn Retargeting", "LinkedIn Prof. Audience"], config: [["Rank by", "Readiness score"], ["Suppression", "Open opportunity, customer, disqualified"], ["Hand-off cap", "15 accounts per week"]] },
+    ],
+    specialists: 8,
+    approvalRequired: true,
     n: 6,
     name: "Sales handoff signals",
     platform: "linkedin-web",
@@ -186,16 +263,26 @@ export const WORKFLOWS = [
     lastRun: "Today, 8:03 AM",
     lastRunOk: true,
     pending: 1,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Join the signals", detail: "Web sessions, form fills and ad engagement resolved to accounts." },
-      { kind: "agent", agent: "conversion", label: "Read awareness", detail: "Depth of visit, repeat sessions and seniority of the people engaging." },
-      { kind: "agent", agent: "demand", label: "Rank and suppress", detail: "Order by readiness; drop anything with an open opportunity." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Resolve web sessions to accounts", ms: 2450,
+        code: "SELECT account_id, session_id, page_path, duration_s\nFROM web_sessions s\nJOIN identity_graph g ON s.visitor_id = g.visitor_id\nWHERE s.date >= CURRENT_DATE - INTERVAL '14' DAY" },
+      { agent: "measurement", type: "athena_query", label: "Join ad engagement and form fills", ms: 1180,
+        code: "SELECT account_id, SUM(clicks) AS clicks, MAX(form_submitted) AS mql\nFROM linkedin_engagement GROUP BY 1" },
+      { agent: "conversion", type: "python_code", label: "Score awareness from behaviour", ms: 690,
+        code: "df['depth']  = df.pages_viewed * df.avg_duration_s\ndf['repeat'] = df.sessions > 2\ndf['senior'] = df.max_seniority >= 'Director'" },
+      { agent: "conversion", type: "ai_analyze", label: "Read intent from the pages they chose", ms: 3400,
+        prompt: "Given each account's page sequence, judge whether the behaviour reads as solution-aware evaluation or incidental browsing." },
+      { agent: "demand", type: "python_code", label: "Rank by readiness and suppress", ms: 430,
+        code: "ranked = df.sort_values('readiness', ascending=False)\nranked = ranked[~ranked.account_id.isin(open_opps)]" },
+      { agent: "demand", type: "write_file", label: "Draft the prioritised account list", ms: 260 },
       { kind: "approval", label: "Your approval", detail: "Confirm the accounts before they reach a rep's queue." },
       { kind: "system", label: "CRM · SDR queue", detail: "Creates the task and assigns the owner." },
     ],
   },
   {
     id: "wasted-spend",
+    specialists: 6,
+    approvalRequired: true,
     n: 1,
     name: "Wasted-spend cleanup",
     platform: "google-search",
@@ -205,16 +292,18 @@ export const WORKFLOWS = [
     cadence: "Not scheduled",
     lastRun: null,
     pending: 0,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Split the spend", detail: "Relevant vs irrelevant search spend, as a share of the total." },
-      { kind: "agent", agent: "demand", label: "Read intent", detail: "Classify the search terms actually triggering your ads." },
-      { kind: "agent", agent: "budget", label: "Size the waste", detail: "Cost carried by each irrelevant term cluster." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Split the spend", detail: "Relevant vs irrelevant search spend, as a share of the total." },
+      { agent: "demand", type: "python_code", label: "Read intent", detail: "Classify the search terms actually triggering your ads." },
+      { agent: "budget", type: "python_code", label: "Size the waste", detail: "Cost carried by each irrelevant term cluster." },
       { kind: "approval", label: "Your approval", detail: "Review the negative keyword list before it is applied." },
       { kind: "system", label: "Google Ads", detail: "Adds the approved negatives at campaign level." },
     ],
   },
   {
     id: "spend-to-pipeline",
+    specialists: 5,
+    approvalRequired: true,
     n: 2,
     name: "Spend-to-pipeline rebalancing",
     platform: "google-search",
@@ -224,15 +313,17 @@ export const WORKFLOWS = [
     cadence: "Not scheduled",
     lastRun: null,
     pending: 0,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Benchmark cost per KPI", detail: "Each campaign against your funnel KPI, not platform conversions." },
-      { kind: "agent", agent: "budget", label: "Find headroom", detail: "Where cheaper KPI is available and still scalable." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Benchmark cost per KPI", detail: "Each campaign against your funnel KPI, not platform conversions." },
+      { agent: "budget", type: "python_code", label: "Find headroom", detail: "Where cheaper KPI is available and still scalable." },
       { kind: "approval", label: "Your approval", detail: "Confirm the amount and the direction of the move." },
       { kind: "system", label: "Google Ads", detail: "Applies the approved budget change." },
     ],
   },
   {
     id: "delivery-leaks",
+    specialists: 7,
+    approvalRequired: true,
     n: 3,
     name: "Leak detection in campaign delivery",
     platform: "google-search",
@@ -242,10 +333,10 @@ export const WORKFLOWS = [
     cadence: "Not scheduled",
     lastRun: null,
     pending: 0,
-    pipeline: [
-      { kind: "agent", agent: "measurement", label: "Trend by hour and place", detail: "Performance sliced by day-part and geography." },
-      { kind: "agent", agent: "delivery", label: "Isolate the leaks", detail: "Windows and locations consistently below campaign baseline." },
-      { kind: "agent", agent: "budget", label: "Quantify recovery", detail: "Spend released by each proposed exclusion." },
+    steps: [
+      { agent: "measurement", type: "athena_query", label: "Trend by hour and place", detail: "Performance sliced by day-part and geography." },
+      { agent: "delivery", type: "python_code", label: "Isolate the leaks", detail: "Windows and locations consistently below campaign baseline." },
+      { agent: "budget", type: "python_code", label: "Quantify recovery", detail: "Spend released by each proposed exclusion." },
       { kind: "approval", label: "Your approval", detail: "Review the schedule and location changes." },
       { kind: "system", label: "Google Ads", detail: "Applies the approved exclusions." },
     ],
@@ -263,6 +354,11 @@ export function summary() {
     actionsTaken: 84,
     approved: 72,
     rejected: 12,
+    // Distinct agent families actually at work in the live workflows — the
+    // answer to "how", derived so it can't drift from the pipelines.
+    agentsDeployed: new Set(
+      live.flatMap((w) => w.steps.filter((n) => n.agent).map((n) => n.agent))
+    ).size,
   };
 }
 
