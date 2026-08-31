@@ -13,6 +13,7 @@ import { makeFakeJwt } from "./jwt";
 import { emit } from "./pusherBus";
 import { startRun, executeRun, discardRun, getProgress, getPlanSummary, listActiveRuns, submitClarification } from "./skillRun";
 import * as Goals from "./goals";
+import * as AgentWf from "./agentWorkflows";
 
 // ── Verify & Publish: widgets ─────────────────────────────────────────
 function getWidgets(sessionId) {
@@ -925,6 +926,10 @@ const handlers = [
     };
     return { runs: [mkRun("run-3", 200, false), mkRun("run-2", 1640, false), mkRun("run-1", 3080, true)] };
   } },
+  // Agentic workflows surface (the six paid-media pilot use cases). Separate
+  // from /api/workflows, which is the existing step-based workflow engine.
+  { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => ({ workflows: AgentWf.listWorkflows(), summary: AgentWf.summary() }) },
+  { method: "GET", pattern: /\/api\/agents$/, handler: () => ({ agents: AgentWf.listAgents(), orchestrator: AgentWf.ORCHESTRATOR }) },
   { method: "GET", pattern: /\/api\/workflows$/, handler: () => ({ workflows: db.workflows }) },
   { method: "GET", pattern: /\/api\/workflows\/([^/]+)$/, handler: ({ params }) => db.workflows.find((w) => w.workflow_id === params[0]) || db.workflows[0] },
   {

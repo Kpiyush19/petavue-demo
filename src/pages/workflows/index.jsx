@@ -1,399 +1,257 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import {
-  Pause, Play, Trash2, Pencil, ExternalLink, Eye, EyeOff,
-} from 'lucide-react'
-import { MagnifyingGlass, DotsThree } from '@phosphor-icons/react'
-import { Button, Input, Tooltip, Popper } from '@/ui'
-import { useScrollCleanup } from '@/hooks/useScrollCleanup'
-import { Badge } from '@/ui'
-import { apiGet, apiPut, apiDelete, apiPost, getCurrentUser } from '@/api'
-import { timeAgo } from '@/utils/relativeTimeDiff'
-import { formatDate, formatDateTime } from '@/utils/formatDateTime'
-import { DeleteWorkflowModal } from './components/DeleteWorkflowModal'
-import { RenameWorkflowModal } from './components/RenameWorkflowModal'
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { MagnifyingGlass, Lightning, CheckCircle, Clock, CaretRight, Plus, Sparkle, ArrowClockwise } from "@phosphor-icons/react";
+import { Button as PvButton, Tooltip } from "@/ui";
+import { apiGet } from "../../api";
+import { cn } from "../../utils/cn";
+import { AGENTS, platformOf } from "../../mocks/agentWorkflows";
 
-const GRID_COLUMNS = '3% 49% 10% 18% 8% 8% 4%'
+// The headers are doing real work: read left to right and they answer the three
+// questions a prospect has in the first ten seconds — what is it automating,
+// how does it do it, what do I get.
+const COLS = "minmax(0,2.1fr) 168px minmax(0,1.25fr) 116px 132px 92px 32px";
+
+const STATUS = {
+  active: { label: "Live", dot: "bg-green-500", text: "text-green-600" },
+  available: { label: "Available", dot: "bg-[var(--color-grey-300)]", text: "text-[var(--text-muted)]" },
+};
+
+/* ── Overlapping stack of the agents a workflow deploys. Identity only — the
+   sequence and what each one does live inside the workflow. ── */
+function AgentStack({ pipeline }) {
+  const keys = pipeline.filter((s) => s.kind === "agent").map((s) => s.agent);
+  return (
+    <span className="flex items-center pl-1.5">
+      {keys.map((k, i) => {
+        const a = AGENTS[k];
+        if (!a) return null;
+        return (
+          <span key={`${k}-${i}`} className="-ml-1.5" style={{ zIndex: keys.length - i }}>
+            <Tooltip content={`${a.label} agent`}>
+              <span
+                className="grid place-items-center w-[22px] h-[22px] rounded-full text-[9px] font-semibold text-white ring-2 ring-white cursor-default"
+                style={{ background: a.color }}
+              >
+                {a.mark}
+              </span>
+            </Tooltip>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function Stat({ icon: Icon, tone, value, label, sub }) {
+  return (
+    <div className="flex flex-col bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3.5">
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{label}</span>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        {Icon && <Icon size={16} className={tone} />}
+        <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)]">{value}</span>
+      </div>
+      <p className="text-[12px] text-[#757A97] leading-snug">{sub}</p>
+    </div>
+  );
+}
+
+function HeaderCell({ label }) {
+  return <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-grey-500)] px-2">{label}</span>;
+}
+
+function Row({ wf, onOpen }) {
+  const st = STATUS[wf.status] || STATUS.available;
+  const live = wf.status === "active";
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="grid w-full items-center gap-3 px-4 py-3.5 text-left bg-transparent border-none border-b border-[var(--color-grey-100)] last:border-b-0 cursor-pointer hover:bg-grey-50 transition-colors"
+      style={{ gridTemplateColumns: COLS }}
+    >
+      <span className="flex flex-col min-w-0 px-2">
+        <span className="flex items-center gap-2 mb-1">
+          <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">{wf.name}</span>
+          <span className="shrink-0 text-[11px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">{platformOf(wf.platform).short}</span>
+        </span>
+        <span className="text-[12px] text-[#757A97] leading-snug line-clamp-2">{wf.automates}</span>
+      </span>
+
+      <span className="px-2"><AgentStack pipeline={wf.pipeline} /></span>
+
+      <span className="px-2 text-[13px] text-[var(--text-primary)] leading-snug">{wf.deliverable}</span>
+
+      <span className="px-2 flex items-center gap-1.5">
+        <i className={cn("w-[6px] h-[6px] rounded-full", st.dot)} />
+        <span className={cn("text-[12px] font-medium", st.text)}>{st.label}</span>
+      </span>
+
+      <span className="px-2 flex flex-col">
+        {live ? (
+          <>
+            <span className="text-[12px] text-[var(--text-primary)]">{wf.lastRun}</span>
+            <span className="text-[11px] text-[#757A97]">{wf.cadence}</span>
+          </>
+        ) : (
+          <span className="text-[12px] text-[#757A97]">Not scheduled</span>
+        )}
+      </span>
+
+      <span className="px-2 flex justify-start">
+        {wf.pending > 0 ? (
+          <span className="grid place-items-center min-w-[24px] h-[24px] px-1.5 rounded-full bg-primary-50 text-primary-600 text-[12px] font-semibold tabular-nums">
+            {wf.pending}
+          </span>
+        ) : (
+          <span className="text-[12px] text-[var(--color-grey-300)]">—</span>
+        )}
+      </span>
+
+      <span className="flex justify-center text-[var(--text-muted)]">
+        <CaretRight size={15} />
+      </span>
+    </button>
+  );
+}
+
+const FILTERS = [
+  { k: "all", label: "All" },
+  { k: "active", label: "Live" },
+  { k: "available", label: "Available" },
+];
 
 export default function WorkflowsPage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [search, setSearch] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [renaming, setRenaming] = useState(null)
-  const [triggeringId, setTriggeringId] = useState(null)
-  const [listOverflow, setListOverflow] = useState(false)
-  const [openMenuId, setOpenMenuId] = useState(null)
-  const listWrapperRef = useRef(null)
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
 
-  const currentUser = getCurrentUser()
-  const currentUserId = currentUser?.userId || currentUser?._id || null
-
-  const { data, isLoading: loading, refetch: fetchWorkflows } = useQuery({
-    queryKey: ['workflows'],
-    queryFn: async () => {
-      const data = await apiGet('/api/workflows')
-      return data.workflows || []
-    },
-  })
-
-  const { tooltipShow, setTooltipShow } = useScrollCleanup({ containerRef: listWrapperRef, enabled: !loading })
-
-  const workflows = Array.isArray(data) ? data : []
-
-  useEffect(() => {
-    if (listWrapperRef.current) {
-      const hasOverflow = listWrapperRef.current.scrollHeight > listWrapperRef.current.clientHeight
-      setListOverflow(hasOverflow)
-    } else {
-      setListOverflow(false)
-    }
-  }, [loading, workflows, search])
-
-  const invalidateWorkflows = () => queryClient.invalidateQueries({ queryKey: ['workflows'] })
-
-  const handleTogglePause = async (wf) => {
-    try {
-      await apiPut(`/api/workflows/${wf.workflow_id}`, {
-        status: wf.status === 'paused' ? 'active' : 'paused',
-      })
-      toast.success(wf.status === 'paused' ? 'Workflow resumed' : 'Workflow paused')
-      invalidateWorkflows()
-    } catch (e) { toast.error('Failed: ' + e.message) }
-  }
-
-  const handleToggleShare = async (wf) => {
-    try {
-      await apiPut(`/api/workflows/${wf.workflow_id}`, { shared: !wf.shared })
-      toast.success(wf.shared ? 'Workflow unshared' : 'Workflow shared with team')
-      invalidateWorkflows()
-    } catch (e) { toast.error('Failed: ' + e.message) }
-  }
-
-  const handleDelete = async (wf) => {
-    try {
-      await apiDelete(`/api/workflows/${wf.workflow_id}`)
-      toast.success('Workflow deleted')
-      setDeleteConfirm(null)
-      invalidateWorkflows()
-    } catch (e) {
-      toast.error('Failed to delete: ' + e.message)
-      throw e
-    }
-  }
-
-  const handleRename = async (wf, newName) => {
-    try {
-      await apiPut(`/api/workflows/${wf.workflow_id}`, { name: newName })
-      toast.success('Workflow renamed')
-      setRenaming(null)
-      invalidateWorkflows()
-    } catch (e) {
-      toast.error('Failed to rename: ' + e.message)
-      throw e
-    }
-  }
-
-  const handleTriggerRun = async (wf) => {
-    setTriggeringId(wf.workflow_id)
-    try {
-      await apiPost(`/api/workflows/${wf.workflow_id}/run`, {})
-      toast.success('Workflow run started')
-      invalidateWorkflows()
-    } catch (e) {
-      if (e.message?.includes('409')) {
-        toast.error('Workflow is already running')
-      } else {
-        toast.error('Failed to trigger: ' + e.message)
-      }
-    } finally {
-      setTriggeringId(null)
-    }
-  }
-
-  const isOwner = (wf) => currentUserId && wf.created_by === currentUserId
+  const { data, isLoading } = useQuery({ queryKey: ["agent-workflows"], queryFn: () => apiGet("/api/agent-workflows") });
+  const workflows = data?.workflows || [];
+  const s = data?.summary;
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return workflows
-    const query = search.toLowerCase()
-    return workflows.filter((w) => w.name.toLowerCase().includes(query))
-  }, [workflows, search])
+    const q = search.trim().toLowerCase();
+    return workflows.filter(
+      (w) =>
+        (filter === "all" || w.status === filter) &&
+        (!q || `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q))
+    );
+  }, [workflows, search, filter]);
 
-  const getTriggerLabel = (trigger) => {
-    if (!trigger) return 'Manual'
-    if (trigger.type === 'cron') return 'Scheduled'
-    return trigger.type?.charAt(0).toUpperCase() + trigger.type?.slice(1) || 'Manual'
-  }
-
-  const Skeleton = ({ width, height }) => (
-    <div className="bg-[var(--color-grey-200)] rounded animate-pulse" style={{ width, height }} />
-  )
-
-  const ListLoader = ({ length = 8 }) => (
-    <div className="flex flex-col w-full gap-2">
-      {Array.from({ length }).map((_, ind) => (
-        <div
-          className="grid w-full px-3 h-[58px] shrink-0 items-center border border-[var(--color-grey-100)] rounded-lg"
-          style={{ gridTemplateColumns: GRID_COLUMNS }}
-          key={ind}
-        >
-          <span className="px-2"><Skeleton width="18px" height="18px" /></span>
-          <span className="px-2"><Skeleton width={ind % 2 === 0 ? '80%' : '60%'} height="18px" /></span>
-          <span className="px-2"><Skeleton width="50px" height="18px" /></span>
-          <span className="px-2"><Skeleton width="80px" height="18px" /></span>
-          <span className="px-2"><Skeleton width="40px" height="18px" /></span>
-          <span className="px-2"><Skeleton width="30px" height="18px" /></span>
-          <span className="px-2 flex justify-center"><Skeleton width="18px" height="18px" /></span>
-        </div>
-      ))}
-    </div>
-  )
+  const counts = useMemo(
+    () => ({
+      all: workflows.length,
+      active: workflows.filter((w) => w.status === "active").length,
+      available: workflows.filter((w) => w.status === "available").length,
+    }),
+    [workflows]
+  );
 
   return (
-    <div className="flex flex-col w-full h-full overflow-x-auto">
-      <div className="flex flex-col w-full h-full min-w-[800px]">
-        <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
-          <span className="text-[16px] leading-[24px] font-medium">Workflows</span>
-        </div>
-
-        <div
-          className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]"
-          style={{ height: 'calc(100% - 60px)' }}
-        >
-          <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
-            <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)]">
-              <div className="px-8 flex gap-2.5 items-center">
-                <span className="font-medium text-[14px]">All Workflows</span>
-                <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md">
-                  {filtered.length}
-                </span>
-              </div>
-              <div className="flex gap-3 items-center pr-4">
-                <Input
-                  placeholder="Search Workflow"
-                  leftElem={<MagnifyingGlass size={16} />}
-                  value={search}
-                  disabled={loading || workflows.length === 0}
-                  onChange={(e) => setSearch(e?.target?.value || '')}
-                  showClearInput
-                  className={{
-                    input: {
-                      wrapper: 'w-80 py-2 px-3',
-                      root: 'text-xs'
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="flex flex-col w-full px-4 py-2" style={{ height: 'calc(100% - 56px)' }}>
-                <div
-                  className="grid w-full p-2 border-b border-[var(--color-grey-100)]"
-                  style={{ gridTemplateColumns: GRID_COLUMNS }}
-                >
-                  <span className="px-2"><Skeleton width="12px" height="12px" /></span>
-                  <span className="px-2"><Skeleton width="36px" height="12px" /></span>
-                  <span className="px-2"><Skeleton width="42px" height="12px" /></span>
-                  <span className="px-2"><Skeleton width="55px" height="12px" /></span>
-                  <span className="px-2"><Skeleton width="40px" height="12px" /></span>
-                  <span className="px-2"><Skeleton width="42px" height="12px" /></span>
-                  <span className="px-2" />
+    <div className="flex flex-col w-full h-full">
+      <div className="flex-1 min-h-0 p-4 bg-grey-50 overflow-hidden">
+        <div className="flex flex-col w-full h-full bg-white rounded-xl border border-[var(--color-grey-100)] overflow-hidden">
+          <div className="w-full h-full overflow-y-auto">
+            <div className="flex flex-col w-full p-4">
+              <div className="flex items-start justify-between gap-6 mb-4">
+                <div className="min-w-0">
+                  <h1 className="text-[20px] font-semibold text-[var(--text-primary)] tracking-[-0.02em] mb-1.5">Workflows</h1>
+                  <p className="text-[13px] text-[#757A97] leading-relaxed max-w-[660px]">
+                    Each workflow automates one deep paid-media analysis your team doesn&rsquo;t have time to do by hand,
+                    and ends in a single action you approve.
+                  </p>
                 </div>
-                <div className="py-2 overflow-hidden" style={{ height: 'calc(100% - 32px)' }}>
-                  <ListLoader />
+                <div className="flex items-center gap-2 shrink-0">
+                  <PvButton variant="secondary" size="md" label="Ask Sage" icon={Sparkle} />
+                  <PvButton variant="primary" size="md" label="Activate workflow" icon={Plus} />
                 </div>
               </div>
-            ) : filtered.length === 0 && search ? (
-              <div className="w-full h-full flex">
-                <div className="m-auto text-[var(--color-grey-500)] flex flex-col gap-2 items-center">
-                  <div className="mx-auto">
-                    No results for <b className="text-[var(--color-grey-900)]">"{search}"</b>
-                  </div>
-                  <div className="flex">
-                    <Button size="sm" variant="secondary" onClick={() => setSearch('')}>
-                      Clear search
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col w-full h-full justify-center items-center gap-3">
-                <span className="text-[var(--color-grey-500)] font-normal text-sm">No workflows to list</span>
-              </div>
-            ) : (
-              <div className="flex flex-col w-full px-4 py-2" style={{ height: 'calc(100% - 56px)' }}>
-                <div
-                  className={`grid p-2 ${listOverflow ? 'w-[calc(100%-8px)]' : 'w-full'}`}
-                  style={{ gridTemplateColumns: GRID_COLUMNS }}
-                >
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">#</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">Name</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">Trigger</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">Last Run</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">Status</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2">Shared</span>
-                  <span className="text-[var(--color-grey-500)] font-medium text-xs px-2"></span>
-                </div>
 
-                <div
-                  ref={listWrapperRef}
-                  className="flex flex-col w-full overflow-y-auto gap-2 py-2"
-                  style={{ height: 'calc(100% - 32px)' }}
-                >
-                  {filtered.map((wf, index) => {
-                    const isRunning = wf.running || triggeringId === wf.workflow_id
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)] mb-6">
+                <Stat label="Waiting on you" icon={Lightning} tone="text-rose-600"
+                  value={s ? String(s.pending) : "—"} sub="actions ready to approve" />
+                <Stat label="Running for you" icon={ArrowClockwise} tone="text-primary-500"
+                  value={s ? `${s.live} of ${s.total}` : "—"} sub="workflows live · the rest are one click away" />
+                <Stat label="Actions taken" icon={CheckCircle} tone="text-green-600"
+                  value={s ? String(s.actionsTaken) : "—"} sub={s ? `${s.approved} approved · ${s.rejected} rejected` : "this month"} />
+              </div>
 
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  {FILTERS.map((f) => {
+                    const active = filter === f.k;
                     return (
                       <button
-                        key={wf.workflow_id}
-                        className="grid w-full px-3 h-[58px] shrink-0 items-center border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all text-left group cursor-pointer bg-white"
-                        style={{ gridTemplateColumns: GRID_COLUMNS }}
-                        onClick={() => navigate(`/workflows/${wf.workflow_id}`)}
+                        key={f.k}
+                        type="button"
+                        onClick={() => setFilter(f.k)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium border transition-colors cursor-pointer",
+                          active
+                            ? "bg-primary-50 border-primary-500 text-primary-700"
+                            : "bg-white border-[var(--color-grey-100)] text-[var(--text-muted)] hover:bg-grey-50"
+                        )}
                       >
-                        <span className="flex items-center px-2 text-xs text-[var(--color-grey-500)]">
-                          {index + 1}.
-                        </span>
-
-                        <span className="flex items-center gap-2 px-2 min-w-0 overflow-hidden">
-                          <Tooltip title={wf.name} displayTooltipOnOverflow arrow placement="top" tooltipActive={tooltipShow}>
-                            <a
-                              href={`/workflows/${wf.workflow_id}`}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                navigate(`/workflows/${wf.workflow_id}`);
-                              }}
-                              onMouseEnter={() => setTooltipShow(true)}
-                              className="text-xs truncate"
-                            >
-                              {wf.name}
-                            </a>
-                          </Tooltip>
-                          {isRunning && <Badge variant="accent" className="shrink-0">Running</Badge>}
-                        </span>
-
-                        <span className="flex items-center px-2 text-xs text-[var(--color-grey-600)]">
-                          {getTriggerLabel(wf.trigger)}
-                        </span>
-
-                        <span className="flex items-center px-2 text-xs text-[var(--color-grey-600)]">
-                          {wf.latest_run ? (
-                            <Tooltip title={formatDateTime(wf.latest_run.refreshed_at, wf.tenant_timezone) || formatDate(wf.latest_run.refreshed_at)} arrow placement="top" tooltipActive={tooltipShow}>
-                              <span onMouseEnter={() => setTooltipShow(true)}>{timeAgo(wf.latest_run.refreshed_at)}</span>
-                            </Tooltip>
-                          ) : (
-                            <span className="text-[var(--color-grey-300)]">—</span>
-                          )}
-                        </span>
-
-                        <span className="flex items-center px-2 text-xs text-[var(--color-grey-600)]">
-                          {wf.status === 'paused' ? 'Paused' : 'Active'}
-                        </span>
-
-                        <span className="flex items-center px-2 text-xs text-[var(--color-grey-600)]">
-                          {wf.shared ? 'Yes' : 'No'}
-                        </span>
-
-                        <span
-                          className="flex items-center justify-center px-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {isOwner(wf) && (
-                            <Popper
-                              buttonChildren={<DotsThree size={18} weight="bold" />}
-                              placement="bottom-end"
-                              size="sm"
-                              variant="ghost"
-                              className="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-grey-400)] hover:text-[var(--color-grey-700)] hover:bg-[var(--color-grey-100)] rounded-lg"
-                              popperClassName="w-48"
-                              closeOnClickInside
-                              zIndex={50}
-                              scrollContainerRef={listWrapperRef}
-                              open={openMenuId === wf.workflow_id}
-                              onOpenChange={(isOpen) => setOpenMenuId(isOpen ? wf.workflow_id : null)}
-                            >
-                              {wf.dashboard_id && (
-                                <button
-                                  onClick={() => navigate(`/dashboards/${wf.dashboard_id}`)}
-                                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer"
-                                >
-                                  <ExternalLink size={14} />
-                                  View Dashboard
-                                </button>
-                              )}
-                              {wf.source_session_id && (
-                                <button
-                                  onClick={() => navigate(`/session/${wf.source_session_id}`)}
-                                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer"
-                                >
-                                  <ExternalLink size={14} />
-                                  Edit Workflow
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleTriggerRun(wf)}
-                                disabled={wf.running || wf.status !== 'active'}
-                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Play size={14} />
-                                Run now
-                              </button>
-                              <button
-                                onClick={() => setRenaming(wf)}
-                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer"
-                              >
-                                <Pencil size={14} />
-                                Rename
-                              </button>
-                              <button
-                                onClick={() => handleToggleShare(wf)}
-                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer"
-                              >
-                                {wf.shared ? <EyeOff size={14} /> : <Eye size={14} />}
-                                {wf.shared ? 'Unshare' : 'Share with team'}
-                              </button>
-                              <button
-                                onClick={() => handleTogglePause(wf)}
-                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-grey-700)] hover:bg-[var(--color-grey-50)] active:bg-white active:text-[var(--color-grey-600)] transition-colors bg-transparent border-none cursor-pointer"
-                              >
-                                {wf.status === 'paused' ? <Play size={14} /> : <Pause size={14} />}
-                                {wf.status === 'paused' ? 'Resume' : 'Pause'}
-                              </button>
-                              <div className="border-t border-[var(--color-grey-100)]" />
-                              <button
-                                onClick={() => setDeleteConfirm(wf)}
-                                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-[var(--color-red)] hover:bg-[var(--color-red-bg)] active:bg-white active:text-[var(--color-red)]/60 transition-colors bg-transparent border-none cursor-pointer"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
-                            </Popper>
-                          )}
+                        {f.label}
+                        <span className={cn("tabular-nums text-[11px]", active ? "text-primary-600" : "text-[var(--text-muted)]")}>
+                          {counts[f.k] ?? 0}
                         </span>
                       </button>
-                    )
+                    );
                   })}
                 </div>
+                <div className="flex items-center gap-2 w-80 h-8 ml-auto border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 px-3 transition-colors">
+                  <MagnifyingGlass size={16} className="text-grey-500 shrink-0" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search workflows"
+                    aria-label="Search workflows"
+                    className="flex-1 min-w-0 h-full bg-transparent border-none outline-none text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)]"
+                  />
+                </div>
               </div>
-            )}
+
+              <div className="border border-[var(--color-grey-100)] rounded-lg overflow-hidden">
+                <div className="grid w-full items-center gap-3 px-4 py-2.5 bg-grey-50 border-b border-[var(--color-grey-100)]" style={{ gridTemplateColumns: COLS }}>
+                  <HeaderCell label="Workflow · what it automates" />
+                  <HeaderCell label="Agents" />
+                  <HeaderCell label="What you get" />
+                  <HeaderCell label="Status" />
+                  <HeaderCell label="Last run" />
+                  <HeaderCell label="To approve" />
+                  <span />
+                </div>
+
+                {isLoading ? (
+                  <div className="flex flex-col">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 h-[68px] border-b border-[var(--color-grey-100)] last:border-b-0">
+                        <div className="h-3.5 w-1/3 rounded bg-[var(--color-grey-100)] animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-1.5 py-14 text-center">
+                    <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
+                    <p className="text-[13px] text-[#757A97]">No workflows match that.</p>
+                  </div>
+                ) : (
+                  filtered.map((wf) => <Row key={wf.id} wf={wf} onOpen={() => navigate(`/workflows/${wf.id}`)} />)
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 mt-3 px-1">
+                <Clock size={14} className="text-[var(--text-muted)] shrink-0" />
+                <p className="text-[12px] text-[#757A97]">
+                  Pilots start with three workflows. The other three stay available and can be switched on at any time.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      <DeleteWorkflowModal
-        workflow={deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onDelete={handleDelete}
-      />
-
-      <RenameWorkflowModal
-        workflow={renaming}
-        onClose={() => setRenaming(null)}
-        onRename={handleRename}
-      />
     </div>
-  )
+  );
 }

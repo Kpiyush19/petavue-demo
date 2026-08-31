@@ -109,7 +109,12 @@ function LegacyRunRedirect() {
   const { sessionId } = useParams();
   return <Navigate to={`/skills/run/${sessionId}`} replace />;
 }
-const WorkflowsPage = lazy(() => import("./pages/workflows"));
+const WorkflowEnginePage = lazy(() => import("./pages/workflow-engine"));
+// Agentic workflows surface (the six paid-media pilot use cases). This owns
+// /workflows; the older step-based engine page moved to /workflow-engine.
+const WorkflowsPage = lazyWithRetry(() => import("./pages/workflows"));
+const AgentWorkflowDetailPage = lazyWithRetry(() => import("./pages/workflows/WorkflowDetail"));
+const AgentsPage = lazyWithRetry(() => import("./pages/agents"));
 const WorkflowDetailPage = lazy(() => import("./pages/WorkflowDetailPage"));
 const MyProfilePage = lazy(() => import("./pages/MyProfilePage"));
 const ExperimentsPage = lazy(() => import("./pages/ExperimentsPage"));
@@ -493,7 +498,38 @@ export const router = createBrowserRouter([
             element: <PetavueGuard />,
             children: [
               {
+                path: "agents",
+                element: (
+                  <SuspenseWrapper variant="list">
+                    <AgentsPage />
+                  </SuspenseWrapper>
+                )
+              },
+              {
                 path: "workflows",
+                children: [
+                  {
+                    index: true,
+                    element: (
+                      <SuspenseWrapper variant="list">
+                        <WorkflowsPage />
+                      </SuspenseWrapper>
+                    )
+                  },
+                  {
+                    path: ":id",
+                    element: (
+                      <SuspenseWrapper>
+                        <AgentWorkflowDetailPage />
+                      </SuspenseWrapper>
+                    )
+                  }
+                ]
+              },
+              // The original step-based workflow engine, moved off /workflows
+              // but otherwise untouched.
+              {
+                path: "workflow-engine",
                 element: (
                   <SuspenseWrapper>
                     <WorkflowsLayout />
@@ -504,7 +540,7 @@ export const router = createBrowserRouter([
                     index: true,
                     element: (
                       <SuspenseWrapper variant="list">
-                        <WorkflowsPage />
+                        <WorkflowEnginePage />
                       </SuspenseWrapper>
                     )
                   },

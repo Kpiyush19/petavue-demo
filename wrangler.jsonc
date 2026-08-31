@@ -1,14 +1,22 @@
 {
   // Cloudflare Workers static-assets config for the Vite SPA build (dist/).
-  // `wrangler deploy` uploads ./dist and serves it, with SPA fallback so client
-  // routes like /goals and /home resolve to index.html.
+  // `wrangler deploy` runs the build below, then uploads ./dist and serves it,
+  // with SPA fallback so client routes like /workflows and /agents resolve to
+  // index.html.
   //
-  // NOTE: not wired to any CI. This repo has no deploy workflow — deploys are
-  // manual (`npx wrangler deploy`) until we set one up. The worker name is
-  // deliberately distinct from the prototype's (`petavue-ccpoc`) so a deploy
-  // from here can never overwrite it.
+  // The `build` hook matters: Cloudflare's Workers Build runs the deploy command
+  // (`npx wrangler deploy`) without a separate build step, so without this the
+  // deploy fails with "the directory specified by assets.directory does not
+  // exist". Keeping it here means the repo works no matter how the dashboard's
+  // build command is configured.
+  //
+  // Worker name is deliberately distinct from the prototype's (`petavue-ccpoc`)
+  // so a deploy from here can never overwrite it.
   "name": "petavue-demo",
   "compatibility_date": "2025-06-01",
+  "build": {
+    "command": "npm run build"
+  },
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

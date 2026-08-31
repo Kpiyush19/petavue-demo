@@ -29,7 +29,7 @@ import { Badge } from "@/ui";
 import { Button, Tooltip, Toggle, Skeleton } from "@/ui";
 import { useScrollCleanup } from "@/hooks/useScrollCleanup";
 import WorkflowDropdown from "../components/WorkflowDropdown";
-import { RenameWorkflowModal } from "./workflows/components/RenameWorkflowModal";
+import { RenameWorkflowModal } from "./workflow-engine/components/RenameWorkflowModal";
 import { apiGet, apiPost, apiPut, getCurrentUser } from "../api";
 import { timeAgo } from "@/utils/relativeTimeDiff";
 import { formatDateTime } from "@/utils/formatDateTime";

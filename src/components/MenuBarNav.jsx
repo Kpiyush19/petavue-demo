@@ -19,6 +19,7 @@ export const NAV_ITEMS = [
   { id: "skills", label: "Skills", icon: "skills" },
   { id: "goals", label: "Goals", icon: "goals" },
   { id: "workflows", label: "Workflows", icon: "workflows" },
+  { id: "agents", label: "Agents", icon: "grid" },
   { id: "contexts", label: "Contexts", icon: "contexts", title: "Contexts — add new (coming soon)" },
   { id: "data-hub", label: "Data Hub", icon: "data-hub" },
 ];
@@ -31,6 +32,7 @@ export const NAV_ROUTES = {
   skills: "/skills",
   goals: "/goals",
   workflows: "/workflows",
+  agents: "/agents",
   settings: "/settings",
 };
 
