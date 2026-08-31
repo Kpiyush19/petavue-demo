@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+.wrangler
 dist-ssr
 *.local
 
@@ -31,4 +32,10 @@ dist-ssr
 c2e-ux.html
 onboarding-v2.html
 onboarding-v3.html
-help-docs/
+
+# Internal docs (kept local, not part of the demo repo)
+/docs/
+/help-docs/
+
+# Case-study UI export snippets
+exports/

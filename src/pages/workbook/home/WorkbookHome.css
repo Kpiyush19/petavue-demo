@@ -228,9 +228,9 @@
 .workbook-home__dropdown-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 8px;
+  padding: 6px;
   border: none;
   background: transparent;
   border-radius: var(--radius-sm);
@@ -244,13 +244,10 @@
   background-color: var(--color-neutral-50);
 }
 
+/* Icon renders directly (no wrapper box), aligned to the title's first line */
 .workbook-home__dropdown-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
   flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .workbook-home__dropdown-content {
@@ -269,7 +266,7 @@
 }
 
 .workbook-home__dropdown-desc {
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .workbook-home__dropdown-check {

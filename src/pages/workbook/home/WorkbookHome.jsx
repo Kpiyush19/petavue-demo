@@ -179,17 +179,16 @@ export function WorkbookHome({
                             aria-selected={isSelected}
                             onClick={() => handleModeSelect(mode.id)}
                           >
-                            <div className="workbook-home__dropdown-icon">
-                              <IconComp
-                                size={12}
-                                weight="regular"
-                                color={
-                                  isSelected
-                                    ? 'var(--color-primary-500)'
-                                    : 'var(--color-text-primary)'
-                                }
-                              />
-                            </div>
+                            <IconComp
+                              className="workbook-home__dropdown-icon"
+                              size={12}
+                              weight="regular"
+                              color={
+                                isSelected
+                                  ? 'var(--color-primary-500)'
+                                  : 'var(--color-text-primary)'
+                              }
+                            />
                             <div className="workbook-home__dropdown-content">
                               <span
                                 className={`text-body-2-medium workbook-home__dropdown-label ${isSelected ? 'workbook-home__dropdown-label--selected' : ''}`}

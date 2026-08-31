@@ -198,41 +198,19 @@ export default function ToolCallsContainer({ calls, isStreaming }) {
   return (
     <div ref={wrapperRef} className="s-timeline-wrapper">
       <div ref={containerRef} className="s-timeline-container">
-        <div className="s-timeline-item s-timeline-item--header">
-          <span className="s-timeline-item__dot" />
-          {expanded && <span className="s-timeline-item__line" />}
-          <div className="s-timeline-item__content">
-            <div className={`s-timeline__header${allDone ? " s-timeline__header--done" : ""}`}>
-              <div className="s-timeline__header-text">{renderNarrativeHeader()}</div>
-            </div>
-
-            <AnimatePresence>
-              {expanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="overflow-hidden"
-                >
-                  <div className="s-timeline-item__group">
-                    {toolGroups.map((group, idx) =>
-                      group.calls.length === 1 ? (
-                        <ToolCard key={group.calls[0].id} {...group.calls[0]} onExpand={handleToolExpand} />
-                      ) : (
-                        <ToolCallGroup
-                          key={`${group.tool}-${idx}`}
-                          tool={group.tool}
-                          calls={group.calls}
-                          onExpand={handleToolExpand}
-                        />
-                      )
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        <div className="flex flex-col gap-2">
+          {toolGroups.map((group, idx) =>
+            group.calls.length === 1 ? (
+              <ToolCard key={group.calls[0].id} {...group.calls[0]} onExpand={handleToolExpand} />
+            ) : (
+              <ToolCallGroup
+                key={`${group.tool}-${idx}`}
+                tool={group.tool}
+                calls={group.calls}
+                onExpand={handleToolExpand}
+              />
+            )
+          )}
         </div>
       </div>
     </div>

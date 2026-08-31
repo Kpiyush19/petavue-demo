@@ -87,6 +87,12 @@ const GoalDetailPage = lazy(() => import("./pages/goals/GoalDetailPage"));
 const HomePage = lazy(() => import("./pages/home/TempHome/HomePage"));
 const SkillDetailPage = lazy(() => import("./pages/home/TempHome/SkillDetailPage"));
 const SkillsLibraryPage = lazy(() => import("./pages/home/TempHome/SkillsLibraryPage"));
+
+// Unarchived Petavue "workbook" UI — standalone reference screens, reachable by
+// URL only (not in any navbar). Kept separate from the app home to avoid a clash.
+const WorkbookHome = lazy(() => import("./pages/workbook/routes").then((m) => ({ default: m.WorkbookHomeRoute })));
+const WorkbookChat = lazy(() => import("./pages/workbook/routes").then((m) => ({ default: m.WorkbookChatRoute })));
+const WorkbookList = lazy(() => import("./pages/workbook/routes").then((m) => ({ default: m.WorkbookListRoute })));
 const ExplorePage = lazy(() => import("./pages/ExplorePage"));
 const SessionsPage = lazy(() => import("./pages/SessionsPage"));
 const WorkspacePage = lazy(() => import("./pages/WorkspacePage"));
@@ -165,6 +171,23 @@ export const router = createBrowserRouter([
     // Back-compat: retire the old /petavue/* URLs → send to their natural home.
     path: "/petavue/*",
     element: <PetavueLegacyRedirect />,
+    errorElement: <BubbleError />
+  },
+  {
+    // Unarchived workbook reference screens — URL-only, no navbar, standalone
+    // (each renders its own MenuBar). Kept off "/" so the app home is untouched.
+    path: "/workbook",
+    element: <SuspenseWrapper><WorkbookHome /></SuspenseWrapper>,
+    errorElement: <BubbleError />
+  },
+  {
+    path: "/workbook/list",
+    element: <SuspenseWrapper><WorkbookList /></SuspenseWrapper>,
+    errorElement: <BubbleError />
+  },
+  {
+    path: "/workbook/chat",
+    element: <SuspenseWrapper><WorkbookChat /></SuspenseWrapper>,
     errorElement: <BubbleError />
   },
   {
