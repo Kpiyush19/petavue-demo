@@ -766,7 +766,7 @@ export default function WorkflowDetail() {
       refreshAll();
       const wasAvailable = wf?.status === "available";
       toast.success(wasAvailable ? "Deployed. The first run is starting now." : "Workflow resumed");
-      if (wasAvailable) navigate("/workflows?tab=deployed");
+      if (wasAvailable) navigate("/workflows");
     },
   });
   const pause = useMutation({

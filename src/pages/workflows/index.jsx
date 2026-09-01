@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   MagnifyingGlass, CaretRight, Plus, ListChecks, Question, CircleDashed,
   PauseCircle, XCircle, CalendarBlank, CircleNotch, ClipboardText,
@@ -88,7 +88,7 @@ function HeaderCell({ label }) {
 /* One workflow — a spaced, bordered row on a single line, matching the goals
    and dashboards lists. The longer "what it automates" copy lives inside the
    workflow rather than on this page. */
-function Row({ wf, onOpen, onReview, onDeploy }) {
+function Row({ wf, onOpen, onReview, onDeploy, deploying }) {
   const st = operationalStatus(wf);
   return (
     <div
@@ -138,6 +138,11 @@ function Row({ wf, onOpen, onReview, onDeploy }) {
             <st.icon size={14} className="shrink-0" />
             <span className="text-[12px] leading-snug">{st.label}</span>
           </button>
+        ) : deploying ? (
+          <span className="inline-flex items-center gap-1.5 min-w-0 text-blue-700">
+            <CircleNotch size={14} className="shrink-0 animate-spin" />
+            <span className="text-[12px] leading-snug">Deploying…</span>
+          </span>
         ) : wf.status === "available" && onDeploy ? (
           <Button
             variant="secondary"
@@ -160,112 +165,66 @@ function Row({ wf, onOpen, onReview, onDeploy }) {
   );
 }
 
-/* ── The assessment, spelled out as a workflow.
-   Two kinds of customers arrive at this tab: those who already know where the
-   pipeline problem is and pick a workflow above, and those who don't. This
-   panel exists for the second kind — so it leads with their question, carries
-   the full spec like any other workflow, and stays visually distinct (tinted,
-   not muted) because it is the recommended first step, not a seventh use case. ── */
+/* ── The assessment, one quiet row under the list.
+   It exists for the customer who doesn't know which workflow to pick, but it
+   must not compete with the six workflows above it — so no tint, no shouting
+   eyebrow: a name, one sentence, and a small button. ── */
 const ASSESSMENT = {
   name: "End-to-end assessment of your paid-media engine",
-  question: "Don\u2019t know which workflows to deploy?",
   line:
-    "Run the full assessment. Petavue assesses campaign delivery, budgets, audience, and creatives across every connected paid-media platform, and recommends which agents to deploy to streamline your paid-media engine.",
-  output: "A downloadable assessment with the evidence and a recommended deployment order.",
-  reads: ["Google Ads", "LinkedIn Ads", "Meta Ads", "HubSpot", "GA4"],
+    "Don\u2019t know which workflows to deploy? Petavue assesses campaign delivery, budgets, audience, and creatives across every connected paid-media platform, and recommends which agents to deploy.",
   route: "/workflows/paid-media-assessment",
 };
 
 function AssessmentPanel({ onOpen }) {
   return (
-    <div
-      onClick={onOpen}
-      className="flex flex-col gap-3 p-5 rounded-xl border border-[var(--color-primary-200)] bg-[var(--color-primary-50)] cursor-pointer transition-shadow hover:shadow-[0_4px_14px_-2px_rgba(54,97,237,0.18)]"
-    >
-      <div className="flex items-center gap-2">
-        <ClipboardText size={16} className="shrink-0 text-[var(--color-primary-600)]" />
-        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--color-primary-600)]">
-          {ASSESSMENT.question}
-        </span>
-        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 text-[12px] text-[#757A97]">
-          <i className="w-[6px] h-[6px] rounded-full bg-[var(--color-grey-300)]" />
-          Available · All channels
-        </span>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[14px] font-medium text-[var(--text-primary)]">{ASSESSMENT.name}</span>
-        <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)] max-w-[860px]">{ASSESSMENT.line}</p>
-        <p className="m-0 text-[12px] leading-relaxed text-[#757A97] max-w-[860px]">
-          <span className="font-medium text-[var(--text-primary)]">You get: </span>
-          {ASSESSMENT.output}
-        </p>
-      </div>
-      <div className="flex items-center justify-between gap-3 pt-3 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-primary-100)]">
-        <span className="inline-flex items-center gap-2 min-w-0">
-          <span className="text-[12px] text-[#757A97] shrink-0">Assesses</span>
-          {ASSESSMENT.reads.map((r) => (
-            <span key={r} className="inline-flex items-center gap-1 text-[12px] text-[var(--text-primary)]">
-              <SourceIcon name={r} size={13} />
-              {r}
-            </span>
-          ))}
-        </span>
-        <Button
-          variant="primary"
-          size="sm"
-          label="Run the full assessment"
-          onClick={(e) => { e.stopPropagation(); onOpen(); }}
-        />
-      </div>
+    <div className="flex items-center gap-3 px-4 py-3.5 bg-white border border-[var(--color-grey-100)] rounded-lg">
+      <ClipboardText size={16} className="shrink-0 text-[var(--text-muted)]" />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{ASSESSMENT.name}</span>
+        <span className="text-[12px] text-[#757A97] leading-snug">{ASSESSMENT.line}</span>
+      </span>
+      <Button variant="secondary" size="sm" label="Run the full assessment" onClick={onOpen} />
     </div>
   );
 }
 
-
-const TABS = [
-  { k: "deployed", label: "Deployed" },
-  { k: "available", label: "Available" },
-];
-
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState(params.get("tab") === "available" ? "available" : "deployed");
+  // ids mid-deploy: the row shows Deploying between the press and Running
+  const [deployingIds, setDeployingIds] = useState(() => new Set());
 
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["agent-workflows"],
     queryFn: () => apiGet("/api/agent-workflows"),
   });
-  // Deploying from the row activates the workflow and lands you on the
-  // Deployed tab, where it reads Running: its first run is in flight.
+  // Deploying happens in place: the status cell reads Deploying for a beat,
+  // then the refreshed row reads Running — its first run is in flight.
   const deploy = useMutation({
-    mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/activate`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
-      setTab("deployed");
-      toast.success("Deployed. The first run is starting now.");
+    mutationFn: async (id) => {
+      setDeployingIds((prev) => new Set(prev).add(id));
+      await new Promise((r) => setTimeout(r, 1400));
+      return apiPost(`/api/agent-workflows/${id}/activate`, {});
     },
+    onSettled: (_r, _e, id) => {
+      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
+      setDeployingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    },
+    onSuccess: () => toast.success("Deployed. The first run is starting now."),
   });
   const workflows = data?.workflows || [];
 
-  const isDeployed = (w) => w.status !== "available";
-  const counts = {
-    deployed: workflows.filter(isDeployed).length,
-    available: workflows.filter((w) => !isDeployed(w)).length,
-  };
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return workflows
-      .filter((w) => (tab === "deployed" ? isDeployed(w) : !isDeployed(w)))
-      .filter((w) => !q || `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q));
-  }, [workflows, search, tab]);
+    return workflows.filter(
+      (w) => !q || `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q),
+    );
+  }, [workflows, search]);
 
-  // The assessment belongs with the workflows still to deploy, and never
-  // while a search is narrowing the list.
-  const showAssessment = !search.trim() && tab !== "deployed";
+  // The assessment sits under the list, except while a search is narrowing it.
+  const showAssessment = !search.trim();
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -286,52 +245,16 @@ export default function WorkflowsPage() {
           style={{ height: "calc(100% - 72px)" }}
         >
           <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
-          {/* Heading bar — the Dashboards pattern: 56px, controls on the left,
-              search on the right. Deployed and Available are two views of one
-              library, not two products, so they are tabs on the same table
-              rather than separate pages. */}
+          {/* Heading bar — the Dashboards pattern: 56px, label + solid count
+              chip on the left, search and the custom-workflow request on the
+              right. Deployed vs available is a status, not a view, so there
+              are no tabs: one list, six workflows. */}
           <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)] bg-white">
-            {/* The Data Hub tab bar (.data-hub__tab): 48px tall, 24px gaps,
-                active tab in primary-500 with a 2px underline in the same
-                colour. Values mirror DataHub.css rather than importing a whole
-                page's stylesheet.
-                Every border edge is set explicitly — a bare `border-none` or
-                `border-0` silently beats `border-b-2` and the underline
-                disappears with no error. */}
-            <div className="flex items-end gap-2 px-4 h-full" role="tablist">
-              {TABS.map((t) => (
-                <button
-                  key={t.k}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.k}
-                  onClick={() => setTab(t.k)}
-                  className={cn(
-                    "flex items-center justify-center gap-2 h-12 px-4 bg-transparent cursor-pointer text-[14px] leading-[22px] transition-colors",
-                    "border-solid border-t-0 border-x-0 border-b-2",
-                    tab === t.k
-                      ? "border-b-[var(--color-primary-500)] text-[var(--color-primary-500)] font-medium"
-                      : "border-b-transparent text-[var(--color-text-primary)] hover:text-[var(--color-primary-500)] font-normal",
-                  )}
-                >
-                  {t.label}
-                  {/* The Data Hub toolbar count bubble (.data-hub__toolbar-count):
-                      16px tall, 10px regular, 6px radius. Filled primary on the
-                      active tab; primary-50 on primary-500 for the rest, so the
-                      counts stay readable without pulling the eye off the tab
-                      that is actually selected. */}
-                  <span
-                    className={cn(
-                      "flex items-center justify-center h-4 px-1.5 rounded-md text-[10px] leading-4 font-normal tabular-nums",
-                      tab === t.k
-                        ? "bg-[var(--color-primary-500)] text-white"
-                        : "bg-[var(--color-primary-50)] text-[var(--color-primary-500)]",
-                    )}
-                  >
-                    {counts[t.k]}
-                  </span>
-                </button>
-              ))}
+            <div className="px-8 flex gap-2.5 items-center">
+              <span className="font-medium text-[14px]">All workflows</span>
+              <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
+                {filtered.length}
+              </span>
             </div>
             <div className="flex gap-3 items-center pr-4">
               <div className="flex flex-1 items-center w-80 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 py-2 px-3 transition-colors">
@@ -346,6 +269,13 @@ export default function WorkflowsPage() {
                   className="w-full min-w-0 resize-none outline-none border-none bg-transparent text-xs text-grey-900 placeholder:text-[var(--text-secondary)]"
                 />
               </div>
+              <Button
+                variant="secondary"
+                size="md"
+                icon={Plus}
+                label="Request a custom workflow"
+                onClick={() => toast.success("Request noted. The Petavue team will follow up to scope it with you.")}
+              />
             </div>
           </div>
 
@@ -379,44 +309,19 @@ export default function WorkflowsPage() {
                       ))}
                     </div>
                   ) : filtered.length === 0 ? (
-                    // An empty state should say what happened, why, and what
-                    // to do next. A magnifier and four words did none of it,
-                    // and the search case and the empty-tab case are not the
-                    // same situation.
                     <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
                       <span className="grid place-items-center w-11 h-11 rounded-full bg-grey-50 border border-[var(--color-grey-100)]">
-                        {search.trim() ? (
-                          <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
-                        ) : (
-                          <WorkflowGlyph size={20} className="text-[var(--text-muted)]" />
-                        )}
+                        <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
                       </span>
                       <span className="flex flex-col gap-1 max-w-[380px]">
                         <span className="text-[14px] font-medium text-[var(--text-primary)]">
-                          {search.trim()
-                            ? `No workflows match “${search.trim()}”`
-                            : tab === "available"
-                              ? "Every workflow is deployed"
-                              : "No workflows deployed yet"}
+                          {`No workflows match \u201c${search.trim()}\u201d`}
                         </span>
                         <span className="text-[12px] leading-relaxed text-[#757A97]">
-                          {search.trim()
-                            ? "Try a channel, an outcome, or part of the workflow name."
-                            : tab === "available"
-                              ? "All six are live and running on their schedules. Nothing is left to deploy."
-                              : "Deploy one from the Available tab and its first run will appear here."}
+                          Try a channel, an outcome, or part of the workflow name.
                         </span>
                       </span>
-                      {search.trim() ? (
-                        <Button variant="secondary" size="sm" label="Clear search" onClick={() => setSearch("")} />
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          label={tab === "available" ? "See deployed workflows" : "See available workflows"}
-                          onClick={() => setTab(tab === "available" ? "deployed" : "available")}
-                        />
-                      )}
+                      <Button variant="secondary" size="sm" label="Clear search" onClick={() => setSearch("")} />
                     </div>
                   ) : (
                     filtered
@@ -426,6 +331,7 @@ export default function WorkflowsPage() {
                         <Row
                           key={wf.id}
                           wf={wf}
+                          deploying={deployingIds.has(wf.id)}
                           onOpen={() => navigate(`/workflows/${wf.id}`)}
                           onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
                           onDeploy={() => deploy.mutate(wf.id)}
@@ -435,21 +341,8 @@ export default function WorkflowsPage() {
                 </div>
 
                 {showAssessment && (
-                  <div className="mt-5 flex flex-col gap-3">
+                  <div className="mt-5">
                     <AssessmentPanel onOpen={() => navigate(ASSESSMENT.route)} />
-                    <button
-                      type="button"
-                      onClick={() => toast.success("Request noted. The Petavue team will follow up to scope it with you.")}
-                      className="flex flex-col items-center justify-center gap-1 w-full py-5 px-4 rounded-xl border border-dashed border-[var(--color-grey-200)] bg-transparent cursor-pointer transition-colors hover:border-[var(--color-primary-300)] hover:bg-[var(--color-primary-50)] group"
-                    >
-                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--color-primary-600)] transition-colors">
-                        <Plus size={14} />
-                        Request a custom workflow
-                      </span>
-                      <span className="text-[12px] text-[var(--text-muted)]">
-                        Have a recurring paid-media analysis these don’t cover? Petavue builds it as a workflow.
-                      </span>
-                    </button>
                   </div>
                 )}
 
