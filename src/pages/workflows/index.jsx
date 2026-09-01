@@ -90,16 +90,9 @@ function Row({ wf, onOpen }) {
   );
 }
 
-const FILTERS = [
-  { k: "all", label: "All" },
-  { k: "active", label: "Live" },
-  { k: "available", label: "Available" },
-];
-
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-workflows"],
@@ -111,22 +104,10 @@ export default function WorkflowsPage() {
     const q = search.trim().toLowerCase();
     return workflows.filter(
       (w) =>
-        (filter === "all" || w.status === filter) &&
-        (!q ||
-          `${w.name} ${w.automates} ${w.deliverable}`
-            .toLowerCase()
-            .includes(q)),
+        !q ||
+        `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q),
     );
-  }, [workflows, search, filter]);
-
-  const counts = useMemo(
-    () => ({
-      all: workflows.length,
-      active: workflows.filter((w) => w.status === "active").length,
-      available: workflows.filter((w) => w.status === "available").length,
-    }),
-    [workflows],
-  );
+  }, [workflows, search]);
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -138,53 +119,34 @@ export default function WorkflowsPage() {
           </span>
         </div>
 
-        {/* Tabs bar — same treatment as the Agents page. */}
-        <div className="flex w-full items-center justify-between px-6 bg-white border-b border-[var(--color-grey-100)] shrink-0">
-          <div className="flex items-start gap-6">
-            {FILTERS.map((f) => {
-              const active = filter === f.k;
-              return (
-                <button
-                  key={f.k}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setFilter(f.k)}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 h-12 px-2 bg-transparent border-solid border-x-0 border-t-0 border-b-2 cursor-pointer text-[14px] transition-colors",
-                    active
-                      ? "text-primary-500 font-medium border-primary-500"
-                      : "text-[var(--text-secondary)] border-transparent hover:text-primary-500",
-                  )}
-                >
-                  {f.label}
-                  <span
-                    className={cn(
-                      "tabular-nums text-[12px]",
-                      active ? "text-primary-500" : "text-[var(--text-muted)]",
-                    )}
-                  >
-                    {counts[f.k] ?? 0}
-                  </span>
-                </button>
-              );
-            })}
+        {/* Heading bar — the Dashboards pattern: 56px, label + solid count
+            chip on the left, search on the right. */}
+        <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)] bg-white">
+          <div className="px-8 flex gap-2.5 items-center">
+            <span className="font-medium text-[14px]">All workflows</span>
+            <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
+              {filtered.length}
+            </span>
           </div>
-          <div className="flex items-center gap-2 w-80 h-8 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 px-3 transition-colors">
-            <MagnifyingGlass size={16} className="text-grey-500 shrink-0" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search workflows"
-              aria-label="Search workflows"
-              className="flex-1 min-w-0 h-full bg-transparent border-none outline-none text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)]"
-            />
+          <div className="flex gap-3 items-center pr-4">
+            <div className="flex flex-1 items-center w-80 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 py-2 px-3 transition-colors">
+              <span className="mr-1.5 text-grey-500">
+                <MagnifyingGlass size={16} />
+              </span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search workflows"
+                aria-label="Search workflows"
+                className="w-full min-w-0 resize-none outline-none border-none bg-transparent text-xs text-grey-900 placeholder:text-[var(--text-secondary)]"
+              />
+            </div>
           </div>
         </div>
 
         <div
           className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]"
-          style={{ height: "calc(100% - 109px)" }}
+          style={{ height: "calc(100% - 116px)" }}
         >
           <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
             <div className="w-full h-full overflow-y-auto">

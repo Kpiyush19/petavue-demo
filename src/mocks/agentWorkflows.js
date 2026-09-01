@@ -25,6 +25,7 @@ export const AGENTS = {
     icon: "ChartLineUp", platforms: ["Google Search", "LinkedIn", "Web", "CRM"],
     owns: "What actually happened, and what it cost",
     blurb: "Joins ad spend and exposure to CRM outcomes on every run, so the numbers match your funnel and not the platform's.",
+    specialists: ["Campaign Mapping", "Entity Attribution", "Conversion Signal", "Journey Measurement"],
     does: [
       "Joins ad platform spend to CRM outcomes",
       "Benchmarks cost per KPI, per campaign",
@@ -36,6 +37,7 @@ export const AGENTS = {
     icon: "Wallet", platforms: ["Google Search", "LinkedIn"],
     owns: "Where the money should sit",
     blurb: "Works out where budget should sit: which campaigns have a cheaper cost per KPI and room to scale.",
+    specialists: ["Budget Pacing", "Reallocation", "Scale Optimization", "Bid & Cost-Control", "Time-Based Spend"],
     does: [
       "Sizes reallocations between campaigns",
       "Quantifies spend released by an exclusion",
@@ -47,6 +49,7 @@ export const AGENTS = {
     icon: "Broadcast", platforms: ["Google Search", "LinkedIn"],
     owns: "Who sees the ad, when and where",
     blurb: "Checks delivery in detail: day-part, geography, frequency, and which accounts are taking more than their share.",
+    specialists: ["Campaign Delivery", "Campaign Structure", "Campaign Objective", "Schedule & Geography", "Placement & Network"],
     does: [
       "Trends performance by day-part and geo",
       "Finds accounts soaking up impressions",
@@ -58,6 +61,7 @@ export const AGENTS = {
     icon: "Target", platforms: ["Google Search", "LinkedIn", "Web"],
     owns: "Which accounts and intent are worth paying for",
     blurb: "Matches search intent and account behaviour against your ICP to decide what is worth paying for.",
+    specialists: ["Google Search Intent", "Google Audience", "Meta Prospecting", "Meta Lookalike", "Meta Retargeting", "LinkedIn Prof. Audience", "LinkedIn ABM", "LinkedIn Retargeting"],
     does: [
       "Classifies search intent behind the spend",
       "Scores delivered audiences against ICP bands",
@@ -69,6 +73,7 @@ export const AGENTS = {
     icon: "PaintBrush", platforms: ["LinkedIn", "Google Search"],
     owns: "Which message keeps working",
     blurb: "Tracks how each creative is wearing out and protects the best performer so a rotation can be judged fairly.",
+    specialists: ["Creative Performance", "Message & Offer", "Creative Fatigue", "Creative Testing"],
     does: [
       "Separates creative decay from audience change",
       "Protects the winning control asset",
@@ -80,6 +85,7 @@ export const AGENTS = {
     icon: "FunnelSimple", platforms: ["Web", "CRM", "Pipeline"],
     owns: "What happens after the click",
     blurb: "Follows what happens after the click, so a media problem can be told apart from a landing-page one.",
+    specialists: ["Lead Form Optimization", "Native vs Website", "Landing Page Conversion", "Form Quality"],
     does: [
       "Reads awareness from session and form behaviour",
       "Isolates where a funnel leak actually starts",
@@ -206,7 +212,7 @@ export const WORKFLOWS = [
     found: [
       { agent: "measurement", text: "Measured frequency and share of voice per target account", specialistNames: ["Campaign Mapping", "Journey Measurement"], config: [["Window", "Active flight"], ["Unit", "Impressions per target account"], ["Sources joined", "LinkedIn Ads + target list"]] },
       { agent: "delivery", text: "Found the accounts crowding others out of the auction", specialistNames: ["Campaign Delivery", "Placement & Network"], config: [["Crowding threshold", "Over 4% share of campaign impressions"], ["Frequency ceiling", "6 per account per week"], ["Minimum flight age", "7 days"]] },
-      { agent: "demand", text: "Sized the cap that frees reach without losing the account", specialistNames: ["LinkedIn ABM"], config: [["Cap formula", "60% of current impressions"], ["Protected accounts", "Open opportunities excluded"], ["Refresh", "Daily"]] },
+      { agent: "demand", text: "Sized the cap that frees reach without losing the account", specialistNames: ["LinkedIn ABM", "LinkedIn Retargeting"], config: [["Cap formula", "60% of current impressions"], ["Protected accounts", "Open opportunities excluded"], ["Refresh", "Daily"]] },
     ],
     specialists: 6,
     approvalRequired: true,
@@ -288,6 +294,11 @@ export const WORKFLOWS = [
   {
     id: "wasted-spend",
     reads: ["Google Ads", "CRM"],
+    found: [
+      { agent: "measurement", text: "Split 90 days of search spend into relevant and irrelevant", specialistNames: ["Campaign Mapping", "Conversion Signal"], config: [["Lookback", "90 days"], ["Grain", "Search term \u00d7 campaign"], ["Qualified event", "Booked demo"], ["Refresh", "On every run"]] },
+      { agent: "demand", text: "Classified the intent behind every term that took budget", specialistNames: ["Google Search Intent", "Google Audience"], config: [["Intent classes", "Solution, research, careers, competitor"], ["Match types", "Broad, phrase, exact"], ["Minimum spend", "$50 per term"]] },
+      { agent: "budget", text: "Sized what each irrelevant cluster is costing you", specialistNames: ["Bid & Cost-Control", "Budget Pacing"], config: [["Flag threshold", "Cluster over 1% of campaign spend"], ["Scope", "Campaign level"], ["Floor", "Hold campaigns above learning minimum"]] },
+    ],
     specialists: 6,
     approvalRequired: true,
     n: 1,
@@ -300,9 +311,17 @@ export const WORKFLOWS = [
     lastRun: null,
     pending: 0,
     steps: [
-      { agent: "measurement", type: "athena_query", label: "Split the spend", detail: "Relevant vs irrelevant search spend, as a share of the total." },
-      { agent: "demand", type: "python_code", label: "Read intent", detail: "Classify the search terms actually triggering your ads." },
-      { agent: "budget", type: "python_code", label: "Size the waste", detail: "Cost carried by each irrelevant term cluster." },
+      { agent: "measurement", type: "athena_query", label: "Pull every search term you paid for", ms: 1620,
+        code: "SELECT campaign_id, search_term, match_type,\n       SUM(cost) AS spend, SUM(conversions) AS conv\nFROM google_search_terms\nWHERE date >= CURRENT_DATE - INTERVAL '90' DAY\nGROUP BY 1,2,3" },
+      { agent: "measurement", type: "athena_query", label: "Join terms to booked demos", ms: 880,
+        code: "SELECT t.search_term, d.demo_booked_at\nFROM search_term_clicks t\nLEFT JOIN crm_demos d USING (gclid)" },
+      { agent: "demand", type: "ai_analyze", label: "Classify the intent behind each term", ms: 2740,
+        prompt: "For each search term, decide whether it shows buying intent for this product, or is research, careers or competitor traffic. Return a class and a one-line reason." },
+      { agent: "demand", type: "python_code", label: "Cluster the irrelevant terms", ms: 690,
+        code: "waste = df[df.intent_class != 'solution']\nclusters = waste.groupby('root_token')\n           .agg(spend=('spend','sum'), terms=('search_term','count'))" },
+      { agent: "budget", type: "python_code", label: "Size what each cluster costs", ms: 540,
+        code: "clusters['share'] = clusters.spend / campaign_spend\nflagged = clusters[clusters.share > 0.01]\n         .sort_values('spend', ascending=False)" },
+      { agent: "budget", type: "write_file", label: "Draft the negative keyword list", ms: 280 },
       { kind: "approval", label: "Your approval", detail: "Review the negative keyword list before it is applied." },
       { kind: "system", label: "Google Ads", detail: "Adds the approved negatives at campaign level." },
     ],
@@ -310,6 +329,10 @@ export const WORKFLOWS = [
   {
     id: "spend-to-pipeline",
     reads: ["Google Ads", "CRM"],
+    found: [
+      { agent: "measurement", text: "Benchmarked every campaign on your funnel KPI, not platform conversions", specialistNames: ["Entity Attribution", "Journey Measurement"], config: [["KPI", "Booked demo"], ["Attribution window", "90 days"], ["Sources joined", "Google Ads + CRM"], ["Minimum volume", "20 conversions"]] },
+      { agent: "budget", text: "Found which campaigns have cheaper KPI and room to absorb more", specialistNames: ["Reallocation", "Scale Optimization", "Budget Pacing"], config: [["Headroom test", "Impression share lost to budget"], ["Move ceiling", "30% of source campaign"], ["Learning floor", "Hold above 50 conversions per month"]] },
+    ],
     specialists: 5,
     approvalRequired: true,
     n: 2,
@@ -322,15 +345,25 @@ export const WORKFLOWS = [
     lastRun: null,
     pending: 0,
     steps: [
-      { agent: "measurement", type: "athena_query", label: "Benchmark cost per KPI", detail: "Each campaign against your funnel KPI, not platform conversions." },
-      { agent: "budget", type: "python_code", label: "Find headroom", detail: "Where cheaper KPI is available and still scalable." },
+      { agent: "measurement", type: "athena_query", label: "Benchmark cost per KPI, per campaign", ms: 1480,
+        code: "SELECT c.campaign_id, SUM(c.cost) AS spend,\n       COUNT(d.demo_id) AS demos,\n       SUM(c.cost)/NULLIF(COUNT(d.demo_id),0) AS cost_per_demo\nFROM google_campaign_cost c\nLEFT JOIN crm_demos d USING (gclid)\nGROUP BY 1" },
+      { agent: "budget", type: "python_code", label: "Find where headroom exists", ms: 820,
+        code: "df['capped'] = df.search_lost_is_budget > 0.10\ncheap = df[(df.cost_per_demo < target) & df.capped]\nexpensive = df[df.cost_per_demo > target * 1.5]" },
+      { agent: "budget", type: "python_code", label: "Size the move both ways", ms: 610,
+        code: "move = min(expensive.spend.sum() * 0.30,\n           cheap.headroom.sum())\nassert (expensive.spend - move).min() > learning_floor" },
+      { agent: "budget", type: "write_file", label: "Draft the budget change", ms: 240 },
       { kind: "approval", label: "Your approval", detail: "Confirm the amount and the direction of the move." },
       { kind: "system", label: "Google Ads", detail: "Applies the approved budget change." },
     ],
   },
   {
     id: "delivery-leaks",
-    reads: ["Google Ads"],
+    reads: ["Google Ads", "CRM"],
+    found: [
+      { agent: "measurement", text: "Sliced 90 days of performance by hour of day and location", specialistNames: ["Campaign Mapping", "Journey Measurement"], config: [["Lookback", "90 days"], ["Grain", "Campaign \u00d7 hour \u00d7 geo"], ["Timezone", "Account timezone"], ["Minimum sample", "200 clicks per cell"]] },
+      { agent: "delivery", text: "Isolated the windows and places running below campaign baseline", specialistNames: ["Schedule & Geography", "Campaign Delivery", "Placement & Network"], config: [["Leak threshold", "40% worse than campaign average"], ["Consistency", "Repeated in 3 of 4 weeks"], ["Geo depth", "Region, then metro"]] },
+      { agent: "budget", text: "Quantified the spend each exclusion would release", specialistNames: ["Time-Based Spend", "Reallocation"], config: [["Release basis", "Trailing 30-day spend in flagged cells"], ["Reinvest to", "Same campaign, remaining schedule"]] },
+    ],
     specialists: 7,
     approvalRequired: true,
     n: 3,
@@ -343,9 +376,15 @@ export const WORKFLOWS = [
     lastRun: null,
     pending: 0,
     steps: [
-      { agent: "measurement", type: "athena_query", label: "Trend by hour and place", detail: "Performance sliced by day-part and geography." },
-      { agent: "delivery", type: "python_code", label: "Isolate the leaks", detail: "Windows and locations consistently below campaign baseline." },
-      { agent: "budget", type: "python_code", label: "Quantify recovery", detail: "Spend released by each proposed exclusion." },
+      { agent: "measurement", type: "athena_query", label: "Slice performance by hour and geo", ms: 1910,
+        code: "SELECT campaign_id, hour_of_day, geo_target,\n       SUM(cost) AS spend, SUM(conversions) AS conv,\n       SUM(clicks) AS clicks\nFROM google_campaign_delivery\nWHERE date >= CURRENT_DATE - INTERVAL '90' DAY\nGROUP BY 1,2,3" },
+      { agent: "delivery", type: "python_code", label: "Compare each cell to its campaign baseline", ms: 1040,
+        code: "base = df.groupby('campaign_id').cpa.transform('median')\ndf['delta'] = (df.cpa - base) / base\nleaks = df[(df.delta > 0.40) & (df.clicks >= 200)]" },
+      { agent: "delivery", type: "python_code", label: "Keep only leaks that repeat", ms: 720,
+        code: "weekly = leaks.groupby(['campaign_id','hour_of_day','geo_target'])\n        .week.nunique()\npersistent = leaks[weekly >= 3]" },
+      { agent: "budget", type: "python_code", label: "Quantify the spend released", ms: 480,
+        code: "recovered = persistent.groupby('campaign_id').spend_30d.sum()" },
+      { agent: "budget", type: "write_file", label: "Draft the schedule and geo exclusions", ms: 260 },
       { kind: "approval", label: "Your approval", detail: "Review the schedule and location changes." },
       { kind: "system", label: "Google Ads", detail: "Applies the approved exclusions." },
     ],
@@ -410,6 +449,53 @@ export function attributeRecommendation(item) {
 
 export function attributeRecommendations(items) {
   return items.map(attributeRecommendation).filter(Boolean);
+}
+
+// Activating a workflow. In the demo this is the real thing a prospect does
+// after picking their three: it goes live on a schedule and starts producing.
+// Mutates the in-memory store so the whole surface reacts — list row, rail,
+// agent pages — rather than being a button that only changes its own label.
+export function activateWorkflow(id) {
+  const w = WORKFLOWS.find((x) => x.id === id);
+  if (!w) return null;
+  if (w.status === "active") return w;
+  w.status = "active";
+  w.cadence = w.cadence && w.cadence !== "Not scheduled" ? w.cadence : "Daily · 7:00 AM";
+  w.nextRun = "Tomorrow, 7:00 AM";
+  w.lastRun = "Not yet run";
+  w.runs = w.runs || [];
+  return w;
+}
+
+// Everything the agent detail page needs, joined in one place: where the family
+// is deployed, what it contributed in each workflow, and what it has found.
+// A family is a presentation of step-groups, so it has no runs and no schedule
+// of its own — those belong to the workflow and are deliberately absent here.
+export function agentDetail(key, recItems) {
+  const a = AGENTS[key];
+  if (!a) return null;
+  const used = agentUsage(key);
+  const deployments = used.map((w) => {
+    const found = (w.found || []).find((f) => f.agent === key);
+    return {
+      id: w.id,
+      name: w.name,
+      platform: w.platform,
+      status: w.status,
+      deliverable: w.deliverable,
+      contribution: found?.text || null,
+      specialistNames: found?.specialistNames || [],
+      steps: w.steps.filter((s) => s.agent === key).map((s) => s.label),
+    };
+  });
+  return {
+    ...a,
+    workflowCount: used.length,
+    liveCount: used.filter((w) => w.status === "active").length,
+    deployments,
+    findings: attributeRecommendations(recItems || []).filter((r) => r.agent === key),
+    reads: [...new Set(used.flatMap((w) => w.reads || []))],
+  };
 }
 
 // Pending counts come FROM the queue rather than being written by hand, so a

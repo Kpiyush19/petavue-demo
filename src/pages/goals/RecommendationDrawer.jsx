@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, CaretLeft, CaretRight, CalendarBlank, Target, Lightning, Eye, Clock, Tag, ListBullets, FlowArrow, ClockClockwise, ChartBar, Info, Warning } from "@phosphor-icons/react";
+import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, CaretLeft, CaretRight, CalendarBlank, Target, Lightning, Eye, Clock, Tag, ListBullets, ClockClockwise, ChartBar, Info, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button as PvButton, Tooltip } from "@/ui";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
 import { AgentMark } from "../../components/AgentMark";
+import WorkflowGlyph from "../../components/WorkflowGlyph";
 import { AGENTS } from "../../mocks/agentWorkflows";
 
 const Spinner = (props) => <CircleNotch {...props} className="animate-spin" />;
@@ -275,7 +276,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
   const qc = useQueryClient();
   const [comment, setComment] = useState("");
   const [thread, setThread] = useState([]);
-  const [showEvidence, setShowEvidence] = useState(true);
+  const [showEvidence, setShowEvidence] = useState(false);
   // pending = the action awaiting input ({ action }); reason = the note; snoozeFor = duration.
   const [pending, setPending] = useState(null);
   const [reason, setReason] = useState("");
@@ -298,6 +299,11 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
       qc.invalidateQueries({ queryKey: ["goals"] });
       qc.invalidateQueries({ queryKey: ["goals-attention"] });
       qc.invalidateQueries({ queryKey: ["goals-recommendations"] });
+      // Workflow rows and rails derive their pending count from this queue, so
+      // an approval has to refresh them too — otherwise you approve something
+      // and the workflow still claims it is waiting on you.
+      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
+      qc.invalidateQueries({ queryKey: ["agent"] });
     },
   });
   const doAct = (body, msg) => act.mutate(body, { onSuccess: () => { toast.success(msg); onClose?.(); } });
@@ -340,12 +346,20 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
             <span className="min-w-0 inline-flex items-center gap-2 text-[12px] text-[#757A97]">
               Found by
               {source.agent && <AgentMark agentKey={source.agent} size={18} />}
-              {source.agent && <span className="text-[var(--text-primary)]">{AGENTS[source.agent]?.label}</span>}
+              {source.agent && (
+                <button
+                  onClick={() => source.onOpenAgent?.(source.agent)}
+                  className="text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"
+                >
+                  {AGENTS[source.agent]?.label}
+                </button>
+              )}
               <span>in</span>
               <button
                 onClick={() => source.onOpenWorkflow?.(source.workflowId)}
                 className="min-w-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"
               >
+                <WorkflowGlyph size={14} className="shrink-0" />
                 <span className="truncate">{source.workflowName}</span>
               </button>
             </span>
@@ -374,7 +388,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
         {rec.body && (
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Why this matters</p>
-            <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.body}</p>
+            <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.body}</p>
           </div>
         )}
 
@@ -385,20 +399,20 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
             {(rec.steps || [rec.tldr]).map((s, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-50 text-primary-600 border border-primary-200 text-[11px] font-semibold shrink-0 mt-px">{i + 1}</span>
-                <p className="text-[14px] text-[var(--text-primary)] leading-snug pt-0.5">{s}</p>
+                <p className="text-[12px] text-[var(--text-primary)] leading-snug pt-0.5">{s}</p>
               </li>
             ))}
           </ul>
           {rec.hold && (
             <div className="mt-4 pt-3 border-t border-[var(--color-grey-100)]">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Hold for now</p>
-              <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.hold}</p>
+              <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.hold}</p>
             </div>
           )}
           {rec.revisit && (
             <div className="mt-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Revisit when</p>
-              <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.revisit}</p>
+              <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.revisit}</p>
             </div>
           )}
         </div>
@@ -407,7 +421,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
         {rec.aboutData && (
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">About the data</p>
-            <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.aboutData}</p>
+            <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.aboutData}</p>
           </div>
         )}
         </div>
@@ -421,7 +435,7 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
               aria-expanded={showEvidence}
               className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-grey-50 hover:bg-grey-100/60 border-none cursor-pointer text-left transition-colors"
             >
-              <span className="text-[14px] font-medium text-[var(--text-primary)]">Full evidence, every number interpreted</span>
+              <span className="text-[12px] font-medium text-[var(--text-primary)]">Full evidence, every number interpreted</span>
               <CaretDown size={16} className={cn("text-[var(--text-muted)] transition-transform duration-200", showEvidence && "rotate-180")} />
             </button>
             <AnimatePresence initial={false}>
@@ -439,14 +453,14 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
                   <div>
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">What the numbers show</p>
                     <ul className="flex flex-col gap-2 list-disc pl-4">
-                      {rec.derivation.map((s, i) => <li key={i} className="text-[14px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
+                      {rec.derivation.map((s, i) => <li key={i} className="text-[12px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
                     </ul>
                   </div>
                 )}
                 {rec.trigger && (
                   <div>
                     <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">When this fires</p>
-                    <p className="text-[14px] text-[#757A97] leading-relaxed">{rec.trigger}</p>
+                    <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.trigger}</p>
                   </div>
                 )}
               </div>

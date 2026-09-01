@@ -1,15 +1,18 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  CaretLeft, CaretDown, Database, Code, Brain, FileText,
-  Sparkle, Play, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle,
+  CaretLeft, CaretRight, Database, Code, Brain, FileText,
+  Sparkle, Play, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
 } from "@phosphor-icons/react";
 import { Button as PvButton } from "@/ui";
-import { apiGet } from "../../api";
+import { toast } from "sonner";
+import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
 import { AGENTS, platformOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
+import SourceIcon from "../../components/SourceIcon";
 
 // Step kinds, using the engine's own vocabulary. These sit one level down —
 // the outcome leads, agents attribute, the raw work is available underneath.
@@ -82,25 +85,65 @@ function FamilyNode({ agentKey, text, steps, selected, onSelect }) {
       </div>
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
       <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] tabular-nums mt-auto">
-        {steps.length} steps
-        <CaretDown size={11} className={cn("transition-transform", !selected && "-rotate-90")} />
+        {steps.length} {steps.length === 1 ? "step" : "steps"}
+        <CaretRight size={11} />
       </span>
     </button>
   );
 }
 
 /* ── What Prasanna actually asked to see on click: how this agent is
-   configured, which specialists sit inside it, and the blocks it runs. ── */
-function AgentConfig({ family, accent }) {
+   configured, which specialists sit inside it, and the blocks it runs.
+   Opens as a right-hand panel so the graph stays visible behind it. ── */
+function AgentConfigDrawer({ family, accent, onClose, onOpenAgent }) {
   const a = AGENTS[family.agent];
-  return (
-    <div className="mt-4 rounded-lg border bg-white overflow-hidden" style={{ borderColor: accent + "55" }}>
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--color-grey-100)]">
-        <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: accent }} />
-        <span className="text-[13px] font-medium text-[var(--text-primary)]">{a.label}</span>
-        <span className="text-[12px] text-[#757A97]">· how it&rsquo;s configured</span>
-      </div>
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0"
+        style={{ background: "rgba(15,22,36,0.18)" }}
+        onClick={onClose}
+      />
+      <motion.aside
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}
+        role="dialog"
+        aria-label={`${a.label} configuration`}
+        className="absolute top-0 right-0 h-full w-[560px] max-w-[94vw] bg-white shadow-2xl flex flex-col overflow-hidden"
+      >
+        <div className="shrink-0 flex items-center gap-2.5 px-5 h-[60px] border-b border-[var(--color-grey-100)]">
+          <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: accent }} />
+          <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">{a.label}</span>
+          <span className="text-[12px] text-[#757A97] shrink-0">&middot; how it&rsquo;s configured</span>
+          <button
+            type="button"
+            onClick={onOpenAgent}
+            className="ml-auto shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"
+          >
+            View agent <ArrowSquareOut size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 grid place-items-center w-7 h-7 rounded-md bg-transparent border-none cursor-pointer text-[var(--text-muted)] hover:bg-grey-100"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="grid md:grid-cols-2 gap-x-8 gap-y-0 px-4 py-1">
         {(family.config || []).map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between gap-4 py-2.5 border-b border-[var(--color-grey-100)] last:border-b-0">
@@ -143,6 +186,8 @@ function AgentConfig({ family, accent }) {
           );
         })}
       </div>
+        </div>
+      </motion.aside>
     </div>
   );
 }
@@ -276,32 +321,34 @@ function RunHistory({ runs }) {
   );
 }
 
-/* ── The context that used to be a banner across the top, plus the workflow's
-   own state. Everything here is real data — no invented filler. ── */
-function RailBlock({ label, children }) {
-  return (
-    <div className="bg-white border border-[var(--color-grey-100)] rounded-lg px-3.5 py-3">
-      <span className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2.5">
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
+/* ── The rail. Flat sections separated by hairlines, the way the skills detail
+   rail reads — the old version stacked four white cards inside a grey box,
+   which is boxes inside boxes. Ordered by what a reader wants first: what is
+   waiting on me, what I get, then the facts. ── */
+const RAIL_LABEL = "text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]";
 
 function RailRow({ k, v, tone, stack }) {
   if (stack) {
     return (
-      <div className="flex flex-col gap-0.5 py-1">
+      <div className="flex flex-col gap-0.5">
         <span className="text-[12px] text-[#757A97]">{k}</span>
         <span className={cn("text-[12px]", tone || "text-[var(--text-primary)]")}>{v}</span>
       </div>
     );
   }
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1">
+    <div className="flex items-baseline justify-between gap-3">
       <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
       <span className={cn("text-[12px] text-right", tone || "text-[var(--text-primary)]")}>{v}</span>
+    </div>
+  );
+}
+
+function RailGroup({ label, children, first }) {
+  return (
+    <div className={cn("flex flex-col gap-2", !first && "pt-4 border-t border-[var(--color-grey-100)]")}>
+      <span className={RAIL_LABEL}>{label}</span>
+      {children}
     </div>
   );
 }
@@ -309,58 +356,111 @@ function RailRow({ k, v, tone, stack }) {
 function WorkflowRail({ wf, platform, families, live, onReview }) {
   const last = wf.runs?.[0];
   const ok = last?.status === "success";
+  const waiting = wf.recommendation?.waiting || 0;
+
   return (
     <aside className="w-[300px] shrink-0 self-start sticky top-0 flex flex-col gap-3 p-3 bg-grey-50 border border-grey-100/70 rounded-xl">
-      <RailBlock label="Status">
-        <div className="flex items-center gap-1.5 mb-2">
-          <i className={cn("w-[6px] h-[6px] rounded-full", live ? "bg-green-500" : "bg-[var(--color-grey-300)]")} />
-          <span className={cn("text-[13px] font-medium", live ? "text-green-600" : "text-[var(--text-muted)]")}>
-            {live ? "Live" : "Available"}
-          </span>
-        </div>
-        <RailRow k="Schedule" v={live ? wf.cadence : "Not scheduled"} />
-        {live && wf.nextRun && <RailRow k="Next run" v={wf.nextRun} />}
-      </RailBlock>
-
-      {live && last && (
-        <RailBlock label="Latest run">
-          <div className="flex items-center gap-1.5 mb-2">
-            {ok ? <CheckCircle size={14} weight="fill" className="text-green-500" />
-                : <XCircle size={14} weight="fill" className="text-rose-500" />}
-            <span className={cn("text-[13px] font-medium", ok ? "text-green-600" : "text-rose-600")}>
-              {ok ? "Succeeded" : "Failed"}
-            </span>
-            <span className="text-[12px] text-[#757A97]">· {last.at}</span>
+      {/* What needs you — the only thing here that is a call to act. */}
+      {live && waiting > 0 ? (
+        <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-primary-50 border border-primary-200">
+          <div className="flex items-start gap-2.5">
+            <ShieldCheck size={16} weight="fill" className="text-primary-600 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+                {waiting} waiting for your approval
+              </div>
+              <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-0.5">
+                Nothing reaches {platform.short} until you approve it.
+              </p>
+            </div>
           </div>
-          {last.evaluated && last.evaluated !== "—" && <RailRow k="Scanned" v={last.evaluated} stack />}
-          <RailRow k="Duration" v={`${(last.ms / 1000).toFixed(1)}s`} />
-        </RailBlock>
+          <PvButton
+            variant="blueGhost"
+            size="sm"
+            label="Review recommendations"
+            icon={ArrowSquareOut}
+            iconPosition="suffix"
+            onClick={onReview}
+          />
+        </div>
+      ) : (
+        <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white border border-grey-200">
+          <CheckCircle
+            size={16}
+            weight="fill"
+            className={cn("shrink-0 mt-0.5", live ? "text-[var(--color-green)]" : "text-[var(--text-muted)]")}
+          />
+          <div className="min-w-0">
+            <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+              {live ? "Nothing waiting" : "Not scheduled"}
+            </div>
+            <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-0.5">
+              {live
+                ? "This workflow is running; there is nothing to approve right now."
+                : "Activate this workflow to start it on a schedule."}
+            </p>
+          </div>
+        </div>
       )}
 
-      <RailBlock label="Output">
-        <p className="text-[13px] text-[var(--text-primary)] leading-snug mb-2">{wf.deliverable}</p>
+      <RailGroup label="What you get">
+        <p className="text-[12px] text-[var(--text-primary)] leading-snug">{wf.deliverable}</p>
         {live && wf.recommendation && (
+          <p className="text-[12px] text-[#757A97] leading-snug">Latest: {wf.recommendation.headline}</p>
+        )}
+      </RailGroup>
+
+      <RailGroup label="Schedule">
+        <RailRow
+          k="Runs"
+          v={live ? wf.cadence : "Not scheduled"}
+          tone={live ? undefined : "text-[var(--text-muted)]"}
+        />
+        {live && wf.nextRun && <RailRow k="Next" v={wf.nextRun} />}
+        {live && last && (
           <>
-            <p className="text-[12px] text-[#757A97] leading-snug mb-2.5">
-              Latest: {wf.recommendation.headline}
-            </p>
-            <PvButton
-              variant="secondary"
-              size="sm"
-              label={`Review${wf.recommendation.waiting ? ` (${wf.recommendation.waiting})` : ""}`}
-              icon={ArrowSquareOut}
-              iconPosition="suffix"
-              onClick={onReview}
+            <RailRow
+              k="Last"
+              v={
+                <span className="inline-flex items-center gap-1.5">
+                  {ok ? (
+                    <CheckCircle size={13} weight="fill" className="text-green-500" />
+                  ) : (
+                    <XCircle size={13} weight="fill" className="text-rose-500" />
+                  )}
+                  {last.at}
+                </span>
+              }
             />
+            <RailRow k="Duration" v={`${(last.ms / 1000).toFixed(1)}s`} />
+            {last.evaluated && last.evaluated !== "\u2014" && <RailRow k="Scanned" v={last.evaluated} stack />}
           </>
         )}
-      </RailBlock>
+      </RailGroup>
 
-      <RailBlock label="Setup">
-        <RailRow k="Reads" v={(wf.reads || []).join(" · ")} />
-        <RailRow k="Acts on" v={platform.label} />
-        <RailRow k="Agents" v={`${families.length} families · ${wf.specialists} specialists`} />
-      </RailBlock>
+      <RailGroup label="Setup">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[12px] text-[#757A97]">Reads</span>
+          {(wf.reads || []).map((r) => (
+            <div key={r} className="flex items-center gap-2" title={r}>
+              <SourceIcon name={r} size={16} />
+              <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{r}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[12px] text-[#757A97]">Acts on</span>
+          {/* Some platforms are compound ("LinkedIn Ads · Pipeline · Web"), so
+              each part gets its own mark rather than one generic fallback. */}
+          {platform.label.split(" \u00b7 ").map((part) => (
+            <div key={part} className="flex items-center gap-2" title={part}>
+              <SourceIcon name={part} size={16} />
+              <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{part}</span>
+            </div>
+          ))}
+        </div>
+        <RailRow k="Agents" v={`${families.length} families \u00b7 ${wf.specialists} specialists`} />
+      </RailGroup>
     </aside>
   );
 }
@@ -368,8 +468,27 @@ function WorkflowRail({ wf, platform, families, live, onReview }) {
 export default function WorkflowDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const from = params.get("from");
+  const backTo = from && from.startsWith("/") ? from : "/workflows";
+  const backLabel = from?.startsWith("/agents/") ? "Back to agent" : "Back to workflows";
+  // The crumb names wherever you came from, so an agent drill-down reads
+  // "Demand selection › ICP guardrails" rather than pretending you came from
+  // the workflow list.
+  const fromAgentKey = from?.startsWith("/agents/") ? from.slice("/agents/".length) : null;
+  const crumb = fromAgentKey ? AGENTS[fromAgentKey]?.label || "Agents" : "Workflows";
   const [selected, setSelected] = useState(null);
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["agent-workflows"], queryFn: () => apiGet("/api/agent-workflows") });
+  const activate = useMutation({
+    mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/activate`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
+      qc.invalidateQueries({ queryKey: ["agents"] });
+      qc.invalidateQueries({ queryKey: ["agent"] });
+      toast.success("Workflow activated — it runs daily from tomorrow");
+    },
+  });
   const wf = (data?.workflows || []).find((w) => w.id === id);
 
   if (isLoading) return <div className="w-full h-full bg-grey-50" />;
@@ -396,17 +515,39 @@ export default function WorkflowDetail() {
     <div className="flex flex-col w-full h-full overflow-x-auto">
       <div className="flex flex-col w-full h-full min-w-[800px]">
         <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button onClick={() => navigate("/workflows")} aria-label="Back to workflows"
-              className="grid place-items-center w-7 h-7 rounded-md bg-transparent border-none cursor-pointer text-[var(--text-muted)] hover:bg-grey-100">
-              <CaretLeft size={15} />
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => navigate(backTo)}
+              aria-label={backLabel}
+              className="shrink-0 text-[16px] leading-[24px] font-medium text-[var(--color-grey-500)] hover:text-[var(--color-grey-900)] hover:underline transition-colors cursor-pointer bg-transparent border-none p-0"
+            >
+              {crumb}
             </button>
-            <span className="text-[16px] leading-[24px] font-medium truncate">{wf.name}</span>
+            <CaretRight size={14} className="text-[var(--color-grey-400)] shrink-0" />
+            <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">{wf.name}</span>
             <span className="shrink-0 text-[11px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">{platform.short}</span>
+            {/* Status lives here rather than in the rail: it has to stay visible
+                while you scroll, and it is what confirms an activation landed. */}
+            <span
+              className={cn(
+                "shrink-0 flex items-center gap-1.5 text-[12px] font-medium",
+                live ? "text-green-600" : "text-[var(--text-muted)]",
+              )}
+            >
+              <i className={cn("w-[6px] h-[6px] rounded-full", live ? "bg-green-500" : "bg-[var(--color-grey-300)]")} />
+              {live ? "Live" : "Available"}
+            </span>
           </div>
           {!live && (
             <div className="flex items-center gap-2 shrink-0">
-              <PvButton variant="primary" size="sm" label="Activate" icon={Play} />
+              <PvButton
+                variant="primary"
+                size="sm"
+                label={activate.isPending ? "Activating…" : "Activate workflow"}
+                icon={Play}
+                disabled={activate.isPending}
+                onClick={() => activate.mutate(wf.id)}
+              />
             </div>
           )}
         </div>
@@ -426,9 +567,6 @@ export default function WorkflowDetail() {
                     </h3>
                     <p className="text-[12px] text-[#757A97] leading-snug mt-0.5 max-w-[560px]">{wf.automates}</p>
                   </div>
-                  {!live && (
-                    <PvButton variant="primary" size="sm" label="Activate workflow" icon={Play} />
-                  )}
                 </div>
 
                 <AgentGraph
@@ -440,9 +578,6 @@ export default function WorkflowDetail() {
                   onSelect={setSelected}
                 />
 
-                {selectedFamily && (
-                  <AgentConfig family={selectedFamily} accent={AGENTS[selectedFamily.agent].color} />
-                )}
 
                   <div className="mt-6"><RunHistory runs={wf.runs} /></div>
                 </div>
@@ -459,6 +594,18 @@ export default function WorkflowDetail() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedFamily && (
+          <AgentConfigDrawer
+            key={selectedFamily.agent}
+            family={selectedFamily}
+            accent={AGENTS[selectedFamily.agent].color}
+            onClose={() => setSelected(null)}
+            onOpenAgent={() => navigate(`/agents/${selectedFamily.agent}`)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

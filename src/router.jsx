@@ -115,6 +115,7 @@ const WorkflowEnginePage = lazy(() => import("./pages/workflow-engine"));
 const WorkflowsPage = lazyWithRetry(() => import("./pages/workflows"));
 const AgentWorkflowDetailPage = lazyWithRetry(() => import("./pages/workflows/WorkflowDetail"));
 const AgentsPage = lazyWithRetry(() => import("./pages/agents"));
+const AgentDetailPage = lazyWithRetry(() => import("./pages/agents/AgentDetail"));
 const WorkflowDetailPage = lazy(() => import("./pages/WorkflowDetailPage"));
 const MyProfilePage = lazy(() => import("./pages/MyProfilePage"));
 const ExperimentsPage = lazy(() => import("./pages/ExperimentsPage"));
@@ -506,11 +507,24 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: "agents",
-                element: (
-                  <SuspenseWrapper variant="list">
-                    <AgentsPage />
-                  </SuspenseWrapper>
-                )
+                children: [
+                  {
+                    index: true,
+                    element: (
+                      <SuspenseWrapper variant="list">
+                        <AgentsPage />
+                      </SuspenseWrapper>
+                    )
+                  },
+                  {
+                    path: ":key",
+                    element: (
+                      <SuspenseWrapper>
+                        <AgentDetailPage />
+                      </SuspenseWrapper>
+                    )
+                  }
+                ]
               },
               {
                 path: "workflows",

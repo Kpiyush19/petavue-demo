@@ -3,14 +3,16 @@ import { motion } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  X, CheckCircle, CaretDown, Lightning, Eye, FlowArrow, MagnifyingGlass, Sparkle, Funnel, Warning,
+  X, CheckCircle, CaretDown, Lightning, Eye, MagnifyingGlass, Sparkle, Funnel, Warning,
 } from "@phosphor-icons/react";
 import {
   apiGet, apiPost, getApiBase, getAuthToken,
 } from "../../api";
+import { Tooltip } from "@/ui";
 import { cn } from "../../utils/cn";
 import { FilterMenu } from "./FilterMenu";
-import { AgentMark } from "../../components/AgentMark";
+import { AGENTS } from "../../mocks/agentWorkflows";
+import WorkflowGlyph from "../../components/WorkflowGlyph";
 import { RecommendationDetail } from "./RecommendationDrawer";
 import { SAGE_GRADIENT } from "./SageWidget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
@@ -48,11 +50,11 @@ function goalPriority(goal) {
 
 /* ── Recommendation status filter — a single button that opens the shared
    menu, rather than a row of pills that had to scroll sideways. ── */
-function RecFilterDropdown({ value, onChange, counts }) {
+function RecFilterDropdown({ value, onChange, counts, options }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
-  const current = REC_FILTERS.find((f) => f.k === value) || REC_FILTERS[0];
+  const current = options.find((f) => f.k === value) || options[0];
   const count = value === "all" ? counts.all : counts[value] || 0;
   const toggle = () => {
     if (!open && ref.current) {
@@ -82,7 +84,7 @@ function RecFilterDropdown({ value, onChange, counts }) {
           onSelect={onChange}
           onClose={() => setOpen(false)}
           minWidth={200}
-          options={REC_FILTERS.map((f) => ({
+          options={options.map((f) => ({
             id: f.k,
             label: f.label,
             count: f.k === "all" ? counts.all : counts[f.k] || 0,
@@ -106,71 +108,80 @@ function recMeta(item) {
     return { key: "needs-review", label: "Review soon", cls: "text-amber-700 border border-amber-200", icon: Warning };
   return { key: "watchlist", label: "Watch", cls: "text-blue-700 border border-blue-200", icon: Eye };
 }
-// Recommendation lifecycle filters, keyed to rec.status. "Accepted" maps to our
-// internal "acted" status; "Archived" is a distinct filed-away state.
+// Filters speak the same language as the chips on the cards. They used to be
+// lifecycle states (Open / Snoozed / Accepted / Rejected / Archived), which
+// meant a queue full of "ACT NOW" chips had no way to filter to act-now, and
+// three of the six options were permanently zero. These keys are recMeta()'s.
 const REC_FILTERS = [
-  { k: "all", label: "All", status: null },
-  { k: "open", label: "Open", status: "open" },
-  { k: "snoozed", label: "Snoozed", status: "snoozed" },
-  { k: "accepted", label: "Accepted", status: "acted" },
-  { k: "rejected", label: "Rejected", status: "rejected" },
-  { k: "archived", label: "Archived", status: "archived" },
+  { k: "all", label: "All" },
+  { k: "act-now", label: "Act now" },
+  { k: "needs-review", label: "Review soon" },
+  { k: "watchlist", label: "Watch" },
+  { k: "archived", label: "Done" },
 ];
 
-// Queue card in our card language: goalPriority-style status chip, muted
-// category + rank, primary-50 hover / selected, and Impact · Why now in the
-// same label→value read as the detail panel's metric rows.
+// A queue row, not a card: the data-hub sidebar pattern — flat, hairline
+// separated, 3px accent on the active one. Only the title. The chip, the agent
+// mark and the workflow name all repeat on the detail pane a few hundred pixels
+// to the right, so on the row they were noise you read twice.
 function RecCard({ item, selected, onClick }) {
-  const m = recMeta(item);
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-current={selected ? "true" : undefined}
       className={cn(
-        "w-full text-left rounded-[8px] border bg-white p-3.5 transition-all cursor-pointer flex flex-col gap-2",
-        selected
-          ? "bg-primary-50 border-primary-500 shadow-[0_4px_4px_rgba(54,97,237,0.08)]"
-          : "border-[var(--color-grey-100)] hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]",
-        item.status !== "open" && !selected && "opacity-70"
+        // Every edge width set explicitly. `border-0` here silently beat the
+        // container's divide-y, the same way `border-none` once killed the tab
+        // underline — so the separator lives on the row itself.
+        "w-full text-left flex items-center min-h-[46px] px-3 py-2.5 cursor-pointer transition-colors",
+        "border-solid border-t-0 border-r-0 border-b border-b-[var(--color-grey-100)] border-l-[3px] border-l-transparent",
+        selected ? "bg-primary-50 border-l-primary-500" : "bg-transparent hover:bg-primary-50",
+        item.status !== "open" && !selected && "opacity-60",
       )}
     >
-      <p className="text-[14px] font-medium text-[var(--text-primary)] leading-snug truncate">{item.title}</p>
-      {item.tldr && <p className="text-[12px] text-[#757A97] leading-snug line-clamp-1">{item.tldr}</p>}
-      <div className="flex items-center gap-2">
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wide rounded-full whitespace-nowrap", m.cls)}>
-          <m.icon size={10} weight="regular" />{m.label}
+      {/* One line. The full sentence is on hover and, in full, on the detail
+          pane beside it. */}
+      <Tooltip title={item.title} placement="right">
+        <span
+          className={cn(
+            "min-w-0 truncate text-[14px] text-[var(--text-primary)]",
+            selected && "font-medium",
+          )}
+        >
+          {item.title}
         </span>
-        {item.workflowName && (
-          <span className="flex items-center gap-1.5 min-w-0 ml-auto">
-            {item.agent && <AgentMark agentKey={item.agent} size={16} />}
-            <span className="text-[11px] text-[#757A97] truncate">{item.workflowName}</span>
-          </span>
-        )}
-      </div>
+      </Tooltip>
     </button>
   );
 }
 
-// Goal-scoped Sage using the SAME panel as the dashboard chat (AnalyticsChat):
-// opens a streaming session for the goal, hides the dashboard-only Files/Sessions
-// slots, and swaps in goal copy + follow-ups.
-const PAID_EFFICIENCY_GOAL = "Reduce inefficient daily paid spend by 5%";
-function goalFollowups(goal) {
-  const qs = goal.name === PAID_EFFICIENCY_GOAL
-    ? ["Where's my paid budget leaking right now?", "Which campaigns are outside the ICP bands?", "What should I approve first?"]
-    : ["What did this workflow find?", "Which agent flagged this?", "What should I approve first?"];
-  return qs.map((q) => ({ question: q, grounded_in: goal.name, grounded_type: "goal" }));
+// Sage opens on the recommendation you are looking at, not on the queue.
+// Asking "what should I approve first" while staring at one specific decision
+// was answering a question nobody had. Follow-ups name the agent and the
+// workflow behind THIS finding.
+function recFollowups(ctx) {
+  const qs = [
+    "Why is this being recommended?",
+    ctx.agentLabel ? `What did ${ctx.agentLabel} actually find?` : "What did the agent actually find?",
+    "What happens if I don't act on this?",
+  ];
+  return qs.map((q) => ({ question: q, grounded_in: ctx.name, grounded_type: "recommendation" }));
 }
-function GoalSagePanel({ goal }) {
+
+function GoalSagePanel({ context }) {
   const qc = useQueryClient();
   const [sessionId, setSessionId] = useState(null);
   useEffect(() => {
     let alive = true;
     setSessionId(null);
-    apiPost(`/api/goals/${goal.id}/chat`, {}).then((res) => {
+    // The chat session is still opened against the goal underneath; what the
+    // user sees and what Sage is told to talk about is the recommendation.
+    apiPost(`/api/goals/${context.goalId}/chat`, {}).then((res) => {
       if (alive) setSessionId(res?.session_id || res?.session?.session_id || null);
     });
     return () => { alive = false; };
-  }, [goal.id]);
+  }, [context.goalId, context.id]);
 
   if (!sessionId) {
     return <div className="flex items-center justify-center h-full text-[13px] text-[var(--text-muted)]">Starting Sage…</div>;
@@ -179,16 +190,20 @@ function GoalSagePanel({ goal }) {
     <AnalyticsChat
       externalQueryClient={qc}
       sessionId={sessionId}
-      dashboardName={goal.name}
+      dashboardName={context.name}
       apiUrl={getApiBase()}
       authToken={getAuthToken()}
       pusherKey={PUSHER_KEY}
       pusherCluster={PUSHER_CLUSTER}
       timezone="UTC"
-      welcomeSubtitle="Ask about what this workflow found — which agent flagged it, what the numbers are, or what to approve first."
+      welcomeSubtitle={
+        context.workflowName
+          ? `Found by ${context.agentLabel} in ${context.workflowName}. Ask why it fired, what the numbers behind it are, or what happens if you don't act.`
+          : "Ask why this fired, what the numbers behind it are, or what happens if you don't act."
+      }
       welcomeCtas={[]}
-      followups={goalFollowups(goal)}
-      inputPlaceholder="Ask about these recommendations…"
+      followups={recFollowups(context)}
+      inputPlaceholder="Ask about this recommendation…"
     />
   );
 }
@@ -200,10 +215,10 @@ function RecSageDrawer({ open, onClose, context }) {
   return (
     <ChatOverlay isOpen={open} onClose={onClose} floating heading="Sage" title={context?.name || "Sage"}>
       {context ? (
-        <GoalSagePanel key={context.id} goal={context} />
+        <GoalSagePanel key={context.id} context={context} />
       ) : (
         <div className="flex items-center justify-center h-full text-[13px] text-[var(--text-muted)]">
-          Nothing to ask about yet.
+          Select a recommendation to ask about it.
         </div>
       )}
     </ChatOverlay>
@@ -219,7 +234,7 @@ function RecSkeleton() {
   return (
     <div className="flex-1 min-h-0 flex">
       {/* Left: filter + queue cards */}
-      <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
+      <div className="w-[300px] max-w-[300px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
         <div className="shrink-0 flex items-center gap-3 px-3 py-2.5 border-b border-[var(--color-grey-100)]">
           <Skel className="h-5 w-28" />
         </div>
@@ -287,17 +302,25 @@ function RecommendationsPanel({ onOpenGoal }) {
     .map(([id, name]) => ({ id, name }));
   const scoped = scope === "all" ? items : items.filter((i) => i.workflowId === scope);
   const scopedWorkflow = scope === "all" ? null : workflowOptions.find((w) => w.id === scope) || null;
-  // Sage still talks to a goal-scoped endpoint underneath; the label the user
-  // sees is the scope they chose.
-  const sageContext = scoped.length
-    ? { id: scoped[0].goalId, name: scope === "all" ? "All workflows" : (workflowOptions.find((w) => w.id === scope)?.name || "Recommendations") }
-    : null;
 
   const counts = { all: scoped.length };
-  REC_FILTERS.forEach((f) => { if (f.status != null) counts[f.k] = scoped.filter((i) => i.status === f.status).length; });
-  const curF = REC_FILTERS.find((f) => f.k === filter) || REC_FILTERS[0];
-  const filtered = curF.status == null ? scoped : scoped.filter((i) => i.status === curF.status);
+  REC_FILTERS.forEach((f) => { if (f.k !== "all") counts[f.k] = scoped.filter((i) => recMeta(i).key === f.k).length; });
+  // Only offer buckets that actually have something in them, so the menu never
+  // lists a dead option.
+  const filterOptions = REC_FILTERS.filter((f) => f.k === "all" || counts[f.k] > 0);
+  const filtered = filter === "all" ? scoped : scoped.filter((i) => recMeta(i).key === filter);
   const selected = filtered.find((i) => i.recId === sel) || filtered[0];
+  // Sage is about the recommendation on screen. The goal id is plumbing for the
+  // chat endpoint; everything the user sees names the finding.
+  const sageContext = selected
+    ? {
+        id: selected.recId,
+        goalId: selected.goalId,
+        name: selected.title,
+        agentLabel: AGENTS[selected.agent]?.label,
+        workflowName: selected.workflowName,
+      }
+    : null;
 
   const scopeSelect = (id) => {
     setScope(id);
@@ -340,11 +363,11 @@ function RecommendationsPanel({ onOpenGoal }) {
           ) : (
             <div className="flex-1 min-h-0 flex">
               {/* Left: the queue, under a heading that stays put while it scrolls. */}
-              <div className="w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
+              <div className="w-[300px] max-w-[300px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
                 <div className="shrink-0 flex items-center justify-between gap-2 h-[52px] px-3 border-b border-[var(--color-grey-100)]">
                   {scopedWorkflow ? (
                     <span className="inline-flex items-center gap-1.5 min-w-0 h-7 pl-2.5 pr-1 rounded-[8px] text-[12px] font-medium bg-primary-50 border border-primary-200 text-primary-700">
-                      <FlowArrow size={14} className="shrink-0" />
+                      <WorkflowGlyph size={14} className="shrink-0" />
                       <span className="truncate">{scopedWorkflow.name}</span>
                       <button
                         type="button"
@@ -356,7 +379,7 @@ function RecommendationsPanel({ onOpenGoal }) {
                       </button>
                     </span>
                   ) : (
-                    <span className="min-w-0 truncate text-[13px] font-medium text-[var(--text-primary)]">
+                    <span className="min-w-0 truncate text-[14px] font-semibold text-[var(--text-primary)]">
                       From your workflows
                     </span>
                   )}
@@ -364,10 +387,11 @@ function RecommendationsPanel({ onOpenGoal }) {
                     value={filter}
                     onChange={(k) => { setFilter(k); setSel(null); }}
                     counts={counts}
+                    options={filterOptions}
                   />
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                <div className="flex-1 overflow-y-auto flex flex-col">
                   {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-1.5 py-12 text-center">
                       <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
@@ -394,6 +418,7 @@ function RecommendationsPanel({ onOpenGoal }) {
                       workflowName: selected.workflowName,
                       agent: selected.agent,
                       onOpenWorkflow: (id) => navigate(`/workflows/${id}`),
+                  onOpenAgent: (k) => navigate(`/agents/${k}`),
                     }}
                   />
                 )}

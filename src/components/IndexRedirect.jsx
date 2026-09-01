@@ -7,9 +7,11 @@ import { MOCK_ENABLED } from "../mocks";
 const ExplorePage = lazy(() => import("../pages/ExplorePage"));
 
 export default function IndexRedirect() {
-  // Frontend-only mode: land on the Create-New page.
+  // Frontend-only mode (the demo): land on Workflows. It is the first of the
+  // three questions — what is Petavue doing — and the surface the rest of the
+  // product hangs off. The Create-New chat is still one click away in the nav.
   if (MOCK_ENABLED) {
-    return <Navigate to="/new" replace />;
+    return <Navigate to="/workflows" replace />;
   }
 
   const homeEnabled = useFeatureFlagEnabled("ccpoc-home");
