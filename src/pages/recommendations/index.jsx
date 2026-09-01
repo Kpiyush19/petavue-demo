@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Lightning, Warning, Eye, CheckCircle, CaretRight,
-  Flask, Question, CaretDown, Sparkle, PaperPlaneRight,
+  Flask, CaretDown, Sparkle, PaperPlaneRight,
   ArrowsClockwise, Handshake, PencilSimpleLine, PauseCircle, Prohibit,
 } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
@@ -367,9 +367,6 @@ function QueueRow({ item, workflowName, selected, onClick }) {
           {workflowName} · {d ? d.label : u.label}
         </span>
       </span>
-      {item.awaitingYou && !item.decision && (
-        <Question size={14} className="mt-1 shrink-0 text-amber-600" aria-label="Waiting on you" />
-      )}
     </button>
   );
 }
