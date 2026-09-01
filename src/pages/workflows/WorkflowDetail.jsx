@@ -192,6 +192,14 @@ function AgentConfigDrawer({ family, accent, onClose, onOpenAgent }) {
   );
 }
 
+/* The workflow's specialists, grouped by the family that owns them. */
+function specialistRoster(families) {
+  return families
+    .filter((f) => f.specialistNames?.length)
+    .map((f) => `${AGENTS[f.agent]?.label}: ${f.specialistNames.join(", ")}`)
+    .join("  ·  ");
+}
+
 function AgentGraph({ families, specialists, system, platform, selected, onSelect }) {
   const n = families.length;
   const cols = { gridTemplateColumns: `repeat(${n}, minmax(0,1fr))` };
@@ -204,7 +212,14 @@ function AgentGraph({ families, specialists, system, platform, selected, onSelec
           <span className="flex flex-col">
             <span className="text-[13px] font-semibold text-[var(--text-primary)]">Sage</span>
             <span className="text-[12px] text-[#757A97]">
-              Deployed {n} {n === 1 ? "family" : "families"} · {specialists} specialist agents
+              Deployed {n} {n === 1 ? "family" : "families"} ·{" "}
+              {/* The count was assertable but not checkable — you had to open every
+                  family panel to find out which specialists it meant. */}
+              <Tooltip title={specialistRoster(families)} placement="bottom">
+                <span className="underline decoration-dotted underline-offset-2 cursor-default">
+                  {specialists} specialist agents
+                </span>
+              </Tooltip>
             </span>
           </span>
         </div>
