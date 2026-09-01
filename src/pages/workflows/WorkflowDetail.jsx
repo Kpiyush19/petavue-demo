@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CaretLeft, CaretRight, Database, Code, Brain, FileText,
-  Sparkle, Play, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
+  Sparkle, Play, Pause, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
 } from "@phosphor-icons/react";
-import { Button as PvButton } from "@/ui";
+import { Button as PvButton, Tooltip } from "@/ui";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
@@ -275,6 +275,41 @@ function AgentGraph({ families, specialists, system, platform, selected, onSelec
   );
 }
 
+/* ── Status, next to the control that changes it. A dot and a word answer
+   "is this on"; the hover answers "on what schedule, and when did it last
+   run" without spending header space on it. ── */
+function StatusPill({ wf, live, paused }) {
+  const last = wf.runs?.[0];
+  const detail = live
+    ? [`Runs ${wf.cadence}`, wf.nextRun && `Next ${wf.nextRun}`, last && `Last ran ${last.at}`]
+        .filter(Boolean)
+        .join(" · ")
+    : paused
+      ? [`Held — will resume on ${wf.cadence}`, last && `Last ran ${last.at}`].filter(Boolean).join(" · ")
+      : "Never activated. Activate it to start on a daily schedule.";
+
+  const tone = live
+    ? "bg-green-50 border-green-200 text-green-700"
+    : paused
+      ? "bg-amber-50 border-amber-200 text-amber-700"
+      : "bg-grey-50 border-grey-200 text-[var(--text-secondary)]";
+  const dot = live ? "bg-green-500" : paused ? "bg-amber-500" : "bg-[var(--color-grey-300)]";
+
+  return (
+    <Tooltip title={detail} placement="bottom">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] border text-[12px] font-medium cursor-default",
+          tone,
+        )}
+      >
+        <i className={cn("w-[6px] h-[6px] rounded-full shrink-0", dot)} />
+        {live ? "Live" : paused ? "Paused" : "Available"}
+      </span>
+    </Tooltip>
+  );
+}
+
 /* ── Run health. "What is the latest run, was it successful" — his words. ── */
 function RunHistory({ runs }) {
   const [open, setOpen] = useState(false);
@@ -353,7 +388,7 @@ function RailGroup({ label, children, first }) {
   );
 }
 
-function WorkflowRail({ wf, platform, families, live, onReview }) {
+function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
   const last = wf.runs?.[0];
   const ok = last?.status === "success";
   const waiting = wf.recommendation?.waiting || 0;
@@ -370,7 +405,7 @@ function WorkflowRail({ wf, platform, families, live, onReview }) {
                 {waiting} waiting for your approval
               </div>
               <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-0.5">
-                Nothing reaches {platform.short} until you approve it.
+                Review them before anything is applied.
               </p>
             </div>
           </div>
@@ -392,12 +427,14 @@ function WorkflowRail({ wf, platform, families, live, onReview }) {
           />
           <div className="min-w-0">
             <div className="text-[12px] font-semibold text-[var(--text-primary)]">
-              {live ? "Nothing waiting" : "Not scheduled"}
+              {live ? "Nothing waiting" : paused ? "Paused" : "Not scheduled"}
             </div>
             <p className="text-[12px] text-[var(--text-secondary)] leading-snug mt-0.5">
               {live
                 ? "This workflow is running; there is nothing to approve right now."
-                : "Activate this workflow to start it on a schedule."}
+                : paused
+                  ? "Held for now. Resume it to pick the schedule back up."
+                  : "Activate this workflow to start it on a schedule."}
             </p>
           </div>
         </div>
@@ -413,7 +450,7 @@ function WorkflowRail({ wf, platform, families, live, onReview }) {
       <RailGroup label="Schedule">
         <RailRow
           k="Runs"
-          v={live ? wf.cadence : "Not scheduled"}
+          v={live ? wf.cadence : paused ? `Paused · ${wf.cadence}` : "Not scheduled"}
           tone={live ? undefined : "text-[var(--text-muted)]"}
         />
         {live && wf.nextRun && <RailRow k="Next" v={wf.nextRun} />}
@@ -480,14 +517,18 @@ export default function WorkflowDetail() {
   const [selected, setSelected] = useState(null);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["agent-workflows"], queryFn: () => apiGet("/api/agent-workflows") });
+  const refreshAll = () => {
+    qc.invalidateQueries({ queryKey: ["agent-workflows"] });
+    qc.invalidateQueries({ queryKey: ["agents"] });
+    qc.invalidateQueries({ queryKey: ["agent"] });
+  };
   const activate = useMutation({
     mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/activate`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
-      qc.invalidateQueries({ queryKey: ["agents"] });
-      qc.invalidateQueries({ queryKey: ["agent"] });
-      toast.success("Workflow activated — it runs daily from tomorrow");
-    },
+    onSuccess: () => { refreshAll(); toast.success("Workflow activated — it runs daily from tomorrow"); },
+  });
+  const pause = useMutation({
+    mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/pause`, {}),
+    onSuccess: () => { refreshAll(); toast.success("Workflow paused — nothing runs until you resume it"); },
   });
   const wf = (data?.workflows || []).find((w) => w.id === id);
 
@@ -502,6 +543,7 @@ export default function WorkflowDetail() {
   }
 
   const live = wf.status === "active";
+  const paused = wf.status === "paused";
   const platform = platformOf(wf.platform);
   const system = wf.steps.find((s) => s.kind === "system");
   const stepsFor = (agent) => wf.steps.filter((s) => s.agent === agent);
@@ -525,31 +567,31 @@ export default function WorkflowDetail() {
             </button>
             <CaretRight size={14} className="text-[var(--color-grey-400)] shrink-0" />
             <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">{wf.name}</span>
-            <span className="shrink-0 text-[11px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">{platform.short}</span>
-            {/* Status lives here rather than in the rail: it has to stay visible
-                while you scroll, and it is what confirms an activation landed. */}
-            <span
-              className={cn(
-                "shrink-0 flex items-center gap-1.5 text-[12px] font-medium",
-                live ? "text-green-600" : "text-[var(--text-muted)]",
-              )}
-            >
-              <i className={cn("w-[6px] h-[6px] rounded-full", live ? "bg-green-500" : "bg-[var(--color-grey-300)]")} />
-              {live ? "Live" : "Available"}
-            </span>
           </div>
-          {!live && (
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <StatusPill wf={wf} live={live} paused={paused} />
+            {live ? (
+              <PvButton
+                variant="secondary"
+                size="md"
+                label={pause.isPending ? "Pausing…" : "Pause workflow"}
+                icon={Pause}
+                iconWeight="fill"
+                disabled={pause.isPending}
+                onClick={() => pause.mutate(wf.id)}
+              />
+            ) : (
               <PvButton
                 variant="primary"
-                size="sm"
-                label={activate.isPending ? "Activating…" : "Activate workflow"}
+                size="md"
+                label={activate.isPending ? "Activating…" : paused ? "Resume workflow" : "Activate workflow"}
                 icon={Play}
+                iconWeight="fill"
                 disabled={activate.isPending}
                 onClick={() => activate.mutate(wf.id)}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]" style={{ height: "calc(100% - 60px)" }}>
@@ -587,6 +629,7 @@ export default function WorkflowDetail() {
                   platform={platform}
                   families={families}
                   live={live}
+                  paused={paused}
                   onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
                 />
               </div>

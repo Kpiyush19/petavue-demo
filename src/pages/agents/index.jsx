@@ -93,37 +93,37 @@ export default function AgentsPage() {
           <span className="text-[16px] leading-[24px] font-medium">Agents</span>
         </div>
 
-        {/* Heading bar — the Dashboards pattern: 56px, label + solid count
-            chip on the left, search on the right. */}
-        <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)] bg-white">
-          <div className="px-8 flex gap-2.5 items-center">
-            <span className="font-medium text-[14px]">All agents</span>
-            <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
-              {filtered.length}
-            </span>
-          </div>
-          <div className="flex gap-3 items-center pr-4">
-            <div className="flex flex-1 items-center w-80 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 py-2 px-3 transition-colors">
-              <span className="mr-1.5 text-grey-500">
-                <MagnifyingGlass size={16} />
-              </span>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search agents"
-                aria-label="Search agents"
-                className="w-full min-w-0 resize-none outline-none border-none bg-transparent text-xs text-grey-900 placeholder:text-[var(--text-secondary)]"
-              />
-            </div>
-          </div>
-        </div>
-
         <div
           className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]"
-          style={{ height: "calc(100% - 116px)" }}
+          style={{ height: "calc(100% - 60px)" }}
         >
           <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
-            <div className="w-full h-full overflow-y-auto">
+          {/* Heading bar — the Dashboards pattern: 56px, label + solid count
+              chip on the left, search on the right. */}
+          <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)] bg-white">
+            <div className="px-8 flex gap-2.5 items-center">
+              <span className="font-medium text-[14px]">All agents</span>
+              <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
+                {filtered.length}
+              </span>
+            </div>
+            <div className="flex gap-3 items-center pr-4">
+              <div className="flex flex-1 items-center w-80 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 py-2 px-3 transition-colors">
+                <span className="mr-1.5 text-grey-500">
+                  <MagnifyingGlass size={16} />
+                </span>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search agents"
+                  aria-label="Search agents"
+                  className="w-full min-w-0 resize-none outline-none border-none bg-transparent text-xs text-grey-900 placeholder:text-[var(--text-secondary)]"
+                />
+              </div>
+            </div>
+          </div>
+
+            <div className="w-full flex-1 min-h-0 overflow-y-auto">
               <div className="flex flex-col w-full px-4 py-2">
 
                 {isLoading ? (

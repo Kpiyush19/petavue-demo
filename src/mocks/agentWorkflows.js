@@ -459,11 +459,23 @@ export function activateWorkflow(id) {
   const w = WORKFLOWS.find((x) => x.id === id);
   if (!w) return null;
   if (w.status === "active") return w;
+  const resuming = w.status === "paused";
   w.status = "active";
   w.cadence = w.cadence && w.cadence !== "Not scheduled" ? w.cadence : "Daily · 7:00 AM";
   w.nextRun = "Tomorrow, 7:00 AM";
-  w.lastRun = "Not yet run";
+  if (!resuming) w.lastRun = "Not yet run";
   w.runs = w.runs || [];
+  return w;
+}
+
+// Pausing is a distinct state from "available". An available workflow has never
+// been turned on; a paused one was running and is now held, keeps its schedule
+// so it can resume on it, and keeps the recommendations it already produced.
+export function pauseWorkflow(id) {
+  const w = WORKFLOWS.find((x) => x.id === id);
+  if (!w || w.status !== "active") return w || null;
+  w.status = "paused";
+  w.nextRun = null;
   return w;
 }
 
@@ -495,6 +507,16 @@ export function agentDetail(key, recItems) {
     deployments,
     findings: attributeRecommendations(recItems || []).filter((r) => r.agent === key),
     reads: [...new Set(used.flatMap((w) => w.reads || []))],
+    // Where the approved action actually lands — the workflow's system node,
+    // not the family's `platforms`. A family that measures acts on nothing, and
+    // a family in no workflow acts nowhere.
+    actsOn: [
+      ...new Set(
+        used
+          .map((w) => w.steps.find((st) => st.kind === "system")?.label)
+          .filter(Boolean),
+      ),
+    ],
   };
 }
 

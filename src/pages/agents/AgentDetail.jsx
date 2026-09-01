@@ -24,6 +24,10 @@ const fadeUp = (delay = 0) => ({
   transition: { duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] },
 });
 
+// Two label weights. Section headings in the main column carry the page, so
+// they sit at 14px in near-black; the rail is supporting detail and stays quiet
+// at 12px muted.
+const SECTION_LABEL = "text-[14px] font-semibold uppercase tracking-wider text-[var(--text-primary)]";
 const LABEL = "text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]";
 
 function Section({ title, lead, children, delay, first }) {
@@ -32,8 +36,8 @@ function Section({ title, lead, children, delay, first }) {
       {...fadeUp(delay)}
       className={cn("flex flex-col gap-3", !first && "pt-5 mt-5 border-t border-[var(--color-grey-100)]")}
     >
-      <h2 className={LABEL}>{title}</h2>
-      {lead && <p className="text-[12px] leading-relaxed text-[var(--text-secondary)]">{lead}</p>}
+      <h2 className={SECTION_LABEL}>{title}</h2>
+      {lead && <p className="text-[14px] leading-relaxed text-[var(--text-secondary)]">{lead}</p>}
       {children}
     </motion.section>
   );
@@ -87,6 +91,9 @@ export default function AgentDetail() {
 
   const Icon = agentIcon(a.key);
   const deployed = a.liveCount > 0;
+  // Where "see it" goes: a live workflow if there is one, otherwise the first
+  // it is configured in.
+  const target = a.deployments.find((d) => d.status === "active") || a.deployments[0];
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -111,33 +118,30 @@ export default function AgentDetail() {
         <div className="flex-1 min-h-0 overflow-y-auto bg-grey-50 p-4">
           <div className="flex flex-col min-h-full w-full bg-white border border-grey-100/50 rounded-xl p-4">
             <div className="flex gap-10 items-start">
-              <main className="flex-1 min-w-0 flex flex-col">
+              <div className="flex-1 min-w-0 flex flex-col">
                 {/* One title. "What it owns" as a label above the answer read as
                     two headings stacked. */}
                 <motion.div {...fadeUp(0.04)} className="flex flex-col gap-2">
-                  <h1 className="text-[16px] font-medium leading-snug text-[var(--text-primary)]">{a.owns}</h1>
-                  <p className="text-[12px] leading-relaxed text-[var(--text-secondary)]">{a.blurb}</p>
+                  <h1 className={SECTION_LABEL}>{a.owns}</h1>
+                  <p className="text-[14px] leading-relaxed text-[var(--text-primary)]">{a.blurb}</p>
                 </motion.div>
 
                 <Section title="What it does" delay={0.06}>
                   <div className="flex flex-col gap-2">
                     {a.does.map((d) => (
-                      <div
-                        key={d}
-                        className="flex items-start gap-2.5 px-4 py-3 bg-grey-50 border border-grey-100 rounded-lg"
-                      >
+                      <div key={d} className="flex items-start gap-2.5">
                         <span
-                          className="mt-[6px] w-[5px] h-[5px] rounded-full shrink-0"
+                          className="mt-[9px] w-[5px] h-[5px] rounded-full shrink-0"
                           style={{ background: a.color }}
                         />
-                        <span className="text-[12px] leading-snug text-[var(--text-primary)]">{d}</span>
+                        <span className="text-[14px] leading-relaxed text-[var(--text-primary)]">{d}</span>
                       </div>
                     ))}
                   </div>
                 </Section>
 
                 <Section
-                  title={`Specialist agents · ${a.specialists.length}`}
+                  title="Specialist agents"
                   lead="The named decisions inside this family. A workflow deploys only the ones its analysis needs."
                   delay={0.1}
                 >
@@ -155,7 +159,7 @@ export default function AgentDetail() {
                 </Section>
 
                 <Section
-                  title={`Where it's deployed · ${a.deployments.length}`}
+                  title="Where it&rsquo;s deployed"
                   lead={
                     a.deployments.length
                       ? "The workflows that run this family, and what it contributed to each."
@@ -168,18 +172,19 @@ export default function AgentDetail() {
                       No workflow deploys this family yet. It will appear here as soon as one does.
                     </p>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-2 items-stretch">
                       {a.deployments.map((d) => {
                         const live = d.status === "active";
+                        const held = d.status === "paused";
                         return (
                           <button
                             key={d.id}
                             type="button"
                             onClick={() => navigate(`/workflows/${d.id}?from=/agents/${a.key}`)}
-                            className="group flex flex-col gap-1.5 text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
+                            className="group flex flex-col gap-1.5 h-full text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
                           >
                             <span className="flex items-center gap-2 min-w-0">
-                              <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
+                              <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">
                                 {d.name}
                               </span>
                               <span className="shrink-0 text-[11px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">
@@ -188,16 +193,16 @@ export default function AgentDetail() {
                               <span
                                 className={cn(
                                   "shrink-0 flex items-center gap-1.5 text-[12px] font-medium",
-                                  live ? "text-green-600" : "text-[var(--text-muted)]",
+                                  live ? "text-green-600" : held ? "text-amber-600" : "text-[var(--text-muted)]",
                                 )}
                               >
                                 <i
                                   className={cn(
                                     "w-[6px] h-[6px] rounded-full",
-                                    live ? "bg-green-500" : "bg-[var(--color-grey-300)]",
+                                    live ? "bg-green-500" : held ? "bg-amber-500" : "bg-[var(--color-grey-300)]",
                                   )}
                                 />
-                                {live ? "Live" : "Available"}
+                                {live ? "Live" : held ? "Paused" : "Available"}
                               </span>
                               <CaretRight
                                 size={14}
@@ -207,12 +212,6 @@ export default function AgentDetail() {
                             {d.contribution && (
                               <span className="text-[12px] text-[#757A97] leading-snug">{d.contribution}</span>
                             )}
-                            {d.steps.length > 0 && (
-                              <span className="text-[11px] text-[var(--text-muted)]">
-                                {d.steps.length} {d.steps.length === 1 ? "step" : "steps"}
-                                {d.specialistNames.length > 0 && ` · ${d.specialistNames.join(" · ")}`}
-                              </span>
-                            )}
                           </button>
                         );
                       })}
@@ -221,7 +220,7 @@ export default function AgentDetail() {
                 </Section>
 
                 <Section
-                  title={`What it found · ${a.findings.length}`}
+                  title="What it found"
                   lead={
                     a.findings.length
                       ? "Recommendations this family produced. Open one to approve or dismiss it."
@@ -234,7 +233,7 @@ export default function AgentDetail() {
                       Nothing found yet. Findings appear here once a workflow running this family produces one.
                     </p>
                   ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-2 items-stretch">
                       {a.findings.map((f) => {
                         const t = findingTone(f);
                         return (
@@ -242,10 +241,10 @@ export default function AgentDetail() {
                             key={f.recId}
                             type="button"
                             onClick={() => navigate(`/recommendations?workflow=${f.workflowId}`)}
-                            className="group flex flex-col gap-1.5 text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
+                            className="group flex flex-col gap-1.5 h-full text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
                           >
                             <span className="flex items-center gap-2 min-w-0">
-                              <span className="text-[13px] font-medium text-[var(--text-primary)] truncate">
+                              <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">
                                 {f.title}
                               </span>
                               <span
@@ -265,7 +264,6 @@ export default function AgentDetail() {
                             {f.tldr && (
                               <span className="text-[12px] text-[#757A97] leading-snug line-clamp-1">{f.tldr}</span>
                             )}
-                            <span className="text-[11px] text-[var(--text-muted)]">from {f.workflowName}</span>
                           </button>
                         );
                       })}
@@ -274,7 +272,7 @@ export default function AgentDetail() {
                 </Section>
 
                 <div className="h-10" />
-              </main>
+              </div>
 
               {/* Facts only — no schedule and no run history, because a family
                   has neither. Those belong to the workflow. */}
@@ -317,22 +315,6 @@ export default function AgentDetail() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-grey-100)]">
-                  <span className={LABEL}>Acts on</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {a.platforms.map((pl) => (
-                      <span
-                        key={pl}
-                        title={pl}
-                        className="inline-flex items-center gap-1.5 text-[12px] px-2 py-1 rounded bg-white border border-grey-200 text-[var(--text-secondary)]"
-                      >
-                        <SourceIcon name={pl} size={14} />
-                        {pl}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
                 {a.reads.length > 0 && (
                   <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-grey-100)]">
                     <span className={LABEL}>Reads</span>
@@ -347,13 +329,33 @@ export default function AgentDetail() {
                   </div>
                 )}
 
+                {/* Where an approved action lands. This used to list the
+                    family's `platforms`, which was the same set as Reads and
+                    also untrue: a measurement family acts on nothing. It is the
+                    workflow's connected system, so a family in no workflow
+                    shows none. */}
+                {a.actsOn.length > 0 && (
+                  <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-grey-100)]">
+                    <span className={LABEL}>Acts on</span>
+                    <div className="flex flex-col gap-2">
+                      {a.actsOn.map((t) => (
+                        <div key={t} className="flex items-center gap-2.5" title={t}>
+                          <SourceIcon name={t} size={18} />
+                          <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {a.deployments.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/workflows/${a.deployments[0].id}?from=/agents/${a.key}`)}
+                    onClick={() => navigate(`/workflows/${target.id}?from=/agents/${a.key}`)}
                     className="mt-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-grey-200 text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
                   >
-                    See it in a workflow <ArrowSquareOut size={13} />
+                    {deployed ? "See it in a workflow" : "See where it\u2019s configured"}{" "}
+                    <ArrowSquareOut size={13} />
                   </button>
                 )}
               </motion.aside>

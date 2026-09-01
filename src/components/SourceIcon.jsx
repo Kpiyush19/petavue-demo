@@ -24,6 +24,7 @@ const LOGO_FILE = {
   linkedin: "linkedin.svg",
   "linkedin ads": "linkedin.svg",
   "linkedin + web": "linkedin.svg",
+  "linkedin campaign manager": "linkedin.svg",
   meta: "meta ads.svg",
   "meta ads": "meta ads.svg",
 };
@@ -35,6 +36,7 @@ const GLYPH = {
   warehouse: Database,
   pipeline: Funnel,
   "target account list": ListChecks,
+  "crm \u00b7 sdr queue": Database,
 };
 
 export default function SourceIcon({ name, size = 14, className }) {

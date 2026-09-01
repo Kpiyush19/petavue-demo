@@ -935,6 +935,7 @@ const handlers = [
   // so a row and the Recommendations page can never claim different numbers.
   { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => { const recs = Goals.allRecommendations().items; return { workflows: AgentWf.listWorkflows(recs), summary: AgentWf.summary(recs) }; } },
   { method: "GET", pattern: /\/api\/agents$/, handler: () => ({ agents: AgentWf.listAgents(), orchestrator: AgentWf.ORCHESTRATOR }) },
+  { method: "POST", pattern: /\/api\/agent-workflows\/([^/]+)\/pause$/, handler: ({ params }) => ({ workflow: AgentWf.pauseWorkflow(String(params[0])) }) },
   { method: "POST", pattern: /\/api\/agent-workflows\/([^/]+)\/activate$/, handler: ({ params }) => ({ workflow: AgentWf.activateWorkflow(String(params[0])) }) },
   { method: "GET", pattern: /\/api\/agents\/([^/]+)$/, handler: ({ params }) => ({ agent: AgentWf.agentDetail(String(params[0]), Goals.allRecommendations().items) }) },
   { method: "GET", pattern: /\/api\/workflows$/, handler: () => ({ workflows: db.workflows }) },
