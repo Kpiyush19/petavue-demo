@@ -2,4 +2,4 @@
   X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: frame-ancestors 'self' https://petavue.com https://*.petavue.com http://localhost:* http://127.0.0.1:*
+  Content-Security-Policy: frame-ancestors 'self' https://app1.petavue.com https://ccpoc-dev.petavue.com http://localhost:* http://127.0.0.1:*
