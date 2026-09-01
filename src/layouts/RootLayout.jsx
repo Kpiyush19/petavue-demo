@@ -5,15 +5,19 @@ import { queryClient } from "../lib/queryClient";
 import MenuBarNav from "../components/MenuBarNav";
 import ImpersonationBanner from "../components/ImpersonationBanner";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { isEmbedded } from "../utils/embed";
 
 export default function RootLayout() {
   useDocumentTitle();
+  // Framed into the product, which supplies its own nav — ours would be a
+  // second sidebar sitting inside the first.
+  const embedded = isEmbedded();
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="h-screen flex bg-[var(--bg-primary)]">
         {/* Single unified nav everywhere — the design-system MenuBar. */}
-        <MenuBarNav />
+        {!embedded && <MenuBarNav />}
         <main className="flex-1 min-w-0 flex flex-col">
           <ImpersonationBanner />
           <Outlet />
