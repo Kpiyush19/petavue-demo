@@ -61,6 +61,14 @@ function FamilySection({ agent, note, boxes }) {
           <span className="text-[14px] leading-[20px] font-semibold uppercase tracking-wider text-[var(--text-primary)]">
             {agent.label}
           </span>
+          {note && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider text-white"
+              style={{ background: agent.color }}
+            >
+              Foundational
+            </span>
+          )}
           {note && <span className="text-[12px] leading-[18px] text-[var(--text-muted)]">{note}</span>}
           <span className="ml-auto text-[12px] leading-[18px] text-[#757A97] tabular-nums">
             Used by {agent.workflowCount} {agent.workflowCount === 1 ? "workflow" : "workflows"} ·{" "}
