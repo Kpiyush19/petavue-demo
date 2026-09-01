@@ -524,7 +524,7 @@ const goals = [
     recs: applyFeedback([
       wrapRec({
         category: "Attribution", iconKey: "spend", severity: "act-now", tier: 1, age: "New · day 1",
-        title: "Move budget toward the campaigns creating qualified pipeline.",
+        title: "Move budget toward the campaigns creating qualified pipeline.", short: "Rebalance prospecting budget",
         tldr: "$18.4K in prospecting produced 46 conversions but 0 qualified opps, while retargeting is creating real pipeline.",
         cause: "\"CISO Cold Outreach Q3\" and \"Security Leaders LinkedIn Blast\" spent $18.4K over 30 days for 46 platform conversions and zero qualified Salesforce opportunities, while \"CISO Webinar Retargeting\" spent $6.7K and produced 12 qualified opps.",
         body: "The comparison uses the approved sourced-and-influenced pipeline definition, the same 30-day attribution window, and the same account exclusions across both cohorts, so the gap is real rather than a measurement artifact. Retargeting is generating 2.1x more qualified pipeline per dollar than prospecting.",
@@ -574,7 +574,7 @@ const goals = [
       }),
       wrapRec({
         category: "Incrementality", iconKey: "geo", severity: "watch", tier: 2, age: "Day · 6h ago",
-        title: "Validate incremental lift before scaling \"CISO Brand Search - NAM\".",
+        title: "Validate incremental lift before scaling \"CISO Brand Search - NAM\".", short: "Hold CISO Brand Search scale-up",
         tldr: "Brand Search conversions move with organic demand 79% of the time, so credit may overstate true lift.",
         cause: "Branded organic demand and \"CISO Brand Search - NAM\" conversions rose together in 79% of the last 12 weeks. The campaign carries $164K sourced pipeline this quarter, but incremental lift is unproven.",
         body: "A controlled geo holdout will answer this more cleanly than reassigning credit through an attribution model. Test regions are chosen so paid-demand overlap is minimized. Until the holdout runs, the right move is to hold, not scale.",
@@ -601,7 +601,7 @@ const goals = [
       }),
       wrapRec({
         category: "Budget pacing", iconKey: "pacing", severity: "act-now", tier: 2, age: "Closed · Jul 7",
-        title: "Cap \"CIO Brand Search - Enterprise\" and move the surplus to retargeting.",
+        title: "Cap \"CIO Brand Search - Enterprise\" and move the surplus to retargeting.", short: "Cap CIO Brand Search",
         tldr: "Closed after restoring Brand Search to its four-week baseline and moving the $1.7K/wk surplus into enterprise retargeting.",
         cause: "Brand Search spend hit $6.1K/wk versus a $4.4K four-week baseline (+38%) while opportunity volume stayed flat at 8/week, and retargeting was producing 2.1x more qualified pipeline per dollar.",
         body: "The move preserved the approved monthly ceiling and reallocated only the amount above Brand Search's stable operating range.",
@@ -628,7 +628,7 @@ const goals = [
       }),
       wrapRec({
         category: "Forecasting", iconKey: "scale", severity: "watch", tier: 2, age: "Closed · Jul 5",
-        title: "Put the new budget into enterprise retargeting.",
+        title: "Put the new budget into enterprise retargeting.", short: "Fund enterprise retargeting",
         tldr: "Closed after loading enterprise retargeting first, reserving high-intent search, and holding a slice for a CFO creative test.",
         cause: "Enterprise retargeting had $18K/mo of capacity before frequency hit its 4.5 ceiling, high-intent search had $8K/mo of headroom before CPC efficiency dropped, and broad paid social was already down 12% in pipeline-per-dollar.",
         body: "The forecast weighed qualified pipeline, cost limits, and audience capacity rather than platform conversions alone, and kept CAC inside the $8.4K downside limit across every scenario.",
@@ -655,7 +655,7 @@ const goals = [
       }),
       wrapRec({
         category: "Segment performance", iconKey: "device", severity: "act-now", tier: 1, age: "New · day 1",
-        title: "Cut the placements and geographies burning spend without pipeline.",
+        title: "Cut the placements and geographies burning spend without pipeline.", short: "Cut Audience Network and APAC",
         tldr: "27% of the enterprise campaign's spend is going to Audience Network and out-of-coverage APAC with zero qualified opps.",
         cause: "The LinkedIn Audience Network extension on \"CIO Enterprise Prospecting\" spent $2.1K over 30 days across low-signal 3rd-party inventory with zero qualified opportunities, and APAC delivery absorbed another $1.4K outside the approved US/EMEA region, also with zero opps. Combined, that is 27% of the campaign's spend against zero pipeline.",
         body: "The pattern is stable across the trailing 4 weeks after normalizing for click volume and the approved 14-day qualification window.",
@@ -755,7 +755,7 @@ const goals = [
       }),
       wrapRec({
         category: "Audience & ICP", iconKey: "headroom", severity: "watch", tier: 2, age: "Day 2",
-        title: "Shift reach from low-fit companies to undercovered target accounts.",
+        title: "Shift reach from low-fit companies to undercovered target accounts.", short: "Tighten LinkedIn ICP bands",
         tldr: "34% of LinkedIn reach falls outside the approved ICP and produced no closed-won, while 86 high-fit accounts stay undercovered.",
         cause: "34% of current LinkedIn reach falls outside the approved ICP. Those out-of-ICP impressions produced 4 opportunities in 90 days, none past Stage 2, and $0 closed-won. Only 22% of the 86 undercovered target accounts have entered the golden path that historically leads to revenue.",
         body: "Fit is judged not just by reach but by whether accounts are entering the sequence that historically converts. Accounts that hit at least 3 of 5 golden-path touchpoints converted at 4.1x the rate and closed at 2.6x.",
@@ -783,7 +783,7 @@ const goals = [
       }),
       wrapRec({
         category: "Suppression", iconKey: "brand", severity: "act-now", tier: 1, age: "New · day 1",
-        title: "Stop prospecting to customers and active opportunities.",
+        title: "Stop prospecting to customers and active opportunities.", short: "Refresh stale suppression lists",
         tldr: "Stale suppression lists are still targeting 214 customer domains and 37 active opps; 18% of last month's spend reached people already in CRM.",
         cause: "Three prospecting audiences on LinkedIn and Meta are still targeting 214 customer domains and 37 active Salesforce opportunities because the suppression lists have not refreshed in 62 days. 18% of last month's spend on these audiences reached people already in CRM.",
         body: "These people are already in CRM stages the team has excluded from acquisition campaigns.",
@@ -884,7 +884,7 @@ const goals = [
       }),
       wrapRec({
         category: "Lead quality", iconKey: "device", severity: "watch", tier: 2, age: "Day 3",
-        title: "Reduce the campaign with the lowest CPL but the weakest pipeline quality.",
+        title: "Reduce the campaign with the lowest CPL but the weakest pipeline quality.", short: "Reduce \"Broad Reach A\" spend",
         tldr: "\"Broad Reach A\" has the account's lowest CPL at $42 but only 3% of leads reach sales acceptance vs an 18% median.",
         cause: "\"Broad Reach A\" has the lowest CPL in the account at $42, but only 3% of its leads reach sales acceptance versus an 18% account median. Its pipeline per dollar is 0.4x the peer-campaign average.",
         body: "Petavue compares leads through the same 14-day lead-to-acceptance window, not just at form submission.",
@@ -912,7 +912,7 @@ const goals = [
       }),
       wrapRec({
         category: "Warm accounts", iconKey: "geo", severity: "watch", tier: 2, age: "Day · 5h ago",
-        title: "Add paid coverage for warm target accounts with no active opportunity.",
+        title: "Add paid coverage for warm target accounts with no active opportunity.", short: "Cover 8 warm target accounts",
         tldr: "8 high-fit accounts crossed the engagement threshold in 21 days but have no assigned AE and no paid retargeting coverage.",
         cause: "Eight high-fit accounts have crossed the engagement threshold (score >= 85 across paid, website, and content) in the trailing 21 days but have no assigned AE and no paid retargeting coverage.",
         body: "Each account cleared the threshold and falls outside suppression and open-opportunity rules. The recommendation stays inside the approved retargeting ceiling.",
@@ -1123,7 +1123,7 @@ export function allRecommendations() {
     for (const rec of last.recommendations) {
       items.push({
         goalId: g.id, goalName: g.name, recId: rec.id,
-        title: rec.title, tldr: rec.tldr, category: rec.category || rec.groupLabel,
+        title: rec.title, short: rec.short || rec.title, tldr: rec.tldr, category: rec.category || rec.groupLabel,
         severity: rec.severity, status: rec.status, impact: rec.impact || null, age: rec.age || null,
         signal: rec.signal || null, tier: rec.tier || null, triggerLabel: rec.triggerLabel || null,
         confidence: rec.confidence || null, disposition: rec.disposition || null,

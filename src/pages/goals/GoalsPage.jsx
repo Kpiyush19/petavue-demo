@@ -72,7 +72,11 @@ function RecFilterDropdown({ value, onChange, counts, options }) {
         onClick={toggle}
         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-[var(--color-grey-200)] text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
       >
-        <Funnel size={14} className="text-[var(--text-muted)]" />
+        {current.icon ? (
+          <current.icon size={14} className={cn("shrink-0", current.fg)} />
+        ) : (
+          <Funnel size={14} className="text-[var(--text-muted)]" />
+        )}
         {current.label}
         <span className="tabular-nums text-[var(--text-muted)]">{count}</span>
         <CaretDown size={13} className={cn("text-[var(--text-muted)] transition-transform", open && "rotate-180")} />
@@ -87,6 +91,8 @@ function RecFilterDropdown({ value, onChange, counts, options }) {
           options={options.map((f) => ({
             id: f.k,
             label: f.label,
+            icon: f.icon,
+            iconClass: f.fg,
             count: f.k === "all" ? counts.all : counts[f.k] || 0,
           }))}
         />
@@ -97,27 +103,30 @@ function RecFilterDropdown({ value, onChange, counts, options }) {
 
 /* ── Recommendations tab: highlights + filters + queue + detail ── */
 
-// One bucket per recommendation — drives the status chip (our goalPriority
-// language) and which filter it falls under.
+// One bucket per recommendation, and the single source for how each state
+// looks. The filter, its menu and every queue row read from here, so a state
+// can never wear two different colours on one screen.
+const REC_STATE = {
+  "act-now":      { label: "Act now",     icon: Lightning,   fg: "text-rose-600",   chip: "text-rose-600 border border-rose-200" },
+  "needs-review": { label: "Review soon", icon: Warning,     fg: "text-amber-600",  chip: "text-amber-700 border border-amber-200" },
+  watchlist:      { label: "Watch",       icon: Eye,         fg: "text-blue-600",   chip: "text-blue-700 border border-blue-200" },
+  archived:       { label: "Done",        icon: CheckCircle, fg: "text-green-600",  chip: "text-green-600 border border-green-200" },
+};
+
 function recMeta(item) {
-  if (item.status !== "open")
-    return { key: "archived", label: item.status === "rejected" ? "Dismissed" : "Acted", cls: "text-green-600 border border-green-200", icon: CheckCircle };
-  if (item.severity === "act-now")
-    return { key: "act-now", label: "Act now", cls: "text-rose-600 border border-rose-200", icon: Lightning };
-  if ((item.tier || 2) <= 2)
-    return { key: "needs-review", label: "Review soon", cls: "text-amber-700 border border-amber-200", icon: Warning };
-  return { key: "watchlist", label: "Watch", cls: "text-blue-700 border border-blue-200", icon: Eye };
+  if (item.status !== "open") return { key: "archived", ...REC_STATE.archived };
+  if (item.severity === "act-now") return { key: "act-now", ...REC_STATE["act-now"] };
+  if ((item.tier || 2) <= 2) return { key: "needs-review", ...REC_STATE["needs-review"] };
+  return { key: "watchlist", ...REC_STATE.watchlist };
 }
+
 // Filters speak the same language as the chips on the cards. They used to be
 // lifecycle states (Open / Snoozed / Accepted / Rejected / Archived), which
 // meant a queue full of "ACT NOW" chips had no way to filter to act-now, and
 // three of the six options were permanently zero. These keys are recMeta()'s.
 const REC_FILTERS = [
   { k: "all", label: "All" },
-  { k: "act-now", label: "Act now" },
-  { k: "needs-review", label: "Review soon" },
-  { k: "watchlist", label: "Watch" },
-  { k: "archived", label: "Done" },
+  ...Object.entries(REC_STATE).map(([k, v]) => ({ k, label: v.label, icon: v.icon, fg: v.fg })),
 ];
 
 // A queue row, not a card: the data-hub sidebar pattern — flat, hairline
@@ -125,6 +134,7 @@ const REC_FILTERS = [
 // mark and the workflow name all repeat on the detail pane a few hundred pixels
 // to the right, so on the row they were noise you read twice.
 function RecCard({ item, selected, onClick }) {
+  const m = recMeta(item);
   return (
     <button
       type="button"
@@ -140,16 +150,18 @@ function RecCard({ item, selected, onClick }) {
         item.status !== "open" && !selected && "opacity-60",
       )}
     >
-      {/* One line. The full sentence is on hover and, in full, on the detail
-          pane beside it. */}
-      <Tooltip title={item.title} placement="right">
+      {/* A short label, not the sentence. Every full title ran 47-73 characters
+          and truncated in this column, so the row said the same first three
+          words each time. The sentence is on hover and on the detail pane. */}
+      <m.icon size={15} className={cn("shrink-0 mr-2.5", m.fg)} aria-hidden="true" />
+      <Tooltip title={`${m.label} — ${item.title}`} placement="right">
         <span
           className={cn(
             "min-w-0 truncate text-[14px] text-[var(--text-primary)]",
             selected && "font-medium",
           )}
         >
-          {item.title}
+          {item.short || item.title}
         </span>
       </Tooltip>
     </button>
@@ -380,7 +392,7 @@ function RecommendationsPanel({ onOpenGoal }) {
                     </span>
                   ) : (
                     <span className="min-w-0 truncate text-[14px] font-semibold text-[var(--text-primary)]">
-                      From your workflows
+                      Decision queue
                     </span>
                   )}
                   <RecFilterDropdown

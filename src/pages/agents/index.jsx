@@ -28,7 +28,7 @@ function AgentCard({ agent, onOpen }) {
       <h3 className="text-[16px] font-semibold leading-snug tracking-[-0.2px] text-[var(--text-primary)] mt-1">
         {agent.label}
       </h3>
-      <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed line-clamp-3">
+      <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-3">
         {agent.blurb}
       </p>
 
@@ -36,10 +36,10 @@ function AgentCard({ agent, onOpen }) {
         {agent.does.map((d) => (
           <li
             key={d}
-            className="flex items-start gap-2 text-[13px] text-[var(--text-secondary)] leading-snug"
+            className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)] leading-snug"
           >
             <span
-              className="mt-[7px] w-[4px] h-[4px] rounded-full shrink-0"
+              className="mt-[6px] w-[4px] h-[4px] rounded-full shrink-0"
               style={{ background: agent.color }}
             />
             {d}
@@ -53,7 +53,7 @@ function AgentCard({ agent, onOpen }) {
             answers "what does this touch". */}
         <span className="flex items-center gap-2 min-w-0">
           {agent.platforms.map((pl) => (
-            <SourceIcon key={pl} name={pl} size={16} className="shrink-0" />
+            <SourceIcon key={pl} name={pl} size={16} named />
           ))}
         </span>
         <span className="flex items-center gap-1 text-[12px] font-medium text-[var(--text-muted)] group-hover:text-primary-500 transition-colors whitespace-nowrap shrink-0">
@@ -124,7 +124,7 @@ export default function AgentsPage() {
           </div>
 
             <div className="w-full flex-1 min-h-0 overflow-y-auto">
-              <div className="flex flex-col w-full px-4 py-2">
+              <div className="flex flex-col w-full px-4 py-4">
 
                 {isLoading ? (
                   <div className="grid grid-cols-3 gap-6">

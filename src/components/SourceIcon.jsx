@@ -1,4 +1,5 @@
 import { Globe, Database, Funnel, ListChecks, Plug } from "@phosphor-icons/react";
+import { Tooltip } from "@/ui";
 
 /**
  * The mark for a platform or data source.
@@ -39,21 +40,36 @@ const GLYPH = {
   "crm \u00b7 sdr queue": Database,
 };
 
-export default function SourceIcon({ name, size = 14, className }) {
+/**
+ * `named` wraps the mark in a tooltip. Use it wherever the icon stands alone —
+ * an unlabelled row of logos is unreadable otherwise. Where the name is already
+ * printed beside the icon, leave it off rather than repeating it on hover.
+ */
+export default function SourceIcon({ name, size = 14, className, named = false }) {
   const key = String(name || "").toLowerCase().trim();
   const file = LOGO_FILE[key];
   const url = file ? LOGO_BY_FILE[file] : null;
-  if (url) {
-    return (
-      <img
-        src={url}
-        alt=""
-        loading="lazy"
-        className={`object-contain shrink-0 ${className || ""}`}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  const Glyph = GLYPH[key] || Plug;
-  return <Glyph size={size} className={`shrink-0 text-[var(--text-muted)] ${className || ""}`} />;
+  const mark = url ? (
+    <img
+      src={url}
+      alt={named ? name : ""}
+      loading="lazy"
+      className={`object-contain shrink-0 ${className || ""}`}
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    (() => {
+      const Glyph = GLYPH[key] || Plug;
+      return <Glyph size={size} className={`shrink-0 text-[var(--text-muted)] ${className || ""}`} />;
+    })()
+  );
+
+  if (!named) return mark;
+  return (
+    <Tooltip title={name} placement="top">
+      <span className="inline-flex shrink-0 cursor-default" aria-label={name}>
+        {mark}
+      </span>
+    </Tooltip>
+  );
 }

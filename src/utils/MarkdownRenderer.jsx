@@ -110,7 +110,7 @@ export default function MarkdownRenderer({ content, className = "" }) {
 
           sup: ({ node, ...props }) => <sup className="text-xs" {...props} />,
           sub: ({ node, ...props }) => <sub className="text-xs" {...props} />,
-          abbr: ({ node, ...props }) => <abbr className="cursor-help border-b border-dotted" {...props} />,
+          abbr: ({ node, ...props }) => <abbr className="cursor-default border-b border-dotted" {...props} />,
           kbd: ({ node, ...props }) => (
             <kbd
               className="bg-[var(--color-grey-100)] border border-[var(--color-grey-300)] rounded px-1.5 py-0.5 text-xs font-mono"

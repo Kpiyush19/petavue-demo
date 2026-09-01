@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CaretLeft, CaretRight, Database, Code, Brain, FileText,
-  Sparkle, Play, Pause, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
+  Play, Pause, ArrowRight, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
 } from "@phosphor-icons/react";
 import { Button as PvButton, Tooltip } from "@/ui";
 import { toast } from "sonner";
@@ -30,29 +30,7 @@ const STEP = {
    what shows agents working together rather than in a line. ── */
 
 const RAIL = "var(--color-grey-200)";
-
-/* One column of the org-chart rail. `dir` "down" branches out of Sage,
-   "up" converges into the approval gate. */
-function Rail({ first, last, only, dir }) {
-  const bar = only
-    ? null
-    : first
-      ? "left-1/2 right-0"
-      : last
-        ? "left-0 right-1/2"
-        : "left-0 right-0";
-  return (
-    <div className="relative h-5">
-      {bar && (
-        <div
-          className={cn("absolute h-px", bar, dir === "down" ? "top-0" : "bottom-0")}
-          style={{ background: RAIL }}
-        />
-      )}
-      <div className="absolute top-0 h-full w-px left-1/2" style={{ background: RAIL }} />
-    </div>
-  );
-}
+const RAIL_ARROW = "var(--color-grey-400)";
 
 function Drop() {
   return (
@@ -62,7 +40,7 @@ function Drop() {
   );
 }
 
-function FamilyNode({ agentKey, text, steps, selected, onSelect }) {
+function FamilyNode({ step, agentKey, text, steps, selected, onSelect }) {
   const a = AGENTS[agentKey];
   if (!a) return null;
   const Icon = agentIcon(agentKey);
@@ -82,6 +60,7 @@ function FamilyNode({ agentKey, text, steps, selected, onSelect }) {
       <div className="flex items-center gap-2.5 mb-2">
         <Icon size={22} weight="fill" style={{ color: a.color }} className="shrink-0" />
         <span className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{a.label}</span>
+        <span className="ml-auto shrink-0 text-[11px] tabular-nums text-[var(--text-muted)]">{step}</span>
       </div>
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
       <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] tabular-nums mt-auto">
@@ -200,58 +179,32 @@ function specialistRoster(families) {
     .join("  ·  ");
 }
 
-function AgentGraph({ families, specialists, system, platform, selected, onSelect }) {
-  const n = families.length;
-  const cols = { gridTemplateColumns: `repeat(${n}, minmax(0,1fr))` };
+function AgentGraph({ families, system, platform, selected, onSelect }) {
   return (
     <div className="w-full rounded-lg border border-[var(--color-grey-100)] bg-[var(--color-grey-50)] px-8 py-6">
-      {/* Sage — the orchestrator */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center gap-3 px-4 py-3 bg-white border border-[var(--color-primary-100)] rounded-lg">
-          <Sparkle size={22} weight="fill" className="shrink-0 text-primary-500" />
-          <span className="flex flex-col">
-            <span className="text-[13px] font-semibold text-[var(--text-primary)]">Sage</span>
-            <span className="text-[12px] text-[#757A97]">
-              Deployed {n} {n === 1 ? "family" : "families"} ·{" "}
-              {/* The count was assertable but not checkable — you had to open every
-                  family panel to find out which specialists it meant. */}
-              <Tooltip title={specialistRoster(families)} placement="bottom">
-                <span className="underline decoration-dotted underline-offset-2 cursor-default">
-                  {specialists} specialist agents
-                </span>
-              </Tooltip>
-            </span>
-          </span>
-        </div>
-      </div>
-
-      <Drop />
-      <div className="mx-auto w-full" style={{ maxWidth: Math.min(n, 4) * 232 }}>
-        <div className="grid" style={cols}>
-          {families.map((f, i) => (
-            <Rail key={f.agent} dir="down" first={i === 0} last={i === n - 1} only={n === 1} />
-          ))}
-        </div>
-
-        <div className="grid gap-3 items-stretch" style={cols}>
-          {families.map((f) => (
+      {/* One workflow, run in order. It used to fan out from a Sage node, which
+          read as agents working in parallel — the steps behind it have always
+          been strictly sequential, starting with Measurement. */}
+      <div className="flex items-stretch justify-center gap-0">
+        {families.map((f, i) => (
+          <div key={f.agent} className="flex items-stretch min-w-0">
+            {i > 0 && (
+              <div className="flex items-center px-2 shrink-0" aria-hidden="true">
+                <ArrowRight size={16} style={{ color: RAIL_ARROW }} />
+              </div>
+            )}
             <FamilyNode
-              key={f.agent}
+              step={i + 1}
               agentKey={f.agent}
               text={f.text}
               steps={f.steps}
               selected={selected === f.agent}
               onSelect={() => onSelect(selected === f.agent ? null : f.agent)}
             />
-          ))}
-        </div>
-
-        <div className="grid" style={cols}>
-          {families.map((f, i) => (
-            <Rail key={f.agent} dir="up" first={i === 0} last={i === n - 1} only={n === 1} />
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
+
       <Drop />
 
       {/* The gate. Always on — Abiram is explicit that human approval is
@@ -511,7 +464,16 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
             </div>
           ))}
         </div>
-        <RailRow k="Agents" v={`${families.length} families \u00b7 ${wf.specialists} specialists`} />
+        <RailRow
+          k="Agents"
+          v={
+            <Tooltip title={specialistRoster(families)} placement="bottom">
+              <span className="underline decoration-dotted underline-offset-2 cursor-default">
+                {families.length} families &middot; {wf.specialists} specialists
+              </span>
+            </Tooltip>
+          }
+        />
       </RailGroup>
     </aside>
   );
@@ -628,7 +590,6 @@ export default function WorkflowDetail() {
 
                 <AgentGraph
                   families={families}
-                  specialists={wf.specialists}
                   system={system}
                   platform={platform}
                   selected={selected}

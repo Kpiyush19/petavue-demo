@@ -56,8 +56,9 @@ export default function PetavueRoutes() {
       case "data-hub":
         return <DataHub {...menuProps} />;
       default:
-        // Any other segment isn't a self-contained page — send it to the app home.
-        return <Navigate to="/new" replace />;
+        // Any other segment isn't a self-contained page — send it to the app
+        // home, which is Workflows.
+        return <Navigate to="/workflows" replace />;
     }
   };
 

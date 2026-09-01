@@ -416,7 +416,7 @@ export const SchemaTab = ({ platform, integrationId: integrationIdProp, onManage
           </label>
           <div>Object</div>
           <Tooltip title={<SyncStatusLegend />} arrow placement="top" maxWidth="260px">
-            <div className="inline-flex items-center gap-1 w-fit cursor-help">
+            <div className="inline-flex items-center gap-1 w-fit cursor-default">
               Status
               <Info size={12} className="text-[var(--color-grey-400)]" />
             </div>

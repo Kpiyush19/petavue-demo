@@ -192,7 +192,7 @@ export default function UserDetails({ userDetail }) {
                           <p className="text-black font-semibold text-sm leading-5">API Key</p>
                           <Info
                             size={16}
-                            className="shrink-0 cursor-help"
+                            className="shrink-0 cursor-default"
                             onMouseEnter={() => setTooltipShow(true)}
                             onMouseLeave={() => setTooltipShow(false)}
                           />

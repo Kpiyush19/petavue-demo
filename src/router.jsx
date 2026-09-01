@@ -401,7 +401,7 @@ export const router = createBrowserRouter([
             ]
           },
           // Legacy /home links now land on the Create-New page (/new).
-          { path: "home", element: <Navigate to="/new" replace /> },
+          { path: "home", element: <Navigate to="/workflows" replace /> },
           { path: "home/skills", element: <Navigate to="/skills" replace /> },
           // Frontend-only mode: /new is the Create-New home (greeting + composer
           // + skills), no flag gate. Otherwise it's gated by HomeGuard.
@@ -422,9 +422,9 @@ export const router = createBrowserRouter([
                       </SuspenseWrapper>
                     )
                   },
-                  { path: "workstreams", element: <Navigate to="/new" replace /> },
-                  { path: "workstreams/:workstreamId", element: <Navigate to="/new" replace /> },
-                  { path: "skill", element: <Navigate to="/new" replace /> },
+                  { path: "workstreams", element: <Navigate to="/workflows" replace /> },
+                  { path: "workstreams/:workstreamId", element: <Navigate to="/workflows" replace /> },
+                  { path: "skill", element: <Navigate to="/workflows" replace /> },
                   // Legacy — the skills catalog + detail now live at top-level /skills.
                   { path: "skills", element: <Navigate to="/skills" replace /> }
                 ]
@@ -448,9 +448,9 @@ export const router = createBrowserRouter([
                           </SuspenseWrapper>
                         )
                       },
-                      { path: "workstreams", element: <Navigate to="/new" replace /> },
-                      { path: "workstreams/:workstreamId", element: <Navigate to="/new" replace /> },
-                      { path: "skill", element: <Navigate to="/new" replace /> },
+                      { path: "workstreams", element: <Navigate to="/workflows" replace /> },
+                      { path: "workstreams/:workstreamId", element: <Navigate to="/workflows" replace /> },
+                      { path: "skill", element: <Navigate to="/workflows" replace /> },
                       {
                         path: "skill/:id",
                         element: (

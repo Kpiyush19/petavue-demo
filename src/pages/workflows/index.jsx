@@ -151,7 +151,7 @@ export default function WorkflowsPage() {
           </div>
 
             <div className="w-full flex-1 min-h-0 overflow-y-auto">
-              <div className="flex flex-col w-full px-4 py-2">
+              <div className="flex flex-col w-full px-4 py-4">
 
                 {/* Floating header — no ground of its own, like the Data Hub's
                     table header. The rows below are separate cards. */}

@@ -499,7 +499,7 @@ export default function WorkflowDetailPage() {
             <CaretRight size={14} className="text-[var(--color-grey-400)] shrink-0" />
             {workflowsError ? (
               <Tooltip title="Failed to load workflows list" placement="bottom">
-                <span className="text-[16px] font-medium text-[var(--color-red)] cursor-help">
+                <span className="text-[16px] font-medium text-[var(--color-red)] cursor-default">
                   {workflow?.name || "Current Workflow"}
                 </span>
               </Tooltip>

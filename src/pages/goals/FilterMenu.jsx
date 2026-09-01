@@ -10,7 +10,9 @@ import { cn } from "../../utils/cn";
    Callers keep their own trigger button and compute `pos` ({top,left,width}) from
    the trigger rect; this component only renders the menu.
 
-   options: [{ id, label, count? }]  ·  value: selected id  ·  onSelect(id) */
+   options: [{ id, label, count?, icon?, iconClass? }] · value: selected id
+   · onSelect(id). `icon` is a component; it renders before the label so a
+   status filter reads the same way its rows do. */
 export function FilterMenu({
   pos,
   options,
@@ -61,7 +63,10 @@ export function FilterMenu({
                   active ? "font-medium bg-primary-50 border-primary-500 text-primary-700" : "text-[var(--text-primary)]"
                 )}
               >
-                <span className="flex-1 min-w-0 truncate">{o.label}</span>
+                <span className="flex-1 min-w-0 flex items-center gap-2 truncate">
+                  {o.icon && <o.icon size={14} className={cn("shrink-0", o.iconClass)} />}
+                  <span className="min-w-0 truncate">{o.label}</span>
+                </span>
                 {o.count != null && (
                   <span className={cn("text-[12px] tabular-nums shrink-0", active ? "text-primary-600" : "text-[var(--text-muted)]")}>{o.count}</span>
                 )}

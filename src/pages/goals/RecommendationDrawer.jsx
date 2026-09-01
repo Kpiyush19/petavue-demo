@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Bell, ChatCircle, CheckCircle, ClockCounterClockwise, XCircle, Sliders, CircleNotch, ArrowUUpLeft, Question, CaretDown, CaretLeft, CaretRight, CalendarBlank, Target, Lightning, Eye, Clock, Tag, ListBullets, ClockClockwise, ChartBar, Info, Warning } from "@phosphor-icons/react";
+import { X, CheckCircle, ClockCounterClockwise, XCircle, CircleNotch, ArrowUUpLeft, CaretDown, CaretLeft, CaretRight, CalendarBlank, Lightning, Eye, Warning } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { Button as PvButton, Tooltip } from "@/ui";
+import { Button as PvButton } from "@/ui";
 import "../../components/dashboards/dashboard-viewer-widget/styles.css";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
@@ -274,21 +274,10 @@ function renderInline(text) {
    tab's right panel. Fills its container height (scroll body + pinned footer). */
 export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, source }) {
   const qc = useQueryClient();
-  const [comment, setComment] = useState("");
-  const [thread, setThread] = useState([]);
-  const [showEvidence, setShowEvidence] = useState(false);
   // pending = the action awaiting input ({ action }); reason = the note; snoozeFor = duration.
   const [pending, setPending] = useState(null);
   const [reason, setReason] = useState("");
   const [snoozeFor, setSnoozeFor] = useState("");
-  const sendComment = () => {
-    const t = comment.trim();
-    if (!t) return;
-    // Newest-first so the freshest note sits right under the composer.
-    setThread((c) => [{ text: t, at: "Just now" }, ...c]);
-    setComment("");
-    toast.success("Note saved to this recommendation");
-  };
   const { data: goal } = useQuery({ queryKey: ["goal", goalId], queryFn: () => apiGet(`/api/goals/${goalId}`) });
   const rec = goal?.checkIns?.[0]?.recommendations?.find((r) => r.id === recId);
 
@@ -367,146 +356,96 @@ export function RecommendationDetail({ goalId, recId, onClose, onOpenGoal, sourc
         </div>
       </div>
 
-      {/* Body */}
-      <div className="px-5 pt-0 pb-4 flex flex-col gap-5 [&>*]:shrink-0">
-        {/* Metric cards — same InsightCard UI as the Goals tab. */}
-        {(rec.metrics || []).length > 0 && (
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
-            {rec.metrics.map((m, i) => (
-              <div key={i} className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3.5">
-                <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{m.label}</span>
-                <span className="text-[24px] font-semibold leading-none text-[var(--text-primary)] mb-1.5">{m.value}</span>
-                {m.note && <p className="text-[12px] text-[#757A97] leading-snug">{m.note}</p>}
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Body — two highlighted blocks carry the decision: what to do, and the
+          number that makes it worth doing. Everything else is on demand. The
+          supporting metrics, the methodology note and the derivation all moved
+          into the evidence panel below. */}
+      <div className="px-5 pt-0 pb-4 flex flex-col gap-4 [&>*]:shrink-0">
 
-        {/* Borderless sections separated by hairline rules instead of cards. */}
-        <div className="flex flex-col divide-y divide-[var(--color-grey-100)] [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
-        {/* Insight — why this recommendation is being made. */}
-        {rec.body && (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Why this matters</p>
-            <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.body}</p>
-          </div>
-        )}
-
-        {/* What to do — Exact action, then Hold for now and Revisit when. */}
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Exact action</p>
+        {/* The ask. */}
+        <div className="rounded-[10px] border border-primary-200 bg-primary-50 px-4 py-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-primary-700 mb-3">
+            Recommended action
+          </p>
           <ul className="flex flex-col gap-2.5">
-            {(rec.steps || [rec.tldr]).map((s, i) => (
+            {(rec.steps || [rec.tldr]).map((st, i) => (
               <li key={i} className="flex items-start gap-2.5">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-50 text-primary-600 border border-primary-200 text-[11px] font-semibold shrink-0 mt-px">{i + 1}</span>
-                <p className="text-[12px] text-[var(--text-primary)] leading-snug pt-0.5">{s}</p>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white text-primary-600 border border-primary-200 text-[11px] font-semibold shrink-0 mt-px tabular-nums">
+                  {i + 1}
+                </span>
+                <p className="text-[13px] text-[var(--text-primary)] leading-snug pt-0.5">{st}</p>
               </li>
             ))}
           </ul>
-          {rec.hold && (
-            <div className="mt-4 pt-3 border-t border-[var(--color-grey-100)]">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Hold for now</p>
-              <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.hold}</p>
-            </div>
-          )}
-          {rec.revisit && (
-            <div className="mt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">Revisit when</p>
-              <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.revisit}</p>
-            </div>
-          )}
         </div>
 
-        {/* About the data — an honest note on any reporting caveat. */}
-        {rec.aboutData && (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">About the data</p>
-            <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.aboutData}</p>
+        {/* Why it is worth doing. Observed, never projected — the figure
+            describes what is happening now, not what will happen. */}
+        {rec.impact && (
+          <div className="rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-amber-700 mb-1.5">
+              {rec.impact.label}
+            </p>
+            <div className="flex items-baseline gap-2.5 flex-wrap">
+              <span className="text-[28px] font-semibold leading-none text-amber-900 tabular-nums">
+                {rec.impact.value}
+              </span>
+              {rec.impact.sub && (
+                <span className="text-[13px] text-amber-800">{rec.impact.sub}</span>
+              )}
+            </div>
           </div>
         )}
-        </div>
 
-        {/* Full evidence — every number, interpreted (collapsible). */}
-        {((rec.derivation || []).length > 0 || (rec.metrics || []).length > 0 || rec.trigger) && (
-          <div className="rounded-[8px] border border-[var(--color-grey-100)] overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowEvidence((v) => !v)}
-              aria-expanded={showEvidence}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-grey-50 hover:bg-grey-100/60 border-none cursor-pointer text-left transition-colors"
-            >
-              <span className="text-[12px] font-medium text-[var(--text-primary)]">Full evidence, every number interpreted</span>
-              <CaretDown size={16} className={cn("text-[var(--text-muted)] transition-transform duration-200", showEvidence && "rotate-180")} />
-            </button>
-            <AnimatePresence initial={false}>
-            {showEvidence && (
-              <motion.div
-                key="evidence"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-                className="overflow-hidden"
-              >
-              <div className="px-4 py-4 flex flex-col gap-5 border-t border-[var(--color-grey-100)]">
-                {(rec.derivation || []).length > 0 && (
-                  <div>
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">What the numbers show</p>
-                    <ul className="flex flex-col gap-2 list-disc pl-4">
-                      {rec.derivation.map((s, i) => <li key={i} className="text-[12px] text-[#757A97] leading-relaxed">{renderInline(s)}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {rec.trigger && (
-                  <div>
-                    <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">When this fires</p>
-                    <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.trigger}</p>
-                  </div>
-                )}
+        {/* The numbers behind it. */}
+        {(rec.metrics || []).length > 0 && (
+          <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
+            {rec.metrics.map((m, i) => (
+              <div key={i} className="flex flex-col h-full bg-white border border-[var(--color-grey-100)] rounded-[8px] px-4 py-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">{m.label}</span>
+                <span className="text-[22px] font-semibold leading-none text-[var(--text-primary)] mb-1.5 tabular-nums">{m.value}</span>
+                {m.note && <p className="text-[11px] text-[#757A97] leading-snug">{m.note}</p>}
               </div>
-              </motion.div>
-            )}
-            </AnimatePresence>
+            ))}
           </div>
         )}
 
-        {/* Notes — composer stays pinned on top; saved notes scroll below it so
-            the input never gets pushed down as notes accumulate. */}
-        <div>
-          {/* Composer — header + input grouped in one grey block, fully separate. */}
-          <div className="rounded-[8px] border border-[var(--color-grey-100)] bg-grey-50 p-3">
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-[12px] font-semibold text-[var(--text-primary)]">Keep context with this recommendation</h3>
-              <Tooltip title="Add a note for the next check-in. Saved notes stay attached to this recommendation." placement="top">
-                <span className="inline-flex shrink-0 text-[var(--text-muted)] cursor-help"><Info size={14} /></span>
-              </Tooltip>
+        {/* The reasoning, in reading order: why, then the working, then the
+            conditions. Hairline rules rather than cards — these are prose, and
+            boxing every paragraph is what made the old pane feel like a wall. */}
+        <div className="flex flex-col divide-y divide-[var(--color-grey-100)] [&>*]:py-4 [&>*:first-child]:pt-1 [&>*:last-child]:pb-0">
+          {rec.body && (
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Why this matters</p>
+              <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.body}</p>
             </div>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendComment(); } }}
-              rows={2}
-              placeholder="What should the next check-in know?"
-              className="w-full mt-3 text-[13px] px-3 py-2 rounded-[8px] border border-[var(--border-primary)] bg-white focus:border-primary-500 outline-none resize-none"
-            />
-            <div className="flex items-center justify-end gap-2 mt-2">
-              <PvButton variant="primary" size="sm" label="Save note" disabled={!comment.trim()} onClick={sendComment} />
-            </div>
-          </div>
+          )}
 
-          {/* Saved notes — newest first, scroll if the list grows. */}
-          {thread.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-[var(--color-grey-100)] flex flex-col gap-2 max-h-[220px] overflow-y-auto -mr-1 pr-1">
-              {thread.map((m, i) => (
-                <div key={i} className="rounded-[8px] border border-[var(--color-grey-100)] bg-grey-50 px-3 py-2">
-                  <p className="text-[13px] text-[var(--text-primary)] leading-snug">{m.text}</p>
-                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-muted)]">
-                    <span className="font-medium text-[#757A97]">You</span>
-                    <span>·</span>
-                    <span>{m.at || "Just now"}</span>
-                  </div>
+          {(rec.derivation || []).length > 0 && (
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">How we got there</p>
+              <ul className="flex flex-col gap-2 list-disc pl-4">
+                {rec.derivation.map((d, i) => (
+                  <li key={i} className="text-[12px] text-[#757A97] leading-relaxed">{renderInline(d)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(rec.trigger || rec.aboutData) && (
+            <div className="flex flex-col gap-3">
+              {rec.trigger && (
+                <div>
+                  <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">When this fires</p>
+                  <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.trigger}</p>
                 </div>
-              ))}
+              )}
+              {rec.aboutData && (
+                <div>
+                  <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">About the data</p>
+                  <p className="text-[12px] text-[#757A97] leading-relaxed">{rec.aboutData}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
