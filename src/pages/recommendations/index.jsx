@@ -480,7 +480,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
           </div>
 
           {/* 2 · headline, basis, metadata line */}
-          <h2 className="m-0 text-[24px] leading-[1.2] tracking-[-0.5px] font-semibold text-[var(--text-primary)]">
+          <h2 className="m-0 text-[20px] leading-[1.2] tracking-[-0.5px] font-semibold text-[var(--text-primary)]">
             {item.title}
           </h2>
           <p className="m-0 mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">{item.basis}</p>
@@ -492,7 +492,12 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
                 <span aria-hidden="true">·</span>
               </>
             )}
-            Run {item.run?.n} · {item.run?.at} · {item.scope}
+            {item.run?.n && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-grey-100 text-[12px] leading-[16px] font-medium text-[var(--text-secondary)]">
+                Workflow run {item.run.n}
+              </span>
+            )}
+            {item.run?.at} · {item.scope}
           </p>
 
           {/* 3 · decided-by line and applied summary (decided cards only) */}
@@ -557,32 +562,33 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         </div>
 
         {/* 5 · Timing · What to expect · Controls and checks · Follow-up check */}
-        {(item.timing || item.expect || item.controls || item.followUp) && (
-          <div className="grid grid-cols-2 md:grid-cols-4 border border-[var(--color-grey-100)] rounded-lg overflow-hidden divide-x divide-[var(--color-grey-100)]">
-            <div className="flex flex-col gap-1.5 px-4 py-3">
-              <span className={QUIET}>Timing</span>
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.timing}</p>
+        {(item.timing || item.expect || item.controls || item.followUp || item.needsFromYou) && (() => {
+          const cells = [
+            item.timing && ["Timing", item.timing],
+            item.expect && ["What to expect", item.expect],
+            item.controls && ["Controls and checks", item.controls],
+            (item.followUp || item.needsFromYou) && ["Follow-up check", item.followUp],
+          ].filter(Boolean);
+          return (
+            <div
+              className="grid border border-[var(--color-grey-100)] rounded-lg overflow-hidden divide-x divide-[var(--color-grey-100)]"
+              style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+            >
+              {cells.map(([label, body]) => (
+                <div key={label} className="flex flex-col gap-1.5 px-4 py-3">
+                  <span className={QUIET}>{label}</span>
+                  {body && <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{body}</p>}
+                  {label === "Follow-up check" && item.needsFromYou && (
+                    <>
+                      <span className={cn(QUIET, body && "mt-2")}>Needs from you</span>
+                      <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="flex flex-col gap-1.5 px-4 py-3">
-              <span className={QUIET}>What to expect</span>
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.expect}</p>
-            </div>
-            <div className="flex flex-col gap-1.5 px-4 py-3">
-              <span className={QUIET}>Controls and checks</span>
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.controls}</p>
-            </div>
-            <div className="flex flex-col gap-1.5 px-4 py-3">
-              <span className={QUIET}>Follow-up check</span>
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.followUp}</p>
-              {item.needsFromYou && (
-                <>
-                  <span className={cn(QUIET, "mt-2")}>Needs from you</span>
-                  <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 7 · How we reached this — open by default on an open card,
             collapsed once decided. */}
@@ -596,7 +602,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
               <CaretRight size={12} className={cn("shrink-0 text-[var(--color-grey-400)] transition-transform", working && "rotate-90")} />
               <span className="text-[12px] font-semibold text-[var(--color-primary-600)]">How we reached this</span>
               <span className="ml-auto text-[12px] text-[#757A97]">
-                Run {item.run?.n} · {item.run?.at}
+                Workflow run {item.run?.n} · {item.run?.at}
               </span>
             </button>
             {working && (
