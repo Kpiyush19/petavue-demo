@@ -36,10 +36,10 @@ function operationalStatus(wf) {
   // mark the decision queue uses for those cards. "Needs decision" is work the
   // customer can do right now, and keeps the one bright colour on the page.
   if (wf.awaiting > 0) {
-    return { label: "Waiting for input", icon: Question, tone: "text-amber-600 font-medium" };
+    return { label: "Waiting for input", icon: Question, tone: "text-amber-600 font-medium", act: true };
   }
   if (wf.pending > 0) {
-    return { label: "Needs decision", icon: ListChecks, tone: "text-rose-600 font-medium" };
+    return { label: "Needs decision", icon: ListChecks, tone: "text-rose-600 font-medium", act: true };
   }
   if (wf.status === "paused") {
     return { label: "Paused", icon: PauseCircle, tone: "text-amber-600" };
@@ -87,7 +87,7 @@ function HeaderCell({ label }) {
 /* One workflow — a spaced, bordered row on a single line, matching the goals
    and dashboards lists. The longer "what it automates" copy lives inside the
    workflow rather than on this page. */
-function Row({ wf, onOpen }) {
+function Row({ wf, onOpen, onReview }) {
   const st = operationalStatus(wf);
   return (
     <div
@@ -100,7 +100,7 @@ function Row({ wf, onOpen }) {
           side by side, so the problem lives on the workflow page where it has
           room to be read. */}
       <span className="flex items-center min-w-0 px-2">
-        <span className="text-[13px] text-[var(--text-primary)] truncate">{wf.name}</span>
+        <span className="text-[12px] text-[var(--text-primary)] truncate">{wf.name}</span>
       </span>
 
       {/* Channel is metadata about the workflow, not part of its name, so it
@@ -115,14 +115,36 @@ function Row({ wf, onOpen }) {
       </span>
 
       <Tooltip title={wf.customerOutput || wf.deliverable} placement="bottom">
-        <span className="px-2 min-w-0 text-[13px] text-[var(--text-primary)] truncate cursor-default">
+        <span className="px-2 min-w-0 text-[12px] text-[var(--text-primary)] truncate cursor-default">
           {wf.customerOutput || wf.deliverable}
         </span>
       </Tooltip>
 
-      <span className="px-2 flex items-center gap-1.5 min-w-0">
-        <st.icon size={14} className={cn("shrink-0", st.tone)} />
-        <span className={cn("text-[12px] truncate", st.tone)}>{st.label}</span>
+      {/* A row that says it is waiting on you links straight to what it is
+          waiting on. The underline inherits the status colour, so the link does
+          not introduce a second accent next to the one carrying the meaning. */}
+      <span className="px-2 flex items-center min-w-0">
+        {st.act && onReview ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onReview(); }}
+            className={cn(
+              // the tone sits on the button so currentColor — and therefore the
+              // underline — is the status colour, not the inherited default
+              "inline-flex items-center gap-1.5 min-w-0 bg-transparent border-none p-0 cursor-pointer",
+              "hover:underline decoration-current underline-offset-2",
+              st.tone,
+            )}
+          >
+            <st.icon size={14} className="shrink-0" />
+            <span className="text-[12px] truncate">{st.label}</span>
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <st.icon size={14} className={cn("shrink-0", st.tone)} />
+            <span className={cn("text-[12px] truncate", st.tone)}>{st.label}</span>
+          </span>
+        )}
       </span>
 
       <span className="flex justify-center text-[var(--text-muted)]">
@@ -173,10 +195,10 @@ function FoundationRow({ item, onOpen }) {
       <item.icon size={16} className="mt-0.5 shrink-0 text-[var(--text-muted)]" />
       <span className="flex-1 min-w-0 flex flex-col gap-0.5">
         <span className="flex items-center gap-2 min-w-0">
-          <span className="text-[13px] text-[var(--text-primary)] truncate">{item.name}</span>
-          <span className="shrink-0 text-[11px] text-[var(--text-muted)]">{item.tag}</span>
+          <span className="text-[12px] text-[var(--text-primary)] truncate">{item.name}</span>
+          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{item.tag}</span>
           {item.state && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[11px] text-green-700">
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] text-green-700">
               <CheckCircle size={12} weight="fill" className="text-green-600" />
               {item.state}
             </span>
@@ -359,7 +381,7 @@ export default function WorkflowsPage() {
                               ? "Every workflow is deployed"
                               : "No workflows deployed yet"}
                         </span>
-                        <span className="text-[13px] leading-relaxed text-[#757A97]">
+                        <span className="text-[12px] leading-relaxed text-[#757A97]">
                           {search.trim()
                             ? "Try a channel, an outcome, or part of the workflow name."
                             : tab === "available"
@@ -383,7 +405,12 @@ export default function WorkflowsPage() {
                       .slice()
                       .sort((a, b) => (a.n || 0) - (b.n || 0))
                       .map((wf) => (
-                        <Row key={wf.id} wf={wf} onOpen={() => navigate(`/workflows/${wf.id}`)} />
+                        <Row
+                          key={wf.id}
+                          wf={wf}
+                          onOpen={() => navigate(`/workflows/${wf.id}`)}
+                          onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
+                        />
                       ))
                   )}
                 </div>

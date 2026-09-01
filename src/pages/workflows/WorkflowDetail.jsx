@@ -64,7 +64,7 @@ function blockStateFor(wf) {
   return "complete";
 }
 
-function FamilyNode({ step, agentKey, jobTitle, specialist, text, steps, state, selected, onSelect }) {
+function FamilyNode({ step, agentKey, jobTitle, text, steps, state, selected, onSelect }) {
   const a = AGENTS[agentKey];
   if (!a) return null;
   const Icon = agentIcon(agentKey);
@@ -85,21 +85,20 @@ function FamilyNode({ step, agentKey, jobTitle, specialist, text, steps, state, 
       <div className="flex items-center gap-2 mb-1.5">
         <Icon size={18} weight="fill" style={{ color: a.color }} className="shrink-0" />
         <span
-          className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider"
+          className="min-w-0 truncate text-[12px] font-semibold uppercase tracking-wider"
           style={{ color: a.color }}
         >
           {a.label}
         </span>
-        <span className="ml-auto shrink-0 text-[11px] tabular-nums text-[var(--text-muted)]">{step}</span>
+        <span className="ml-auto shrink-0 flex items-center justify-center h-4 px-1.5 rounded-md bg-[var(--color-primary-500)] text-white text-[10px] leading-4 font-normal tabular-nums">
+          {step}
+        </span>
       </div>
-      <span className="text-[13px] font-medium text-[var(--text-primary)] leading-snug mb-1.5">
+      <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug mb-1.5">
         {jobTitle || a.label}
       </span>
-      {specialist && (
-        <span className="text-[11px] text-[var(--text-muted)] leading-snug mb-2 truncate">{specialist}</span>
-      )}
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
-      <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] tabular-nums mt-auto">
+      <span className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] tabular-nums mt-auto">
         {st && (
           <>
             <st.icon size={12} className={cn("shrink-0", st.cls)} weight="regular" />
@@ -176,7 +175,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
             <Icon size={20} weight="fill" style={{ color: accent }} />
           </span>
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider truncate" style={{ color: accent }}>
+            <span className="text-[12px] font-semibold uppercase tracking-wider truncate" style={{ color: accent }}>
               {a.label}
             </span>
             <span className="text-[14px] font-semibold text-[var(--text-primary)]">
@@ -202,20 +201,20 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
               close the panel to re-read. */}
           {family.text && (
             <DrawerSection icon={Target} label="Role in this workflow">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{family.text}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{family.text}</p>
             </DrawerSection>
           )}
 
           {family.uses && (
             <DrawerSection icon={Database} label="Inputs">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.uses}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.uses}</p>
             </DrawerSection>
           )}
 
           {(family.analyzes || family.config) && (
             <DrawerSection icon={SlidersHorizontal} label="Checks">
               {family.analyzes && (
-                <p className="m-0 mb-3 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.analyzes}</p>
+                <p className="m-0 mb-3 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.analyzes}</p>
               )}
               {family.config?.length > 0 && (
                 <div className="flex flex-col">
@@ -235,7 +234,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
 
           {family.produces && (
             <DrawerSection icon={FileText} label="Output">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.produces}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.produces}</p>
             </DrawerSection>
           )}
 
@@ -275,7 +274,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
                       )}
                     </div>
                     {body && (
-                      <pre className="px-3 py-2 m-0 border-t border-[var(--color-grey-100)] bg-grey-50 text-[11px] leading-relaxed text-[var(--text-secondary)] overflow-x-auto whitespace-pre font-mono">
+                      <pre className="px-3 py-2 m-0 border-t border-[var(--color-grey-100)] bg-grey-50 text-[12px] leading-relaxed text-[var(--text-secondary)] overflow-x-auto whitespace-pre font-mono">
                         {body}
                       </pre>
                     )}
@@ -334,7 +333,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
           <button
             type="button"
             onClick={onOpenAgent}
-            className="w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--color-grey-200)] bg-white text-[13px] font-medium text-[var(--text-primary)] hover:bg-grey-50 cursor-pointer transition-colors"
+            className="w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--color-grey-200)] bg-white text-[12px] font-medium text-[var(--text-primary)] hover:bg-grey-50 cursor-pointer transition-colors"
           >
             View {a.label} agent
             <ArrowSquareOut size={13} />
@@ -371,7 +370,6 @@ function AgentGraph({ families, system, platform, blockState, selected, onSelect
               step={i + 1}
               agentKey={f.agent}
               jobTitle={f.jobTitle}
-              specialist={f.specialist}
               text={f.text}
               steps={f.steps}
               state={blockState}
@@ -394,7 +392,7 @@ function AgentGraph({ families, system, platform, blockState, selected, onSelect
         >
           <ShieldCheck size={22} weight="fill" className="shrink-0" style={{ color: "var(--color-green)" }} />
           <span className="flex flex-col">
-            <span className="text-[13px] font-medium text-[var(--text-primary)]">Your approval</span>
+            <span className="text-[12px] font-medium text-[var(--text-primary)]">Your approval</span>
             <span className="text-[12px] text-[#757A97]">
               Nothing reaches {platform.short} until you approve
             </span>
@@ -409,7 +407,7 @@ function AgentGraph({ families, system, platform, blockState, selected, onSelect
             <div className="inline-flex items-center gap-2.5 px-4 py-3 bg-white border border-[var(--color-grey-100)] rounded-lg">
               <ArrowSquareOut size={22} weight="fill" className="shrink-0 text-[var(--text-secondary)]" />
               <span className="flex flex-col">
-                <span className="text-[13px] font-medium text-[var(--text-primary)]">{system.label}</span>
+                <span className="text-[12px] font-medium text-[var(--text-primary)]">{system.label}</span>
                 <span className="text-[12px] text-[#757A97]">{system.detail}</span>
               </span>
             </div>
@@ -473,7 +471,7 @@ function RunHistory({ runs, nextRun, onOpenRecs, onRetry }) {
             size={12}
             className={cn("shrink-0 text-[var(--color-grey-400)] transition-transform", open && "rotate-90")}
           />
-          <span className="text-[13px] font-medium text-[var(--text-primary)]">Run history</span>
+          <span className="text-[12px] font-medium text-[var(--text-primary)]">Run history</span>
         </span>
         <span className="text-[12px] text-[var(--text-muted)] tabular-nums">
           {open ? "Latest first" : `${runs.length} runs`}
@@ -870,23 +868,23 @@ export default function WorkflowDetail() {
                       {live ? "How this workflow runs" : "Agents this workflow deploys"}
                     </h3>
                     {wf.problem && (
-                      <p className="m-0 text-[14px] leading-relaxed text-[var(--text-primary)]">{wf.problem}</p>
+                      <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{wf.problem}</p>
                     )}
                     {wf.automates && (
-                      <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{wf.automates}</p>
+                      <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{wf.automates}</p>
                     )}
                   </div>
 
                   {wf.manualWork && (
                     <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
                       <span className={LABEL}>The manual work it replaces</span>
-                      <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{wf.manualWork}</p>
+                      <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{wf.manualWork}</p>
                     </div>
                   )}
 
                   <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
                     <span className={LABEL}>Data readiness</span>
-                    <span className="inline-flex items-center gap-1.5 text-[13px]">
+                    <span className="inline-flex items-center gap-1.5 text-[12px]">
                       <CheckCircle size={14} weight="fill" className="shrink-0 text-green-600" />
                       <span className="text-[var(--text-primary)]">Ready</span>
                       <span className="text-[var(--color-grey-300)]">·</span>

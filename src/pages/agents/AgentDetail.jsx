@@ -82,7 +82,7 @@ export default function AgentDetail() {
         <p className="text-[14px]">That agent doesn&rsquo;t exist.</p>
         <button
           onClick={() => navigate("/agents")}
-          className="text-[13px] text-primary-600 bg-transparent border-none cursor-pointer"
+          className="text-[12px] text-primary-600 bg-transparent border-none cursor-pointer"
         >
           Back to agents
         </button>
@@ -189,7 +189,7 @@ export default function AgentDetail() {
                               <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">
                                 {d.name}
                               </span>
-                              <span className="shrink-0 text-[11px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">
+                              <span className="shrink-0 text-[12px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">
                                 {platformOf(d.platform).short}
                               </span>
                               <span
@@ -213,11 +213,11 @@ export default function AgentDetail() {
                             </span>
                             {d.role && (
                               <span className="flex items-baseline gap-1.5 min-w-0">
-                                <span className="text-[13px] text-[var(--text-primary)] leading-snug">
+                                <span className="text-[12px] text-[var(--text-primary)] leading-snug">
                                   {d.role}
                                 </span>
                                 {d.specialist && (
-                                  <span className="shrink-0 text-[11px] text-[var(--text-muted)]">
+                                  <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
                                     {d.specialist}
                                   </span>
                                 )}

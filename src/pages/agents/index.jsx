@@ -147,7 +147,7 @@ export default function AgentsPage() {
                       size={20}
                       className="text-[var(--text-muted)]"
                     />
-                    <p className="text-[13px] text-[#757A97]">
+                    <p className="text-[12px] text-[#757A97]">
                       No agents match that.
                     </p>
                   </div>

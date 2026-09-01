@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Lightning, Warning, Eye, CheckCircle, CaretRight, ArrowSquareOut,
   MagnifyingGlass, Prohibit, PauseCircle, Flask, ChatText, Question, CaretDown,
+  Megaphone, ArrowsClockwise, CalendarBlank,
 } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
 import { toast } from "sonner";
@@ -207,7 +208,7 @@ function ConfirmSheet({ item, platform, onBack, onConfirm }) {
           <h3 className="m-0 text-[16px] font-semibold text-[var(--text-primary)]">
             Approve this {platform || "platform"} change?
           </h3>
-          <div className="flex flex-col gap-2 text-[13px] leading-relaxed text-[var(--text-primary)]">
+          <div className="flex flex-col gap-2 text-[12px] leading-relaxed text-[var(--text-primary)]">
             <span className="text-[var(--text-secondary)]">
               {item.scope}
               {item.entities ? ` · ${item.entities}` : ""}
@@ -230,7 +231,7 @@ function ConfirmSheet({ item, platform, onBack, onConfirm }) {
 }
 
 
-function FilterDropdown({ value, options, onChange, ariaLabel }) {
+function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -247,7 +248,7 @@ function FilterDropdown({ value, options, onChange, ariaLabel }) {
     <span className="relative inline-flex" ref={ref}>
       <Button
         variant="secondary"
-        size="sm"
+        size={size}
         icon={CaretDown}
         iconPosition="suffix"
         label={selected?.label || ""}
@@ -279,7 +280,7 @@ function FilterDropdown({ value, options, onChange, ariaLabel }) {
               {o.icon}
               <span
                 className={cn(
-                  "flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)]",
+                  "flex-1 min-w-0 truncate text-[12px] text-[var(--text-primary)]",
                   o.value === value && "font-medium",
                 )}
               >
@@ -385,18 +386,32 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
               <WorkflowGlyph size={13} />
               {workflow?.name || item.workflowId}
             </button>
+            {/* Each fact gets its own mark so the line reads as four separate
+                pieces of provenance rather than one run-on string of dots. */}
             {workflow && (
               <>
                 <span className="text-[var(--color-grey-300)]">·</span>
-                <span>{platformOf(workflow.platform).short}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <SourceIcon name={platformOf(workflow.platform).short} size={13} />
+                  {platformOf(workflow.platform).short}
+                </span>
               </>
             )}
             <span className="text-[var(--color-grey-300)]">·</span>
-            <span>{item.scope}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Megaphone size={13} className="shrink-0 text-[var(--text-muted)]" />
+              {item.scope}
+            </span>
             <span className="text-[var(--color-grey-300)]">·</span>
-            <span>Run {item.run?.n}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <ArrowsClockwise size={13} className="shrink-0 text-[var(--text-muted)]" />
+              Run {item.run?.n}
+            </span>
             <span className="text-[var(--color-grey-300)]">·</span>
-            <span>{item.run?.at}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarBlank size={13} className="shrink-0 text-[var(--text-muted)]" />
+              {item.run?.at}
+            </span>
           </div>
         </div>
 
@@ -412,7 +427,7 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
               <span className={LABEL}>Impact</span>
               <span
                 className={cn(
-                  "inline-flex items-center h-5 px-2 rounded-md border text-[11px] font-medium",
+                  "inline-flex items-center h-5 px-2 rounded-md border text-[12px] font-medium",
                   (VERDICT[item.impact.verdict] || VERDICT.unchanged).chip,
                 )}
               >
@@ -420,14 +435,14 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
               </span>
               <span className="ml-auto text-[12px] text-[#757A97]">Measured {item.impact.measuredAt}</span>
             </div>
-            <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.impact.detail}</p>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.impact.detail}</p>
           </div>
         )}
 
         {item.lifecycle === "rejected" && item.note && (
           <div className="flex flex-col gap-1.5 px-4 py-3 rounded-lg border border-[var(--color-grey-100)] bg-grey-50">
             <span className={LABEL}>Why it was rejected</span>
-            <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.note}</p>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.note}</p>
             {item.carried && <p className="m-0 text-[12px] text-[#757A97]">{item.carried}</p>}
           </div>
         )}
@@ -450,16 +465,16 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
           {working && (
             <div className="flex flex-col gap-4 px-4 py-4">
               <Beat label="Symptom">
-                <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.symptom}</p>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.symptom}</p>
               </Beat>
               <Beat label="Examined">
-                <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.examined}</p>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.examined}</p>
               </Beat>
               <Beat label="What the data showed">
                 <DataTable cols={item.findingCols} rows={item.findingRows} />
               </Beat>
               <Beat label="Therefore">
-                <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.therefore}</p>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.therefore}</p>
               </Beat>
             </div>
           )}
@@ -468,30 +483,30 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
         {/* The proposed change. This block IS the recommendation. */}
         <div className="flex flex-col gap-2">
           <span className={LABEL}>Proposed change</span>
-          <p className="m-0 text-[13px] text-[#757A97]">{item.changeTitle}</p>
+          <p className="m-0 text-[12px] text-[#757A97]">{item.changeTitle}</p>
           <DataTable cols={item.changeCols} rows={item.changeRows} emphasise />
         </div>
 
         <div className="flex flex-col gap-3 px-4 py-3 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
           <Beat label="When">
-            <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.when}</p>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.when}</p>
           </Beat>
           <Beat label="Expected effect">
-            <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.expected}</p>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.expected}</p>
           </Beat>
           {item.guardrail && (
             <Beat label="Guardrail">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.guardrail}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.guardrail}</p>
             </Beat>
           )}
           {item.checkResult && (
             <Beat label="Check result">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.checkResult}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.checkResult}</p>
             </Beat>
           )}
           {item.needsFromYou && (
             <Beat label="Needs from you">
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
             </Beat>
           )}
         </div>
@@ -541,7 +556,7 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
             <span className="text-[12px] font-semibold uppercase tracking-wider text-amber-700">
               Revised with your context
             </span>
-            <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{item.context}</p>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.context}</p>
             {item.changed && (
               <p className="m-0 text-[12px] leading-relaxed text-[#757A97]">
                 <span className="font-medium text-amber-700">What changed: </span>
@@ -588,7 +603,7 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
                       ? "e.g. Cold Outreach is protected for the event promo until Sep 15."
                       : "Required. This reason is carried into later runs."
                   }
-                  className="w-full resize-none rounded-md border border-[var(--color-grey-200)] px-3 py-2 text-[13px] outline-none focus:border-primary-500"
+                  className="w-full resize-none rounded-md border border-[var(--color-grey-200)] px-3 py-2 text-[12px] outline-none focus:border-primary-500"
                 />
                 <div className="flex items-center gap-2">
                   <Button
@@ -695,6 +710,7 @@ export default function RecommendationsPage() {
       <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
         <span className="text-[16px] leading-[24px] font-medium">Recommendations</span>
         <FilterDropdown
+          size="md"
           ariaLabel="Filter by channel"
           value={channel}
           onChange={(v) => { setChannel(v); setSel(null); }}
@@ -709,7 +725,7 @@ export default function RecommendationsPage() {
         <div className="flex flex-col w-full h-full bg-white rounded-xl border border-[var(--color-grey-100)] overflow-hidden">
 
           {isLoading ? (
-            <div className="flex-1 grid place-items-center text-[13px] text-[#757A97]">Loading…</div>
+            <div className="flex-1 grid place-items-center text-[12px] text-[#757A97]">Loading…</div>
           ) : (
             <div className="flex-1 min-h-0 flex">
               <div className="w-[400px] max-w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
@@ -761,7 +777,7 @@ export default function RecommendationsPage() {
                       <span className="text-[14px] font-medium text-[var(--text-primary)]">
                         {onlyAsking ? "Nothing is waiting on you" : "Checked, nothing to fix"}
                       </span>
-                      <span className="text-[13px] leading-relaxed text-[#757A97]">
+                      <span className="text-[12px] leading-relaxed text-[#757A97]">
                         {onlyAsking
                           ? "Every recommendation here has what it needs to proceed."
                           : "Nothing matches this workflow and channel. The next run will look again."}
@@ -787,7 +803,7 @@ export default function RecommendationsPage() {
                 />
               ) : (
                 <div className="flex-1 grid place-items-center px-8 text-center">
-                  <span className="text-[13px] text-[#757A97] max-w-[320px]">
+                  <span className="text-[12px] text-[#757A97] max-w-[320px]">
                     Choose a different workflow or channel to see the recommendations behind it.
                   </span>
                 </div>

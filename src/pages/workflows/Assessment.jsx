@@ -107,10 +107,10 @@ export default function AssessmentPage() {
           <div className="flex flex-col gap-4 w-full">
             <div className="flex flex-col gap-3 bg-white rounded-xl border border-[var(--color-grey-100)] p-5">
               <h3 className="m-0 text-[14px] font-semibold text-[var(--text-primary)]">What this does</h3>
-              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">
+              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">
                 Petavue reviews the account once and identifies the workflows most likely to improve the selected KPI.
               </p>
-              <p className="m-0 text-[13px] leading-relaxed text-[#757A97]">
+              <p className="m-0 text-[12px] leading-relaxed text-[#757A97]">
                 You receive a downloadable assessment with evidence and a recommended deployment order.
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function AssessmentPage() {
                       className="flex items-center gap-2.5 py-2 border-b border-dashed border-[var(--color-grey-100)] last:border-b-0"
                     >
                       <SourceIcon name={s.name} size={14} />
-                      <span className="text-[13px] text-[var(--text-primary)] w-[120px] shrink-0">{s.name}</span>
+                      <span className="text-[12px] text-[var(--text-primary)] w-[120px] shrink-0">{s.name}</span>
                       <span className="flex-1 min-w-0 truncate text-[12px] text-[#757A97]">{s.note}</span>
                       <span className="shrink-0 text-[12px]">
                         {done ? (
@@ -166,7 +166,7 @@ export default function AssessmentPage() {
             <div className="flex flex-col gap-3 bg-white rounded-xl border border-[var(--color-grey-100)] p-5">
               {stage === "idle" && (
                 <>
-                  <p className="m-0 text-[13px] text-[#757A97]">
+                  <p className="m-0 text-[12px] text-[#757A97]">
                     Deploying runs the readiness check first. Nothing is analysed until every source it reads is
                     verified.
                   </p>
@@ -176,11 +176,11 @@ export default function AssessmentPage() {
                 </>
               )}
               {stage === "checking" && (
-                <p className="m-0 text-[13px] text-[#757A97]">Verifying the sources this assessment reads…</p>
+                <p className="m-0 text-[12px] text-[#757A97]">Verifying the sources this assessment reads…</p>
               )}
               {stage === "ready" && (
                 <>
-                  <p className="m-0 text-[13px] text-[var(--text-primary)]">
+                  <p className="m-0 text-[12px] text-[var(--text-primary)]">
                     Deployed. Every source is verified, so the first run can start now.
                   </p>
                   <div>
@@ -189,17 +189,17 @@ export default function AssessmentPage() {
                 </>
               )}
               {stage === "running" && (
-                <p className="m-0 inline-flex items-center gap-2 text-[13px] text-[var(--text-primary)]">
+                <p className="m-0 inline-flex items-center gap-2 text-[12px] text-[var(--text-primary)]">
                   <CircleNotch size={14} className="animate-spin text-[var(--color-primary-500)]" />
                   Reviewing 10 campaigns across Google Ads and LinkedIn Ads against your selected KPI…
                 </p>
               )}
               {stage === "done" && (
                 <>
-                  <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-700">
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-green-700">
                     <CheckCircle size={14} weight="fill" /> First run complete
                   </span>
-                  <p className="m-0 text-[13px] text-[#757A97]">
+                  <p className="m-0 text-[12px] text-[#757A97]">
                     The assessment reviewed 10 campaigns and ranked the workflows by what they are currently holding for
                     your decision.
                   </p>
@@ -212,11 +212,11 @@ export default function AssessmentPage() {
                         onClick={() => navigate(`/workflows/${w.id}`)}
                         className="flex items-center gap-2.5 text-left px-3 py-2.5 rounded-lg border border-[var(--color-grey-100)] bg-white hover:bg-primary-50 cursor-pointer transition-colors"
                       >
-                        <span className="grid place-items-center w-5 h-5 shrink-0 rounded-md bg-grey-100 text-[11px] tabular-nums text-[var(--text-secondary)]">
+                        <span className="grid place-items-center w-5 h-5 shrink-0 rounded-md bg-grey-100 text-[12px] tabular-nums text-[var(--text-secondary)]">
                           {i + 1}
                         </span>
                         <WorkflowGlyph size={14} className="shrink-0 text-[var(--text-muted)]" />
-                        <span className="flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)]">{w.name}</span>
+                        <span className="flex-1 min-w-0 truncate text-[12px] text-[var(--text-primary)]">{w.name}</span>
                         <span className="shrink-0 text-[12px] text-[#757A97]">
                           {w.pending} waiting
                         </span>
