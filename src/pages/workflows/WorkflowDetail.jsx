@@ -5,7 +5,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CaretLeft, CaretRight, Database, Code, Brain, FileText,
   Play, Pause, ArrowRight, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
-  SlidersHorizontal, UsersThree, StackSimple, Clock,
+  SlidersHorizontal, StackSimple, Clock, Target, CircleNotch, Warning, Eye, ChartLineUp, ArrowClockwise,
 } from "@phosphor-icons/react";
 import { Button as PvButton, Tooltip } from "@/ui";
 import { toast } from "sonner";
@@ -30,6 +30,9 @@ const STEP = {
    lives one level down, behind each family. The branching is the point: it is
    what shows agents working together rather than in a line. ── */
 
+const SECTION_LABEL = "text-[14px] font-semibold uppercase tracking-wider text-[var(--text-primary)]";
+const LABEL = "text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]";
+
 const RAIL = "var(--color-grey-200)";
 const RAIL_ARROW = "var(--color-grey-400)";
 
@@ -41,10 +44,31 @@ function Drop() {
   );
 }
 
-function FamilyNode({ step, agentKey, text, steps, selected, onSelect }) {
+/* ── Block state: queued · working · complete · blocked · failed.
+   Derived from the workflow's own status and its last run rather than stored
+   per block, so a block can never claim it completed on a day the workflow
+   never ran. `working` and `blocked` are real states the model supports; the
+   demo data has no run in progress, so nothing currently renders them. ── */
+const BLOCK_STATE = {
+  queued:   { label: "Queued",   icon: Clock,       cls: "text-[var(--text-muted)]" },
+  working:  { label: "Working",  icon: CircleNotch, cls: "text-[var(--color-primary-500)] animate-spin" },
+  complete: { label: "Complete", icon: CheckCircle, cls: "text-green-600" },
+  blocked:  { label: "Blocked",  icon: Warning,     cls: "text-amber-600" },
+  failed:   { label: "Failed",   icon: XCircle,     cls: "text-rose-600" },
+};
+
+function blockStateFor(wf) {
+  if (wf.status === "available") return "queued";
+  const last = wf.runs?.[0];
+  if (last?.status === "failed") return "failed";
+  return "complete";
+}
+
+function FamilyNode({ step, agentKey, jobTitle, specialist, text, steps, state, selected, onSelect }) {
   const a = AGENTS[agentKey];
   if (!a) return null;
   const Icon = agentIcon(agentKey);
+  const st = BLOCK_STATE[state];
   return (
     <button
       type="button"
@@ -58,13 +82,31 @@ function FamilyNode({ step, agentKey, text, steps, selected, onSelect }) {
       )}
       style={selected ? { outline: `2px solid ${a.color}`, outlineOffset: "-1px" } : undefined}
     >
-      <div className="flex items-center gap-2.5 mb-2">
-        <Icon size={22} weight="fill" style={{ color: a.color }} className="shrink-0" />
-        <span className="text-[13px] font-medium text-[var(--text-primary)] leading-snug">{a.label}</span>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon size={18} weight="fill" style={{ color: a.color }} className="shrink-0" />
+        <span
+          className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider"
+          style={{ color: a.color }}
+        >
+          {a.label}
+        </span>
         <span className="ml-auto shrink-0 text-[11px] tabular-nums text-[var(--text-muted)]">{step}</span>
       </div>
+      <span className="text-[13px] font-medium text-[var(--text-primary)] leading-snug mb-1.5">
+        {jobTitle || a.label}
+      </span>
+      {specialist && (
+        <span className="text-[11px] text-[var(--text-muted)] leading-snug mb-2 truncate">{specialist}</span>
+      )}
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
       <span className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] tabular-nums mt-auto">
+        {st && (
+          <>
+            <st.icon size={12} className={cn("shrink-0", st.cls)} weight="regular" />
+            <span className={cn("mr-1", st.cls)}>{st.label}</span>
+            <span className="text-[var(--color-grey-300)]">·</span>
+          </>
+        )}
         {steps.length} {steps.length === 1 ? "step" : "steps"}
         <CaretRight size={11} />
       </span>
@@ -99,8 +141,6 @@ function DrawerSection({ icon: Icon, label, count, children, tint }) {
 function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose, onOpenAgent }) {
   const a = AGENTS[family.agent];
   const Icon = agentIcon(family.agent);
-  const config = family.config || [];
-  const specialists = family.specialistNames || [];
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -136,9 +176,15 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
             <Icon size={20} weight="fill" style={{ color: accent }} />
           </span>
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-            <span className="text-[14px] font-semibold text-[var(--text-primary)] truncate">{a.label}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider truncate" style={{ color: accent }}>
+              {a.label}
+            </span>
+            <span className="text-[14px] font-semibold text-[var(--text-primary)]">
+              {family.jobTitle || a.label}
+            </span>
             <span className="text-[12px] text-[#757A97]">
-              {index != null && total ? `Step ${index + 1} of ${total} · ` : ""}How it&rsquo;s configured in this workflow
+              {index != null && total ? `Step ${index + 1} of ${total}` : ""}
+              {family.specialist ? `${index != null && total ? " · " : ""}${family.specialist}` : ""}
             </span>
           </span>
           <button
@@ -155,48 +201,61 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
           {/* The sentence from the node. It was the one thing a reader had to
               close the panel to re-read. */}
           {family.text && (
-            <p className="px-5 py-4 m-0 text-[13px] leading-relaxed text-[var(--text-primary)] border-b border-[var(--color-grey-100)]">
-              {family.text}
-            </p>
-          )}
-
-          {config.length > 0 && (
-            <DrawerSection icon={SlidersHorizontal} label="Settings">
-              {/* One column. Two columns inside 560px forced values like
-                  "Sales-accepted opportunity" to wrap and right-align, which
-                  read as ragged rather than tabular. */}
-              <div className="flex flex-col">
-                {config.map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="flex items-baseline justify-between gap-6 py-2 border-b border-dashed border-[var(--color-grey-100)] last:border-b-0"
-                  >
-                    <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
-                    <span className="text-[12px] text-[var(--text-primary)] text-right">{v}</span>
-                  </div>
-                ))}
-              </div>
+            <DrawerSection icon={Target} label="Role in this workflow">
+              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-primary)]">{family.text}</p>
             </DrawerSection>
           )}
 
-          {specialists.length > 0 && (
-            <DrawerSection icon={UsersThree} label="Specialist agents" count={specialists.length}>
-              <div className="flex flex-wrap gap-1.5">
-                {specialists.map((n) => (
-                  <span
-                    key={n}
-                    className="inline-flex items-center gap-1.5 text-[12px] pl-2 pr-2.5 py-1 rounded-full border"
-                    style={{ borderColor: accent + "40", color: accent, background: accent + "0A" }}
-                  >
-                    <i className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: accent }} />
-                    {n}
-                  </span>
-                ))}
-              </div>
+          {family.uses && (
+            <DrawerSection icon={Database} label="Inputs">
+              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.uses}</p>
             </DrawerSection>
           )}
 
-          <DrawerSection icon={StackSimple} label="Blocks it runs" count={family.steps.length}>
+          {(family.analyzes || family.config) && (
+            <DrawerSection icon={SlidersHorizontal} label="Checks">
+              {family.analyzes && (
+                <p className="m-0 mb-3 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.analyzes}</p>
+              )}
+              {family.config?.length > 0 && (
+                <div className="flex flex-col">
+                  {family.config.map(([k, v]) => (
+                    <div
+                      key={k}
+                      className="flex items-baseline justify-between gap-6 py-2 border-b border-dashed border-[var(--color-grey-100)] last:border-b-0"
+                    >
+                      <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
+                      <span className="text-[12px] text-[var(--text-primary)] text-right">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DrawerSection>
+          )}
+
+          {family.produces && (
+            <DrawerSection icon={FileText} label="Output">
+              <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{family.produces}</p>
+            </DrawerSection>
+          )}
+
+
+
+          <details className="group border-b border-[var(--color-grey-100)]">
+            <summary className="flex items-center gap-1.5 px-5 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <StackSimple size={13} className="shrink-0 text-[var(--text-muted)]" />
+              <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Technical details
+              </span>
+              <span className="text-[12px] tabular-nums text-[var(--color-grey-400)]">
+                {family.steps.length}
+              </span>
+              <CaretRight
+                size={12}
+                className="ml-auto shrink-0 text-[var(--color-grey-400)] transition-transform group-open:rotate-90"
+              />
+            </summary>
+            <div className="px-5 pb-4">
             <div className="flex flex-col gap-2">
               {family.steps.map((st, i) => {
                 const meta = STEP[st.type] || {};
@@ -224,7 +283,8 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
                 );
               })}
             </div>
-          </DrawerSection>
+            </div>
+          </details>
 
           {/* Where its output goes next. In a strictly sequential workflow this
               is the question the panel otherwise leaves the reader to answer by
@@ -288,12 +348,12 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
 /* The workflow's specialists, grouped by the family that owns them. */
 function specialistRoster(families) {
   return families
-    .filter((f) => f.specialistNames?.length)
-    .map((f) => `${AGENTS[f.agent]?.label}: ${f.specialistNames.join(", ")}`)
+    .filter((f) => f.specialist)
+    .map((f) => `${AGENTS[f.agent]?.label}: ${f.specialist}`)
     .join("  ·  ");
 }
 
-function AgentGraph({ families, system, platform, selected, onSelect }) {
+function AgentGraph({ families, system, platform, blockState, selected, onSelect }) {
   return (
     <div className="w-full rounded-lg border border-[var(--color-grey-100)] bg-[var(--color-grey-50)] px-8 py-6">
       {/* One workflow, run in order. It used to fan out from a Sage node, which
@@ -310,8 +370,11 @@ function AgentGraph({ families, system, platform, selected, onSelect }) {
             <FamilyNode
               step={i + 1}
               agentKey={f.agent}
+              jobTitle={f.jobTitle}
+              specialist={f.specialist}
               text={f.text}
               steps={f.steps}
+              state={blockState}
               selected={selected === f.agent}
               onSelect={() => onSelect(selected === f.agent ? null : f.agent)}
             />
@@ -327,9 +390,9 @@ function AgentGraph({ families, system, platform, selected, onSelect }) {
       <div className="flex justify-center">
         <div
           className="inline-flex items-center gap-3 px-4 py-3 bg-white rounded-lg border"
-          style={{ borderColor: "#08BD5055" }}
+          style={{ borderColor: "color-mix(in srgb, var(--color-green) 33%, transparent)" }}
         >
-          <ShieldCheck size={22} weight="fill" className="shrink-0" style={{ color: "#08BD50" }} />
+          <ShieldCheck size={22} weight="fill" className="shrink-0" style={{ color: "var(--color-green)" }} />
           <span className="flex flex-col">
             <span className="text-[13px] font-medium text-[var(--text-primary)]">Your approval</span>
             <span className="text-[12px] text-[#757A97]">
@@ -393,44 +456,106 @@ function StatusPill({ wf, live, paused }) {
 }
 
 /* ── Run health. "What is the latest run, was it successful" — his words. ── */
-function RunHistory({ runs }) {
+function RunHistory({ runs, nextRun, onOpenRecs, onRetry }) {
   const [open, setOpen] = useState(false);
   if (!runs?.length) return null;
   const rows = open ? runs : runs.slice(0, 1);
   return (
     <div className="rounded-lg border border-[var(--color-grey-100)] overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-[var(--color-grey-100)]">
-        <span className="text-[13px] font-medium text-[var(--text-primary)]">Run history</span>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="text-[12px] text-primary-500 bg-transparent border-none cursor-pointer p-0"
-        >
-          {open ? "Show latest only" : `Show all ${runs.length}`}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 border-solid border-t-0 border-x-0 border-b border-b-[var(--color-grey-100)] bg-transparent cursor-pointer text-left hover:bg-grey-50 transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <CaretRight
+            size={12}
+            className={cn("shrink-0 text-[var(--color-grey-400)] transition-transform", open && "rotate-90")}
+          />
+          <span className="text-[13px] font-medium text-[var(--text-primary)]">Run history</span>
+        </span>
+        <span className="text-[12px] text-[var(--text-muted)] tabular-nums">
+          {open ? "Latest first" : `${runs.length} runs`}
+        </span>
+      </button>
       <div className="flex flex-col">
         {rows.map((r, i) => {
+          // Three outcomes, not two. "Checked, nothing to fix" is a result and
+          // showing it is what makes the failed and pending rows believable.
           const ok = r.status === "success";
+          const quiet = r.status === "no-action";
+          const failed = r.status === "failed";
+          // The run history records how a failure ended; a re-run or a
+          // re-authorisation means it no longer needs anyone.
+          const resolved = failed && /re-run|re-authorized|re-authorised|resolved/i.test(r.evaluated || "");
+          const producedRecs = ok && /recommendation/i.test(r.produced || "");
+          const RowTag = producedRecs && onOpenRecs ? "button" : "div";
           return (
-            <div
+            <RowTag
               key={i}
-              className="grid items-center gap-3 px-4 py-2.5 border-b border-[var(--color-grey-100)] last:border-b-0"
-              style={{ gridTemplateColumns: "150px 110px 1fr 70px" }}
+              type={producedRecs && onOpenRecs ? "button" : undefined}
+              onClick={producedRecs && onOpenRecs ? onOpenRecs : undefined}
+              className={cn(
+                "grid items-center gap-3 w-full text-left px-4 py-2.5 bg-transparent",
+                "border-solid border-t-0 border-x-0 border-b border-b-[var(--color-grey-100)] last:border-b-0",
+                producedRecs && onOpenRecs && "cursor-pointer hover:bg-primary-50 transition-colors",
+              )}
+              style={{ gridTemplateColumns: "150px 130px 1fr 90px" }}
             >
               <span className="text-[12px] text-[var(--text-primary)]">{r.at}</span>
-              <span className={cn("flex items-center gap-1.5 text-[12px] font-medium", ok ? "text-green-600" : "text-rose-600")}>
-                {ok ? <CheckCircle size={13} weight="fill" /> : <XCircle size={13} weight="fill" />}
-                {ok ? "Succeeded" : "Failed"}
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 text-[12px] font-medium",
+                  failed ? "text-rose-600" : quiet ? "text-[var(--text-secondary)]" : "text-green-600",
+                )}
+              >
+                {failed ? (
+                  <XCircle size={13} weight="fill" />
+                ) : quiet ? (
+                  <Eye size={13} />
+                ) : (
+                  <CheckCircle size={13} weight="fill" />
+                )}
+                {failed ? "Failed" : quiet ? "No action needed" : "Succeeded"}
               </span>
               <span className="min-w-0 truncate">
-                <span className="text-[12px] text-[var(--text-primary)]">{r.produced}</span>
-                {r.evaluated && r.evaluated !== "—" && (
-                  <span className="text-[12px] text-[#757A97]"> · from {r.evaluated}</span>
+                {r.produced && <span className="text-[12px] text-[var(--text-primary)]">{r.produced}</span>}
+                {r.evaluated && r.evaluated !== "\u2014" && (
+                  <span className="text-[12px] text-[#757A97]">{r.produced ? " · " : ""}{r.evaluated}</span>
+                )}
+                {quiet && nextRun && (
+                  <span className="text-[12px] text-[#757A97]"> · next check {nextRun}</span>
                 )}
               </span>
-              <span className="text-[12px] text-[#757A97] tabular-nums text-right">{(r.ms / 1000).toFixed(1)}s</span>
-            </div>
+              {/* A run that produced recommendations links to the bundle it
+                  produced, so a run is never a dead end. */}
+              {producedRecs && onOpenRecs ? (
+                <span className="justify-self-end inline-flex items-center gap-1 text-[12px] text-[var(--color-primary-600)]">
+                  Review <CaretRight size={11} />
+                </span>
+              ) : failed ? (
+                // A failed run is only a dead end if the row stops at the word
+                // "failed". Where the failure was already dealt with, the row
+                // says so; where it was not, it offers the retry.
+                resolved ? (
+                  <span className="justify-self-end inline-flex items-center gap-1 text-[12px] text-[var(--text-secondary)]">
+                    <CheckCircle size={12} weight="fill" className="text-green-600" />
+                    Resolved
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onRetry && onRetry(r); }}
+                    className="justify-self-end inline-flex items-center gap-1 text-[12px] text-[var(--color-primary-600)] bg-transparent border-none p-0 cursor-pointer hover:underline"
+                  >
+                    <ArrowClockwise size={12} /> Retry run
+                  </button>
+                )
+              ) : (
+                <span className="text-[12px] text-[#757A97] tabular-nums text-right">{(r.ms / 1000).toFixed(1)}s</span>
+              )}
+            </RowTag>
           );
         })}
       </div>
@@ -482,7 +607,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
         <div className="flex flex-col gap-2 p-2.5 rounded-lg bg-primary-50 border border-primary-200">
           <div className="flex items-start gap-2.5">
             <ShieldCheck size={16} weight="fill" className="text-primary-600 shrink-0 mt-0.5" />
-            <div className="min-w-0">
+            <div>
               <div className="text-[12px] font-semibold text-[var(--text-primary)]">
                 {waiting} waiting for your approval
               </div>
@@ -505,9 +630,9 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
           <CheckCircle
             size={16}
             weight="fill"
-            className={cn("shrink-0 mt-0.5", live ? "text-[var(--color-green)]" : "text-[var(--text-muted)]")}
+            className={cn("shrink-0 mt-0.5", live ? "text-green-600" : "text-[var(--text-muted)]")}
           />
-          <div className="min-w-0">
+          <div>
             <div className="text-[12px] font-semibold text-[var(--text-primary)]">
               {live ? "Nothing waiting" : paused ? "Paused" : "Not scheduled"}
             </div>
@@ -523,11 +648,28 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
       )}
 
       <RailGroup label="What you get">
-        <p className="text-[12px] text-[var(--text-primary)] leading-snug">{wf.deliverable}</p>
+        <p className="text-[12px] text-[var(--text-primary)] leading-snug">
+          {wf.customerOutput || wf.deliverable}
+        </p>
         {live && wf.recommendation && (
           <p className="text-[12px] text-[#757A97] leading-snug">Latest: {wf.recommendation.headline}</p>
         )}
       </RailGroup>
+
+      {/* The metrics this workflow is judged on. Without them the page says
+          what will change but never what "better" is measured as. */}
+      {wf.outcomes?.length > 0 && (
+        <RailGroup label="Outcomes tracked">
+          <div className="flex flex-col gap-1.5">
+            {wf.outcomes.map((o) => (
+              <span key={o} className="flex items-start gap-2 text-[12px] text-[var(--text-primary)] leading-snug">
+                <ChartLineUp size={13} className="mt-[2px] shrink-0 text-[var(--text-muted)]" />
+                {o}
+              </span>
+            ))}
+          </div>
+        </RailGroup>
+      )}
 
       <RailGroup label="Schedule">
         <RailRow
@@ -578,12 +720,16 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
             </div>
           ))}
         </div>
+        {/* Which agent family owns this workflow. It used to group the library
+            list, which split six rows into four sections; it describes one
+            workflow, so it belongs on that workflow's page. */}
+        {wf.family && <RailRow k="Family" v={wf.family} />}
         <RailRow
           k="Agents"
           v={
             <Tooltip title={specialistRoster(families)} placement="bottom">
               <span className="underline decoration-dotted underline-offset-2 cursor-default">
-                {families.length} families &middot; {wf.specialists} specialists
+                {families.length} agents &middot; {wf.specialists} specialists
               </span>
             </Tooltip>
           }
@@ -660,7 +806,7 @@ export default function WorkflowDetail() {
       }];
     }
     return [
-      { icon: ShieldCheck, color: "#08BD50", label: "Your approval", detail: `Nothing reaches ${platform.short} until you approve` },
+      { icon: ShieldCheck, color: "var(--color-green)", label: "Your approval", detail: `Nothing reaches ${platform.short} until you approve` },
       ...(system ? [{ icon: ArrowSquareOut, color: "var(--text-secondary)", label: system.label, detail: system.detail }] : []),
     ];
   })();
@@ -714,25 +860,54 @@ export default function WorkflowDetail() {
 
                 {/* One line of intent, then the diagram. No banner — the
                     output and state live in the rail. */}
-                <div className="flex items-baseline justify-between gap-3 mb-4">
-                  <div className="min-w-0">
-                    <h3 className="text-[14px] font-medium text-[var(--text-primary)]">
+                {/* The same lead-and-sections rhythm as the agent detail
+                    page: an uppercase label, the answer under it, and a
+                    hairline between each block. It used to be four paragraphs
+                    stacked with margins, which read as one wall of text. */}
+                <div className="flex flex-col mb-5">
+                  <div className="flex flex-col gap-2">
+                    <h3 className={SECTION_LABEL}>
                       {live ? "How this workflow runs" : "Agents this workflow deploys"}
                     </h3>
-                    <p className="text-[12px] text-[#757A97] leading-snug mt-0.5 max-w-[560px]">{wf.automates}</p>
+                    {wf.problem && (
+                      <p className="m-0 text-[14px] leading-relaxed text-[var(--text-primary)]">{wf.problem}</p>
+                    )}
+                    {wf.automates && (
+                      <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{wf.automates}</p>
+                    )}
+                  </div>
+
+                  {wf.manualWork && (
+                    <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
+                      <span className={LABEL}>The manual work it replaces</span>
+                      <p className="m-0 text-[13px] leading-relaxed text-[var(--text-secondary)]">{wf.manualWork}</p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
+                    <span className={LABEL}>Data readiness</span>
+                    <span className="inline-flex items-center gap-1.5 text-[13px]">
+                      <CheckCircle size={14} weight="fill" className="shrink-0 text-green-600" />
+                      <span className="text-[var(--text-primary)]">Ready</span>
+                      <span className="text-[var(--color-grey-300)]">·</span>
+                      <span className="text-[var(--text-secondary)]">
+                        {(wf.reads || []).join(", ")} connected and verified
+                      </span>
+                    </span>
                   </div>
                 </div>
 
                 <AgentGraph
                   families={families}
                   system={system}
+                  blockState={blockStateFor(wf)}
                   platform={platform}
                   selected={selected}
                   onSelect={setSelected}
                 />
 
 
-                  <div className="mt-6"><RunHistory runs={wf.runs} /></div>
+                  <div className="mt-6"><RunHistory runs={wf.runs} nextRun={wf.nextRun} onRetry={(r) => toast.success(`Re-running ${wf.name} from ${r.at}`)} onOpenRecs={() => navigate(`/recommendations?workflow=${wf.id}`)} /></div>
                 </div>
 
                 <WorkflowRail

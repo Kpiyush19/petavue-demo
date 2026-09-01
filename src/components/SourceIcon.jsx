@@ -28,6 +28,17 @@ const LOGO_FILE = {
   "linkedin campaign manager": "linkedin.svg",
   meta: "meta ads.svg",
   "meta ads": "meta ads.svg",
+  // Named products get their own mark. "CRM" stays a neutral glyph below,
+  // because that one is a category — whichever CRM the customer runs.
+  hubspot: "hubspot.svg",
+  ga4: "ga4.svg",
+  "google analytics": "ga4.svg",
+  salesforce: "salesforce.svg",
+  segment: "segment.svg",
+  snowflake: "snowflake.svg",
+  marketo: "marketo.svg",
+  outreach: "outreach.svg",
+  gong: "gong.svg",
 };
 
 const GLYPH = {

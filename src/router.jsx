@@ -81,6 +81,7 @@ const DashboardsLayout = lazy(() => import("./layouts/DashboardsLayout"));
 const SessionsLayout = lazy(() => import("./layouts/SessionsLayout"));
 const HomeLayout = lazy(() => import("./pages/home/TempHome/HomeLayout"));
 const GoalsPage = lazy(() => import("./pages/goals/GoalsPage"));
+const RecommendationsPage = lazy(() => import("./pages/recommendations"));
 const NewGoalPage = lazy(() => import("./pages/goals/NewGoalPage"));
 const RunHistoryPage = lazy(() => import("./pages/goals/RunHistoryPage"));
 const GoalDetailPage = lazy(() => import("./pages/goals/GoalDetailPage"));
@@ -114,6 +115,9 @@ const WorkflowEnginePage = lazy(() => import("./pages/workflow-engine"));
 // /workflows; the older step-based engine page moved to /workflow-engine.
 const WorkflowsPage = lazyWithRetry(() => import("./pages/workflows"));
 const AgentWorkflowDetailPage = lazyWithRetry(() => import("./pages/workflows/WorkflowDetail"));
+// The one deployable entry in the library. Declared before ":id" so the
+// dynamic route does not swallow it.
+const AssessmentPage = lazyWithRetry(() => import("./pages/workflows/Assessment"));
 const AgentsPage = lazyWithRetry(() => import("./pages/agents"));
 const AgentDetailPage = lazyWithRetry(() => import("./pages/agents/AgentDetail"));
 const WorkflowDetailPage = lazy(() => import("./pages/WorkflowDetailPage"));
@@ -470,7 +474,7 @@ export const router = createBrowserRouter([
             path: "recommendations",
             element: (
               <SuspenseWrapper variant="goals">
-                <GoalsPage />
+                <RecommendationsPage />
               </SuspenseWrapper>
             )
           },
@@ -534,6 +538,14 @@ export const router = createBrowserRouter([
                     element: (
                       <SuspenseWrapper variant="list">
                         <WorkflowsPage />
+                      </SuspenseWrapper>
+                    )
+                  },
+                  {
+                    path: "paid-media-assessment",
+                    element: (
+                      <SuspenseWrapper>
+                        <AssessmentPage />
                       </SuspenseWrapper>
                     )
                   },

@@ -89,13 +89,19 @@ export default function AgentsPage() {
     <div className="flex flex-col w-full h-full overflow-x-auto">
       <div className="flex flex-col w-full h-full min-w-[800px]">
         {/* Standard page header — same bar every page in the app uses. */}
-        <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
-          <span className="text-[16px] leading-[24px] font-medium">Agents</span>
+        <div className="flex w-full px-6 items-center justify-between h-[72px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
+          <span className="flex flex-col min-w-0">
+            <span className="text-[16px] leading-[24px] font-medium">Agents</span>
+            <span className="text-[12px] leading-[18px] text-[#757A97]">
+              Petavue groups specialist agents into six families. Each workflow deploys the specialists it needs in
+              sequence. You approve any proposed platform change.
+            </span>
+          </span>
         </div>
 
         <div
           className="w-full p-4 flex overflow-x-auto bg-[var(--color-grey-50)]"
-          style={{ height: "calc(100% - 60px)" }}
+          style={{ height: "calc(100% - 72px)" }}
         >
           <div className="flex flex-col bg-white rounded-xl h-full w-full overflow-hidden min-w-[800px]">
           {/* Heading bar — the Dashboards pattern: 56px, label + solid count

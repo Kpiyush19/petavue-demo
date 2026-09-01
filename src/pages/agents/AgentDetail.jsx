@@ -30,9 +30,10 @@ const fadeUp = (delay = 0) => ({
 const SECTION_LABEL = "text-[14px] font-semibold uppercase tracking-wider text-[var(--text-primary)]";
 const LABEL = "text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]";
 
-function Section({ title, lead, children, delay, first }) {
+function Section({ id, title, lead, children, delay, first }) {
   return (
     <motion.section
+      id={id}
       {...fadeUp(delay)}
       className={cn("flex flex-col gap-3", !first && "pt-5 mt-5 border-t border-[var(--color-grey-100)]")}
     >
@@ -159,6 +160,7 @@ export default function AgentDetail() {
                 </Section>
 
                 <Section
+                  id="where-deployed"
                   title="Where it&rsquo;s deployed"
                   lead={
                     a.deployments.length
@@ -209,8 +211,27 @@ export default function AgentDetail() {
                                 className="ml-auto shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5"
                               />
                             </span>
-                            {d.contribution && (
-                              <span className="text-[12px] text-[#757A97] leading-snug">{d.contribution}</span>
+                            {d.role && (
+                              <span className="flex items-baseline gap-1.5 min-w-0">
+                                <span className="text-[13px] text-[var(--text-primary)] leading-snug">
+                                  {d.role}
+                                </span>
+                                {d.specialist && (
+                                  <span className="shrink-0 text-[11px] text-[var(--text-muted)]">
+                                    {d.specialist}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {d.contribution && (live || held) && (
+                              <span className="text-[12px] text-[#757A97] leading-snug">
+                                {/* Only a workflow that has run has a last
+                                    contribution, and the copy is past tense, so
+                                    an available workflow shows its role and
+                                    stops there rather than claiming a run. */}
+                                <span className="text-[var(--text-muted)]">Last run: </span>
+                                {d.contribution}
+                              </span>
                             )}
                           </button>
                         );
@@ -283,13 +304,13 @@ export default function AgentDetail() {
                 <div
                   className={cn(
                     "flex items-start gap-2.5 p-2 rounded-lg border",
-                    deployed ? "bg-[var(--color-green-bg)] border-[var(--color-green)]/25" : "bg-white border-grey-200",
+                    deployed ? "bg-[var(--color-green-bg)] border-[#08BD50]/25" : "bg-white border-grey-200",
                   )}
                 >
                   <CheckCircle
                     size={16}
                     weight="fill"
-                    className={cn("shrink-0 mt-0.5", deployed ? "text-[var(--color-green)]" : "text-[var(--text-muted)]")}
+                    className={cn("shrink-0 mt-0.5", deployed ? "text-[#08BD50]" : "text-[var(--text-muted)]")}
                   />
                   <div className="min-w-0">
                     <div className="text-[12px] font-semibold text-[var(--text-primary)]">
@@ -348,14 +369,26 @@ export default function AgentDetail() {
                   </div>
                 )}
 
+                {/* An agent deployed in several workflows must not have a
+                    button that picks one of them. With more than one
+                    deployment this goes to the list and lets the reader
+                    choose; with exactly one there is nothing to choose. */}
                 {a.deployments.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/workflows/${target.id}?from=/agents/${a.key}`)}
+                    onClick={() =>
+                      a.deployments.length === 1
+                        ? navigate(`/workflows/${a.deployments[0].id}?from=/agents/${a.key}`)
+                        : document
+                            .getElementById("where-deployed")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
                     className="mt-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-[8px] text-[12px] font-medium bg-white border border-grey-200 text-[var(--text-primary)] cursor-pointer hover:border-primary-300 transition-colors"
                   >
-                    {deployed ? "See it in a workflow" : "See where it\u2019s configured"}{" "}
-                    <ArrowSquareOut size={13} />
+                    {a.deployments.length === 1
+                      ? `See it in ${a.deployments[0].name}`
+                      : `See all ${a.deployments.length} deployments`}{" "}
+                    {a.deployments.length === 1 ? <ArrowSquareOut size={13} /> : <CaretRight size={13} />}
                   </button>
                 )}
               </motion.aside>
