@@ -3,67 +3,91 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MagnifyingGlass, ArrowRight } from "@phosphor-icons/react";
 import { apiGet } from "../../api";
-import { cn } from "../../utils/cn";
 import { agentIcon } from "../../components/AgentMark";
-import SourceIcon from "../../components/SourceIcon";
 
-/* ── One agent family ── */
-function AgentCard({ agent, onOpen }) {
-  const Icon = agentIcon(agent.key);
+/* ── The five agents, as the deck presents them.
+   A workflow deploys an ensemble: the Measurement Agent is always its
+   foundation, and the analytics agents do the workflow's specific analysis.
+   The families organise the page; the individual agents inside them are the
+   boxes. The mapping onto the underlying detail pages is presentation only —
+   those pages stay as they are (Campaign spans two of them). ── */
+const FOUNDATION = {
+  label: "Measurement Agent",
+  desc: "Connects spend and engagement to pipeline, and calculates the metrics every other agent depends on.",
+  members: ["measurement"],
+};
+
+const FAMILIES = [
+  {
+    label: "Audience Agent",
+    desc: "Decides which accounts to engage and what they need next.",
+    members: ["demand"],
+  },
+  {
+    label: "Messaging Agent",
+    desc: "Identifies which messaging is working across channels, including sales calls, and recommends what to use.",
+    members: ["creative"],
+  },
+  {
+    label: "Campaign Agent",
+    desc: "Keeps budget and delivery on plan.",
+    members: ["delivery", "budget"],
+  },
+  {
+    label: "Conversion Agent",
+    desc: "Improves the path from click to conversion, then routes the lead.",
+    members: ["conversion"],
+  },
+];
+
+const searchText = (fam, members) =>
+  [fam.label, fam.desc, ...members.flatMap((m) => [m.label, m.owns, ...(m.specialists || [])])]
+    .join(" ")
+    .toLowerCase();
+
+/* One individual agent — a compact box. The family it belongs to is the
+   section it sits in; its colour comes from the family icon. */
+function AgentBox({ name, color, badge, onOpen }) {
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-      className="group flex flex-col gap-2 h-full p-5 bg-white border border-grey-100 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-150 hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]"
+      className="group flex items-center gap-2 px-3.5 py-2.5 bg-white border border-grey-100 rounded-lg cursor-pointer transition-[background-color,box-shadow] duration-150 hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)]"
     >
-      <Icon
-        size={28}
-        weight="fill"
-        style={{ color: agent.color }}
-        className="shrink-0"
+      <span className="flex-1 min-w-0 text-[12px] font-medium text-[var(--text-primary)] leading-snug">{name}</span>
+      {badge && (
+        <span
+          className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider text-white"
+          style={{ background: color }}
+        >
+          {badge}
+        </span>
+      )}
+      <ArrowRight
+        size={12}
+        className="shrink-0 text-[var(--color-grey-300)] group-hover:text-primary-500 transition-[color,transform] group-hover:translate-x-0.5"
       />
+    </div>
+  );
+}
 
-      <h3 className="text-[16px] font-semibold leading-snug tracking-[-0.2px] text-[var(--text-primary)] mt-1">
-        {agent.label}
-      </h3>
-      <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed line-clamp-3">
-        {agent.blurb}
-      </p>
-
-      <ul className="flex flex-col gap-1.5 mt-2">
-        {agent.does.map((d) => (
-          <li
-            key={d}
-            className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)] leading-snug"
-          >
-            <span
-              className="mt-[6px] w-[4px] h-[4px] rounded-full shrink-0"
-              style={{ background: agent.color }}
-            />
-            {d}
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex items-center justify-between gap-3 mt-auto pt-4">
-        {/* What this family works on, as the platforms' own marks. Whether it
-            is live is on the detail page and in the workflow list — the card
-            answers "what does this touch". */}
-        <span className="flex items-center gap-2 min-w-0">
-          {agent.platforms.map((pl) => (
-            <SourceIcon key={pl} name={pl} size={16} named />
-          ))}
+/* One family group: the header names the family and carries the deck's line;
+   the n × 2 grid below holds its agents as boxes. */
+function FamilySection({ fam, members, boxes }) {
+  const base = members[0];
+  const Icon = agentIcon(base.key);
+  return (
+    <div className="flex flex-col gap-2.5">
+      <span className="flex items-center gap-2 flex-wrap">
+        <Icon size={14} weight="fill" style={{ color: base.color }} className="shrink-0" />
+        <span className="text-[12px] leading-[18px] font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+          {fam.label}
         </span>
-        <span className="flex items-center gap-1 text-[12px] font-medium text-[var(--text-muted)] group-hover:text-primary-500 transition-colors whitespace-nowrap shrink-0">
-          View agent{" "}
-          <ArrowRight
-            size={13}
-            className="transition-transform group-hover:translate-x-0.5"
-          />
-        </span>
-      </div>
+        <span className="text-[12px] leading-[18px] text-[#757A97]">{fam.desc}</span>
+      </span>
+      <div className="grid grid-cols-4 gap-2.5">{boxes}</div>
     </div>
   );
 }
@@ -77,13 +101,18 @@ export default function AgentsPage() {
     queryFn: () => apiGet("/api/agents"),
   });
   const agents = data?.agents || [];
+  const byKey = useMemo(() => Object.fromEntries(agents.map((a) => [a.key, a])), [agents]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return agents.filter(
-      (a) => !q || `${a.label} ${a.owns} ${a.blurb}`.toLowerCase().includes(q),
-    );
-  }, [agents, search]);
+  const resolve = (fam) => fam.members.map((k) => byKey[k]).filter(Boolean);
+
+  const q = search.trim().toLowerCase();
+  const foundationMembers = resolve(FOUNDATION);
+  const showFoundation =
+    foundationMembers.length > 0 && (!q || searchText(FOUNDATION, foundationMembers).includes(q));
+  const analytics = FAMILIES.map((fam) => ({ fam, members: resolve(fam) })).filter(
+    ({ fam, members }) => members.length > 0 && (!q || searchText(fam, members).includes(q)),
+  );
+  const total = (showFoundation ? 1 : 0) + analytics.length;
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -93,8 +122,9 @@ export default function AgentsPage() {
           <span className="flex flex-col min-w-0">
             <span className="text-[16px] leading-[24px] font-medium">Agents</span>
             <span className="text-[12px] leading-[18px] text-[#757A97]">
-              Petavue groups specialist agents into six families. Each workflow deploys the specialists it needs in
-              sequence. You approve any proposed platform change.
+              Every workflow deploys an ensemble: the Measurement Agent as its foundation, plus the analytics agents
+              the analysis needs. Each analytics agent belongs to one of the families below. You approve any proposed
+              platform change.
             </span>
           </span>
         </div>
@@ -110,7 +140,7 @@ export default function AgentsPage() {
             <div className="px-8 flex gap-2.5 items-center">
               <span className="font-medium text-[14px]">All agents</span>
               <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
-                {filtered.length}
+                {total}
               </span>
             </div>
             <div className="flex gap-3 items-center pr-4">
@@ -130,33 +160,57 @@ export default function AgentsPage() {
           </div>
 
             <div className="w-full flex-1 min-h-0 overflow-y-auto">
-              <div className="flex flex-col w-full px-4 py-4">
+              <div className="flex flex-col gap-6 w-full px-4 py-4">
 
                 {isLoading ? (
-                  <div className="grid grid-cols-3 gap-6">
-                    {Array.from({ length: 6 }).map((_, i) => (
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {Array.from({ length: 8 }).map((_, i) => (
                       <div
                         key={i}
-                        className="h-[300px] rounded-lg border border-grey-100 bg-grey-50 animate-pulse"
+                        className="h-[40px] rounded-lg border border-grey-100 bg-grey-50 animate-pulse"
                       />
                     ))}
                   </div>
-                ) : filtered.length === 0 ? (
+                ) : total === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-1.5 py-16 text-center">
-                    <MagnifyingGlass
-                      size={20}
-                      className="text-[var(--text-muted)]"
-                    />
-                    <p className="text-[12px] text-[#757A97]">
-                      No agents match that.
-                    </p>
+                    <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
+                    <p className="text-[12px] text-[#757A97]">No agents match that.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-6">
-                    {filtered.map((a) => (
-                      <AgentCard key={a.key} agent={a} onOpen={() => navigate(`/agents/${a.key}`)} />
+                  <>
+                    {showFoundation && (
+                      <FamilySection
+                        fam={FOUNDATION}
+                        members={foundationMembers}
+                        boxes={
+                          <AgentBox
+                            name={FOUNDATION.label}
+                            color={foundationMembers[0].color}
+                            badge="Foundational"
+                            onOpen={() => navigate("/agents/measurement")}
+                          />
+                        }
+                      />
+                    )}
+
+                    {analytics.map(({ fam, members }) => (
+                      <FamilySection
+                        key={fam.label}
+                        fam={fam}
+                        members={members}
+                        boxes={members.flatMap((m) =>
+                          (m.specialists || []).map((sp) => (
+                            <AgentBox
+                              key={sp}
+                              name={sp}
+                              color={members[0].color}
+                              onOpen={() => navigate(`/agents/${m.key}`)}
+                            />
+                          )),
+                        )}
+                      />
                     ))}
-                  </div>
+                  </>
                 )}
               </div>
             </div>

@@ -11,7 +11,7 @@ import { Button, Tooltip } from "@/ui";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
-import { AGENTS, platformOf } from "../../mocks/agentWorkflows";
+import { platformOf, deckFamilyOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
 import SourceIcon from "../../components/SourceIcon";
@@ -57,9 +57,9 @@ const LABEL = "text-[12px] font-semibold uppercase tracking-wider text-[var(--te
 
 /* A table, not a paragraph. Used for both the proposed change and the finding
    rows, because both are the same claim: named entities with their numbers. */
-function DataTable({ cols, rows, emphasise }) {
+function DataTable({ cols, rows, emphasise, bare }) {
   return (
-    <div className="overflow-x-auto border border-[var(--color-grey-100)] rounded-lg">
+    <div className={cn("overflow-x-auto", !bare && "border border-[var(--color-grey-100)] rounded-lg")}>
       <table className="w-full border-collapse text-[12px]">
         <thead>
           <tr className="bg-grey-50">
@@ -231,7 +231,7 @@ function ConfirmSheet({ item, platform, onBack, onConfirm }) {
 }
 
 
-function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm" }) {
+function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm", align = "right" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -260,7 +260,10 @@ function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm" }) {
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[240px] max-h-[320px] overflow-y-auto py-1 bg-white border border-[var(--color-grey-100)] rounded-lg shadow-[0_8px_24px_0_rgba(0,0,0,0.10)]"
+          className={cn(
+            "absolute top-[calc(100%+4px)] z-30 min-w-[240px] max-h-[320px] overflow-y-auto py-1 bg-white border border-[var(--color-grey-100)] rounded-lg shadow-[0_8px_24px_0_rgba(0,0,0,0.10)]",
+            align === "right" ? "right-0" : "left-0",
+          )}
         >
           {options.map((o) => (
             <button
@@ -280,7 +283,7 @@ function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm" }) {
               {o.icon}
               <span
                 className={cn(
-                  "flex-1 min-w-0 truncate text-[12px] text-[var(--text-primary)]",
+                  "flex-1 min-w-0 text-[12px] leading-snug text-[var(--text-primary)]",
                   o.value === value && "font-medium",
                 )}
               >
@@ -297,32 +300,51 @@ function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm" }) {
   );
 }
 
+
+/* One beat of the working: label in a fixed left column, the sentence beside
+   it — so the four beats scan as a table of claims rather than four stacked
+   paragraphs. */
+function EvidenceRow({ label, children }) {
+  return (
+    <div className="flex items-start gap-4 px-4 py-3 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)] first:border-t-0">
+      <span className={cn(LABEL, "w-[110px] shrink-0 pt-0.5")}>{label}</span>
+      <p className="m-0 flex-1 min-w-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{children}</p>
+    </div>
+  );
+}
+
 /* ── The queue row. Compact by rule: everything else about the recommendation
    is on the detail pane a few hundred pixels to the right. ── */
-function QueueRow({ item, selected, onClick }) {
+function QueueRow({ item, workflowName, selected, onClick }) {
   const u = URGENCY[item.urgency] || URGENCY.monitor;
   const decided = item.lifecycle !== "needs-decision";
+  const dot = item.urgency === "act-now" ? "bg-rose-500" : item.urgency === "this-week" ? "bg-amber-500" : "bg-blue-500";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "w-full text-left flex items-center min-h-[46px] px-3 py-2.5 cursor-pointer transition-colors",
+        "w-full text-left flex items-start gap-2.5 px-4 py-3 cursor-pointer transition-colors",
         "border-solid border-t-0 border-r-0 border-b border-b-[var(--color-grey-100)] border-l-[3px] border-l-transparent",
         selected ? "bg-primary-50 border-l-primary-500" : "bg-transparent hover:bg-primary-50",
         decided && !selected && "opacity-60",
       )}
     >
-      <u.icon size={15} className={cn("shrink-0 mr-2.5", u.fg)} aria-hidden="true" />
-      {item.awaitingYou && item.lifecycle === "needs-decision" && (
-        <Question size={13} className="shrink-0 mr-1.5 text-amber-600" aria-label="Waiting on you" />
-      )}
-      <Tooltip title={`${u.label} — ${item.title}`} placement="right">
-        <span className={cn("min-w-0 truncate text-[14px] text-[var(--text-primary)]", selected && "font-medium")}>
-          {item.title}
+      <i className={cn("mt-[7px] w-[7px] h-[7px] rounded-full shrink-0", dot)} aria-hidden="true" />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <Tooltip title={item.title} placement="right">
+          <span className={cn("min-w-0 text-[14px] leading-snug font-medium text-[var(--text-primary)]")}>
+            {item.shortTitle || item.title}
+          </span>
+        </Tooltip>
+        <span className="min-w-0 text-[12px] leading-snug text-[var(--text-muted)]">
+          {workflowName} · {decided ? (LIFECYCLE[item.lifecycle]?.label || u.label) : u.label}
         </span>
-      </Tooltip>
+      </span>
+      {item.awaitingYou && item.lifecycle === "needs-decision" && (
+        <Question size={14} className="mt-1 shrink-0 text-amber-600" aria-label="Waiting on you" />
+      )}
     </button>
   );
 }
@@ -332,13 +354,16 @@ function QueueRow({ item, selected, onClick }) {
    reads as an unsupported claim. ── */
 function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow }) {
   const [working, setWorking] = useState(true);
-  const [trace, setTrace] = useState(false);
   const [reasonFor, setReasonFor] = useState(null);
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
   const u = URGENCY[item.urgency] || URGENCY.monitor;
   const life = LIFECYCLE[item.lifecycle] || LIFECYCLE["needs-decision"];
-  const agent = AGENTS[item.agent];
+  // the reference writes the trace as prose: each specialist, its family, and
+  // what it did — derivable from the workflow pipeline, so it cannot drift
+  const traceText = (workflow?.found || [])
+    .map((f) => `${f.specialist} (${deckFamilyOf(f.agent)}): ${f.text}`)
+    .join(" ");
   const AgentIcon = agentIcon(item.agent);
   const open = item.lifecycle === "needs-decision";
 
@@ -353,66 +378,47 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
   return (
     <div className="flex-1 min-w-0 flex flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="flex flex-col gap-6 px-6 py-5">
-        {/* Header. Workflow, channel, run and date — the four things that say
-            where this came from, per the 6.1 composition. */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn("inline-flex items-center gap-1 h-6 px-2 rounded-md border text-[12px] font-medium", u.chip)}>
+      <div className="flex flex-col gap-6 pt-[30px] px-[34px] pb-8 max-w-[1180px]">
+        {/* The reference's eyebrow-row: everything that identifies the card
+            is a pill up top — urgency, workflow, channel, test, and the state
+            once decided — leaving provenance as one quiet line. */}
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 flex-wrap mb-3.5">
+            <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", u.chip)}>
               <u.icon size={12} /> {u.label}
             </span>
-            <span className={cn("inline-flex items-center h-6 px-2 rounded-md border text-[12px] font-medium", life.chip)}>
-              {life.label}
-            </span>
-            {item.test && TEST[item.test] && (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 h-6 px-2 rounded-md border text-[12px] font-medium",
-                  TEST[item.test].chip,
-                )}
-              >
-                <Flask size={12} /> {TEST[item.test].label}
-              </span>
-            )}
-          </div>
-          <h2 className="m-0 text-[20px] leading-snug font-semibold text-[var(--text-primary)]">{item.title}</h2>
-          <p className="m-0 text-[14px] leading-relaxed text-[var(--text-secondary)]">{item.basis}</p>
-          <div className="flex items-center gap-2 text-[12px] text-[#757A97] flex-wrap">
             <button
               type="button"
               onClick={onOpenWorkflow}
-              className="inline-flex items-center gap-1.5 bg-transparent border-none p-0 cursor-pointer text-[var(--color-primary-600)] hover:underline"
+              className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-[12px] font-semibold text-[var(--color-primary-600)] cursor-pointer"
             >
-              <WorkflowGlyph size={13} />
               {workflow?.name || item.workflowId}
             </button>
-            {/* Each fact gets its own mark so the line reads as four separate
-                pieces of provenance rather than one run-on string of dots. */}
             {workflow && (
-              <>
-                <span className="text-[var(--color-grey-300)]">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <SourceIcon name={platformOf(workflow.platform).short} size={13} />
-                  {platformOf(workflow.platform).short}
-                </span>
-              </>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-grey-200)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)]">
+                <SourceIcon name={platformOf(workflow.platform).short} size={13} />
+                {platformOf(workflow.platform).short}
+              </span>
             )}
-            <span className="text-[var(--color-grey-300)]">·</span>
-            <span className="inline-flex items-center gap-1.5">
-              <Megaphone size={13} className="shrink-0 text-[var(--text-muted)]" />
-              {item.scope}
-            </span>
-            <span className="text-[var(--color-grey-300)]">·</span>
-            <span className="inline-flex items-center gap-1.5">
-              <ArrowsClockwise size={13} className="shrink-0 text-[var(--text-muted)]" />
-              Run {item.run?.n}
-            </span>
-            <span className="text-[var(--color-grey-300)]">·</span>
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarBlank size={13} className="shrink-0 text-[var(--text-muted)]" />
-              {item.run?.at}
-            </span>
+            {item.test && TEST[item.test] && (
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", TEST[item.test].chip)}>
+                <Flask size={12} /> {TEST[item.test].label}
+              </span>
+            )}
+            {!open && (
+              <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", life.chip)}>
+                {life.label}
+              </span>
+            )}
           </div>
+          <h2 className="m-0 text-[24px] leading-[1.2] tracking-[-0.5px] font-semibold text-[var(--text-primary)]">
+            {item.title}
+          </h2>
+          <p className="m-0 mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">{item.basis}</p>
+          <p className="m-0 mt-2.5 text-[12px] text-[#757A97]">
+            Run {item.run?.n} · {item.run?.at} · {item.scope}
+            {item.agent ? ` · Found by ${deckFamilyOf(item.agent)}` : ""}
+          </p>
         </div>
 
         <ApplyStepper
@@ -447,95 +453,72 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
           </div>
         )}
 
-        {/* The evidence comes before the change it justifies. A reader should
-            reach the proposed edit having already seen the rows behind it,
-            rather than being asked to trust a headline and scroll for proof. */}
+        {/* The change leads and the working sits beneath it: the reader sees
+            the proposed edit and its terms first, and opens the evidence when
+            they want the rows behind it. */}
+        {/* The proposed change. This block IS the recommendation. */}
+        <div className="border border-primary-200 rounded-xl overflow-hidden bg-white">
+          <div className="flex items-center justify-between gap-3 px-[18px] py-[15px] bg-[#f8f9ff] border-solid border-t-0 border-x-0 border-b border-b-[var(--color-grey-100)]">
+            <span className="text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--color-primary-600)]">
+              The proposed change
+            </span>
+            <span className="text-[12px] text-[#757A97] text-right leading-snug">{item.changeTitle}</span>
+          </div>
+          <DataTable cols={item.changeCols} rows={item.changeRows} emphasise bare />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 border border-[var(--color-grey-100)] rounded-lg overflow-hidden divide-x divide-[var(--color-grey-100)]">
+          <div className="flex flex-col gap-1.5 px-4 py-3">
+            <span className={LABEL}>When</span>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.when}</p>
+          </div>
+          <div className="flex flex-col gap-1.5 px-4 py-3">
+            <span className={LABEL}>Expected effect</span>
+            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.expected}</p>
+          </div>
+          <div className="flex flex-col gap-1.5 px-4 py-3">
+            {item.guardrail && (
+              <>
+                <span className={LABEL}>Guardrail</span>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.guardrail}</p>
+              </>
+            )}
+            {item.needsFromYou && (
+              <>
+                <span className={cn(LABEL, item.guardrail && "mt-2")}>Needs from you</span>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
+              </>
+            )}
+            {item.checkResult && (
+              <>
+                <span className={cn(LABEL, (item.guardrail || item.needsFromYou) && "mt-2")}>Check result</span>
+                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.checkResult}</p>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="border border-[var(--color-grey-100)] rounded-lg overflow-hidden">
           <button
             type="button"
             onClick={() => setWorking((v) => !v)}
-            className="w-full flex items-center gap-2 px-4 py-3 bg-grey-50 border-none cursor-pointer text-left"
+            className="w-full flex items-center gap-2 px-[18px] py-[15px] bg-[#f8f9ff] border-none cursor-pointer text-left"
           >
             <CaretRight size={12} className={cn("shrink-0 text-[var(--color-grey-400)] transition-transform", working && "rotate-90")} />
-            <span className={LABEL}>The evidence</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--color-primary-600)]">See the working</span>
             <span className="ml-auto text-[12px] text-[#757A97]">
               Run {item.run?.n} · {item.run?.at}
             </span>
           </button>
           {working && (
-            <div className="flex flex-col gap-4 px-4 py-4">
-              <Beat label="Symptom">
-                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.symptom}</p>
-              </Beat>
-              <Beat label="Examined">
-                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.examined}</p>
-              </Beat>
-              <Beat label="What the data showed">
+            <div className="flex flex-col">
+              <EvidenceRow label="Symptom">{item.symptom}</EvidenceRow>
+              <EvidenceRow label="Examined">{item.examined}</EvidenceRow>
+              <div className="px-4 py-3 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]">
                 <DataTable cols={item.findingCols} rows={item.findingRows} />
-              </Beat>
-              <Beat label="Therefore">
-                <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.therefore}</p>
-              </Beat>
-            </div>
-          )}
-        </div>
-
-        {/* The proposed change. This block IS the recommendation. */}
-        <div className="flex flex-col gap-2">
-          <span className={LABEL}>Proposed change</span>
-          <p className="m-0 text-[12px] text-[#757A97]">{item.changeTitle}</p>
-          <DataTable cols={item.changeCols} rows={item.changeRows} emphasise />
-        </div>
-
-        <div className="flex flex-col gap-3 px-4 py-3 rounded-lg bg-grey-50 border border-[var(--color-grey-100)]">
-          <Beat label="When">
-            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.when}</p>
-          </Beat>
-          <Beat label="Expected effect">
-            <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.expected}</p>
-          </Beat>
-          {item.guardrail && (
-            <Beat label="Guardrail">
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.guardrail}</p>
-            </Beat>
-          )}
-          {item.checkResult && (
-            <Beat label="Check result">
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.checkResult}</p>
-            </Beat>
-          )}
-          {item.needsFromYou && (
-            <Beat label="Needs from you">
-              <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{item.needsFromYou}</p>
-            </Beat>
-          )}
-        </div>
-
-        {/* Agent provenance is a trace link at the very bottom, never the
-            explanation. */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setTrace((v) => !v)}
-            className="inline-flex items-center gap-1.5 bg-transparent border-none p-0 cursor-pointer text-[12px] text-[var(--color-primary-600)] hover:underline"
-          >
-            <CaretRight size={11} className={cn("transition-transform", trace && "rotate-90")} />
-            Raw lineage and full agent trace
-          </button>
-          {trace && (
-            <div className="flex items-center gap-2 mt-2 text-[12px] text-[#757A97]">
-              <AgentIcon size={14} weight="fill" style={{ color: agent?.color }} className="shrink-0" />
-              <span>{agent?.label}</span>
-              <span className="text-[var(--color-grey-300)]">·</span>
-              <span>Run {item.run?.n}</span>
-              <span className="text-[var(--color-grey-300)]">·</span>
-              <button
-                type="button"
-                onClick={onOpenWorkflow}
-                className="inline-flex items-center gap-1 bg-transparent border-none p-0 cursor-pointer text-[var(--color-primary-600)] hover:underline"
-              >
-                Open the workflow <ArrowSquareOut size={11} />
-              </button>
+              </div>
+              <EvidenceRow label="Therefore">{item.therefore}</EvidenceRow>
+              {traceText && <EvidenceRow label="Agent trace">{traceText}</EvidenceRow>}
             </div>
           )}
         </div>
@@ -574,17 +557,21 @@ function Detail({ item, workflow, onDecide, onTest, onAddContext, onOpenWorkflow
           fold, so the first thing a viewer saw had no way to act on it. The
           order is unchanged; the actions are simply pinned. */}
       {open && (
-        <div className="shrink-0 border-t border-[var(--color-grey-100)] bg-white px-6 py-3">
+        <div className="shrink-0 border-t border-[var(--color-grey-100)] bg-white px-[34px] py-3">
         {/* Decisions. No note is required to approve. Hold and Reject open a
             reason box, because a decision that changes later runs has to say
             why it did. */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="primary" size="md" label="Approve change" onClick={() => setConfirming(true)} />
-              <Button variant="secondary" size="md" icon={Flask} label="Test instead" onClick={() => onTest()} />
-              <Button variant="secondaryGhost" size="md" icon={ChatText} label="Add context" onClick={() => { setReasonFor("context"); setReason(""); }} />
-              <Button variant="secondaryGhost" size="md" icon={PauseCircle} label="Hold" onClick={() => { setReasonFor("held"); setReason(""); }} />
-              <Button variant="secondaryGhost" size="md" icon={Prohibit} label="Reject" onClick={() => { setReasonFor("rejected"); setReason(""); }} />
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 flex-wrap">
+                <Button variant="primary" size="md" label="Approve change" onClick={() => setConfirming(true)} />
+                <Button variant="secondary" size="md" icon={Flask} label="Test instead" onClick={() => onTest()} />
+                <Button variant="secondary" size="md" icon={ChatText} label="Add context" onClick={() => { setReasonFor("context"); setReason(""); }} />
+              </span>
+              <span className="shrink-0 inline-flex items-center gap-1">
+                <Button variant="ghost" size="md" label="Hold" onClick={() => { setReasonFor("held"); setReason(""); }} />
+                <Button variant="secondaryGhost" size="md" label="Reject" style={{ color: "var(--color-red)" }} onClick={() => { setReasonFor("rejected"); setReason(""); }} />
+              </span>
             </div>
             {reasonFor && (
               <div className="flex flex-col gap-2 px-4 py-3 rounded-lg border border-[var(--color-grey-200)] bg-white">
@@ -709,16 +696,7 @@ export default function RecommendationsPage() {
     <div className="flex flex-col w-full h-full">
       <div className="flex w-full px-6 items-center justify-between h-[60px] shrink-0 border-b border-[var(--color-grey-100)] bg-white">
         <span className="text-[16px] leading-[24px] font-medium">Recommendations</span>
-        <FilterDropdown
-          size="md"
-          ariaLabel="Filter by channel"
-          value={channel}
-          onChange={(v) => { setChannel(v); setSel(null); }}
-          options={[
-            { value: "all", label: "All channels" },
-            ...channels.map((c) => ({ value: c, label: c, icon: <SourceIcon name={c} size={15} /> })),
-          ]}
-        />
+
       </div>
 
       <div className="flex-1 min-h-0 p-4 bg-grey-50 overflow-hidden">
@@ -729,8 +707,8 @@ export default function RecommendationsPage() {
           ) : (
             <div className="flex-1 min-h-0 flex">
               <div className="w-[400px] max-w-[400px] shrink-0 flex flex-col border-r border-[var(--color-grey-100)] overflow-hidden">
-                <div className="shrink-0 flex items-center gap-2 h-[52px] px-3 border-b border-[var(--color-grey-100)]">
-                  <span className="min-w-0 truncate text-[14px] font-semibold text-[var(--text-primary)]">
+                <div className="shrink-0 flex items-center gap-2 h-[52px] px-4 border-b border-[var(--color-grey-100)]">
+                  <span className="min-w-0 text-[14px] font-semibold text-[var(--text-primary)]">
                     Decision queue
                   </span>
                   {asking.length > 0 && (
@@ -763,11 +741,41 @@ export default function RecommendationsPage() {
                         value: c.id,
                         label: c.id === "all" ? "All workflows" : c.name,
                         count: c.count,
-                        icon: c.id === "all" ? null : <WorkflowGlyph size={14} className="text-[var(--text-muted)]" />,
                       }))}
                     />
                   </span>
                 </div>
+
+                {/* Channel is a secondary filter, so it gets a contained
+                    segmented control rather than a page-level tab bar: one
+                    element, three equal segments, the TabToggle language of a
+                    grey ground with a white active pill. */}
+                <div className="shrink-0 px-3 py-2 border-b border-[var(--color-grey-100)]">
+                  <div
+                    role="tablist"
+                    className="flex items-stretch gap-0.5 p-0.5 bg-grey-50 border border-[var(--color-grey-100)] rounded-lg"
+                  >
+                    {[{ v: "all", label: "All channels" }, ...channels.map((c) => ({ v: c, label: c }))].map((t) => (
+                      <button
+                        key={t.v}
+                        type="button"
+                        role="tab"
+                        aria-selected={channel === t.v}
+                        onClick={() => { setChannel(t.v); setSel(null); }}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 h-7 px-2 rounded-md text-[12px] cursor-pointer transition-colors border-solid border",
+                          channel === t.v
+                            ? "bg-white border-[var(--color-grey-200)] text-[var(--text-primary)] font-medium shadow-[0_1px_2px_0_rgba(16,24,40,0.05)]"
+                            : "bg-transparent border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                        )}
+                      >
+                        {t.v !== "all" && <SourceIcon name={t.label} size={13} />}
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex-1 overflow-y-auto flex flex-col">
                   {filtered.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-14 px-6 text-center">
@@ -785,7 +793,7 @@ export default function RecommendationsPage() {
                     </div>
                   ) : (
                     filtered.map((it) => (
-                      <QueueRow key={it.id} item={it} selected={selected?.id === it.id} onClick={() => setSel(it.id)} />
+                      <QueueRow key={it.id} item={it} workflowName={wfById[it.workflowId]?.name || it.workflowId} selected={selected?.id === it.id} onClick={() => setSel(it.id)} />
                     ))
                   )}
                 </div>

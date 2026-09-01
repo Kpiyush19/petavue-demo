@@ -186,7 +186,7 @@ export default function AgentDetail() {
                             className="group flex flex-col gap-1.5 h-full text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
                           >
                             <span className="flex items-center gap-2 min-w-0">
-                              <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">
+                              <span className="text-[14px] font-medium text-[var(--text-primary)] leading-snug">
                                 {d.name}
                               </span>
                               <span className="shrink-0 text-[12px] text-[#757A97] px-1.5 py-0.5 rounded bg-grey-100">
@@ -265,7 +265,7 @@ export default function AgentDetail() {
                             className="group flex flex-col gap-1.5 h-full text-left px-4 py-3 bg-white border border-grey-100 rounded-lg cursor-pointer hover:bg-primary-50 hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all"
                           >
                             <span className="flex items-center gap-2 min-w-0">
-                              <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">
+                              <span className="text-[14px] font-medium text-[var(--text-primary)] leading-snug">
                                 {f.title}
                               </span>
                               <span
@@ -343,7 +343,7 @@ export default function AgentDetail() {
                       {a.reads.map((r) => (
                         <div key={r} className="flex items-center gap-2.5" title={r}>
                           <SourceIcon name={r} size={18} />
-                          <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{r}</span>
+                          <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)]">{r}</span>
                         </div>
                       ))}
                     </div>
@@ -362,7 +362,7 @@ export default function AgentDetail() {
                       {a.actsOn.map((t) => (
                         <div key={t} className="flex items-center gap-2.5" title={t}>
                           <SourceIcon name={t} size={18} />
-                          <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{t}</span>
+                          <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)]">{t}</span>
                         </div>
                       ))}
                     </div>

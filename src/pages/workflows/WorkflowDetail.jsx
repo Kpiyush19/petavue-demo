@@ -11,7 +11,7 @@ import { Button as PvButton, Tooltip } from "@/ui";
 import { toast } from "sonner";
 import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
-import { AGENTS, platformOf } from "../../mocks/agentWorkflows";
+import { AGENTS, platformOf, deckFamilyOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import SourceIcon from "../../components/SourceIcon";
 
@@ -82,13 +82,13 @@ function FamilyNode({ step, agentKey, jobTitle, text, steps, state, selected, on
       )}
       style={selected ? { outline: `2px solid ${a.color}`, outlineOffset: "-1px" } : undefined}
     >
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-start gap-2 mb-1.5">
         <Icon size={18} weight="fill" style={{ color: a.color }} className="shrink-0" />
         <span
-          className="min-w-0 truncate text-[12px] font-semibold uppercase tracking-wider"
+          className="min-w-0 text-[12px] leading-[18px] font-semibold uppercase tracking-wider"
           style={{ color: a.color }}
         >
-          {a.label}
+          {deckFamilyOf(agentKey)}
         </span>
         <span className="ml-auto shrink-0 flex items-center justify-center h-4 px-1.5 rounded-md bg-[var(--color-primary-500)] text-white text-[10px] leading-4 font-normal tabular-nums">
           {step}
@@ -175,8 +175,8 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
             <Icon size={20} weight="fill" style={{ color: accent }} />
           </span>
           <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-            <span className="text-[12px] font-semibold uppercase tracking-wider truncate" style={{ color: accent }}>
-              {a.label}
+            <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: accent }}>
+              {deckFamilyOf(family.agent)}
             </span>
             <span className="text-[14px] font-semibold text-[var(--text-primary)]">
               {family.jobTitle || a.label}
@@ -264,7 +264,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
                   <div key={i} className="rounded-md border border-[var(--color-grey-100)] overflow-hidden">
                     <div className="flex items-center gap-2.5 px-3 py-2 bg-white">
                       <StepIcon size={14} className="text-[var(--text-secondary)] shrink-0" />
-                      <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)] truncate">{st.label}</span>
+                      <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)] leading-snug">{st.label}</span>
                       <span className="shrink-0 text-[12px] text-[#757A97]">{meta.label}</span>
                       {st.ms != null && (
                         <span className="shrink-0 inline-flex items-center gap-1 text-[12px] tabular-nums text-[var(--color-grey-400)]">
@@ -298,8 +298,8 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
                     <>
                       <HIcon size={18} weight="fill" className="shrink-0" style={{ color: h.color }} />
                       <span className="flex-1 min-w-0 flex flex-col">
-                        <span className="text-[12px] font-medium text-[var(--text-primary)] truncate">{h.label}</span>
-                        {h.detail && <span className="text-[12px] text-[#757A97] truncate">{h.detail}</span>}
+                        <span className="text-[12px] font-medium text-[var(--text-primary)]">{h.label}</span>
+                        {h.detail && <span className="text-[12px] text-[#757A97] leading-snug">{h.detail}</span>}
                       </span>
                       {h.onClick && <CaretRight size={13} className="shrink-0 text-[var(--color-grey-400)]" />}
                     </>
@@ -348,7 +348,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
 function specialistRoster(families) {
   return families
     .filter((f) => f.specialist)
-    .map((f) => `${AGENTS[f.agent]?.label}: ${f.specialist}`)
+    .map((f) => `${deckFamilyOf(f.agent)}: ${f.specialist}`)
     .join("  ·  ");
 }
 
@@ -517,7 +517,7 @@ function RunHistory({ runs, nextRun, onOpenRecs, onRetry }) {
                 )}
                 {failed ? "Failed" : quiet ? "No action needed" : "Succeeded"}
               </span>
-              <span className="min-w-0 truncate">
+              <span className="min-w-0 leading-snug">
                 {r.produced && <span className="text-[12px] text-[var(--text-primary)]">{r.produced}</span>}
                 {r.evaluated && r.evaluated !== "\u2014" && (
                   <span className="text-[12px] text-[#757A97]">{r.produced ? " · " : ""}{r.evaluated}</span>
@@ -649,8 +649,11 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
         <p className="text-[12px] text-[var(--text-primary)] leading-snug">
           {wf.customerOutput || wf.deliverable}
         </p>
-        {live && wf.recommendation && (
-          <p className="text-[12px] text-[#757A97] leading-snug">Latest: {wf.recommendation.headline}</p>
+        {live && wf.recommendation?.headline && (
+          <p className="text-[12px] text-[#757A97] leading-snug">
+            {wf.recommendation.waiting > 0 ? "Waiting: " : "Latest: "}
+            {wf.recommendation.headline}
+          </p>
         )}
       </RailGroup>
 
@@ -703,7 +706,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
           {(wf.reads || []).map((r) => (
             <div key={r} className="flex items-center gap-2" title={r}>
               <SourceIcon name={r} size={16} />
-              <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{r}</span>
+              <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)]">{r}</span>
             </div>
           ))}
         </div>
@@ -714,7 +717,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
           {platform.label.split(" \u00b7 ").map((part) => (
             <div key={part} className="flex items-center gap-2" title={part}>
               <SourceIcon name={part} size={16} />
-              <span className="flex-1 min-w-0 text-[12px] truncate text-[var(--text-primary)]">{part}</span>
+              <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)]">{part}</span>
             </div>
           ))}
         </div>
@@ -727,7 +730,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
           v={
             <Tooltip title={specialistRoster(families)} placement="bottom">
               <span className="underline decoration-dotted underline-offset-2 cursor-default">
-                {families.length} agents &middot; {wf.specialists} specialists
+                {families.length} {families.length === 1 ? "agent" : "agents"}
               </span>
             </Tooltip>
           }
@@ -759,7 +762,12 @@ export default function WorkflowDetail() {
   };
   const activate = useMutation({
     mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/activate`, {}),
-    onSuccess: () => { refreshAll(); toast.success("Workflow activated — it runs daily from tomorrow"); },
+    onSuccess: (_r, id) => {
+      refreshAll();
+      const wasAvailable = wf?.status === "available";
+      toast.success(wasAvailable ? "Deployed. The first run is starting now." : "Workflow resumed");
+      if (wasAvailable) navigate("/workflows?tab=deployed");
+    },
   });
   const pause = useMutation({
     mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/pause`, {}),
@@ -797,7 +805,7 @@ export default function WorkflowDetail() {
     if (next) {
       return [{
         agentKey: next.agent,
-        label: AGENTS[next.agent]?.label,
+        label: deckFamilyOf(next.agent),
         detail: next.text,
         color: AGENTS[next.agent]?.color,
         onClick: () => setSelected(next.agent),
@@ -840,7 +848,7 @@ export default function WorkflowDetail() {
               <PvButton
                 variant="primary"
                 size="md"
-                label={activate.isPending ? "Activating…" : paused ? "Resume workflow" : "Activate workflow"}
+                label={activate.isPending ? "Deploying…" : paused ? "Resume workflow" : "Deploy workflow"}
                 icon={Play}
                 iconWeight="fill"
                 disabled={activate.isPending}

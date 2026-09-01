@@ -133,6 +133,21 @@ const PLATFORMS = {
   linkedin: { label: "LinkedIn Ads", short: "LinkedIn Ads" },
   "linkedin-web": { label: "LinkedIn Ads", short: "LinkedIn Ads" },
 };
+// The five agents as the sales deck names them. This is the vocabulary the
+// workflow storytelling uses: every step keeps its own agent name, and its
+// tag says which of the five it belongs to. The mapping is presentation only
+// (Campaign spans the delivery and budget keys); the underlying keys, colors,
+// and detail pages stay as they are.
+export const DECK_FAMILY = {
+  measurement: "Measurement Agent",
+  demand: "Audience Agent",
+  creative: "Messaging Agent",
+  delivery: "Campaign Agent",
+  budget: "Campaign Agent",
+  conversion: "Conversion Agent",
+};
+export const deckFamilyOf = (key) => DECK_FAMILY[key] || AGENTS[key]?.label || "";
+
 export const platformOf = (id) => PLATFORMS[id] || { label: id, short: id };
 
 // Last-run labels are fixed strings rather than clock arithmetic: they have to
@@ -150,17 +165,12 @@ export const WORKFLOWS = [
     id: "icp-guardrails",
     family: "Demand & audience",
     n: 4,
-    nextRun: "Tomorrow, 7:00 AM",
+    nextRun: null,
     reads: ["LinkedIn Ads", "HubSpot"],
     outcomes: ["% impressions inside ICP bands", "$ exposure redirected per month", "SQL rate per 1K impressions"],
-    runs: [
-      { at: "Sep 1, 7:04 AM", status: "success", ms: 8180, produced: "2 recommendations", evaluated: "4 campaigns \u00b7 1.9M impressions" },
-      { at: "Aug 31, 7:03 AM", status: "no-action", ms: 7920, produced: "", evaluated: "All attributes inside the approved ICP bands \u00b7 still watching 3 borderline titles" },
-      { at: "Aug 29, 7:05 AM", status: "success", ms: 8410, produced: "1 recommendation \u00b7 accepted", evaluated: "Impact assessed: CTR from ICP titles +14%" },
-      { at: "Aug 28, 7:04 AM", status: "failed", ms: 2100, produced: "LinkedIn Ads token expired", evaluated: "Re-authorized the same day" },
-    ],
+    // Never deployed, so it has no run history yet.
+    runs: [],
     recommendation: {
-      headline: "Exclude 12 audience attributes across 4 campaigns",
       impact: "$4,200 a week of exposure landing outside your ICP bands",
       waiting: 2,
     },
@@ -202,10 +212,10 @@ export const WORKFLOWS = [
     customerOutput: "The workflow prepares campaign-level exclusion and inclusion lists and shows the evidence behind every title.",
     // "What you get" — the concrete deliverable. Never a percentage promise.
     deliverable: "Audience attributes to exclude, per campaign",
-    status: "active",
-    cadence: "Daily · 7:00 AM",
-    lastRun: "Sep 1, 7:04 AM",
-    lastRunOk: true,
+    status: "available",
+    cadence: "Not scheduled",
+    lastRun: null,
+    lastRunOk: null,
     pending: 2,
     steps: [
       { agent: "measurement", type: "athena_query", label: "Pull delivery by audience attribute", ms: 1840,
@@ -236,7 +246,6 @@ export const WORKFLOWS = [
       { at: "Aug 30, 7:05 AM", status: "no-action", ms: 7550, produced: "", evaluated: "Caps refreshed, no rule change" },
     ],
     recommendation: {
-      headline: "Cap 9 over-delivered accounts, free reach for 38 more",
       impact: "31% of impressions are going to 4% of your target list",
       waiting: 3,
     },
@@ -310,7 +319,6 @@ export const WORKFLOWS = [
       { at: "Aug 18, 8:03 AM", status: "no-action", ms: 8700, produced: "", evaluated: "Only 2 accounts cleared thresholds, below the 5-account handoff minimum" },
     ],
     recommendation: {
-      headline: "Hand 14 accounts to sales this week",
       impact: "All 14 are solution-aware and have no open opportunity",
       waiting: 1,
     },
@@ -445,13 +453,10 @@ export const WORKFLOWS = [
     id: "spend-to-pipeline",
     family: "Budget",
     n: 2,
-    nextRun: "Mon, 7:00 AM",
-    runs: [
-      { at: "Sep 1, 7:03 AM", status: "success", ms: 5200, produced: "1 recommendation", evaluated: "6 campaigns \u00b7 90 days" },
-      { at: "Aug 25, 7:02 AM", status: "no-action", ms: 5050, produced: "", evaluated: "Spread within tolerance \u00b7 still watching CISO Brand Search while its opportunity data matures" },
-      { at: "Aug 18, 7:03 AM", status: "success", ms: 5300, produced: "1 recommendation \u00b7 rejected", evaluated: "Cold Outreach protected until Sep 15" },
-    ],
-    lastRunOk: true,
+    nextRun: null,
+    // Never deployed, so it has no run history yet.
+    runs: [],
+    lastRunOk: null,
     reads: ["Google Ads", "HubSpot"],
     outcomes: ["Pipeline per $1K spend", "Cost per SQL by campaign", "% budget on above-benchmark campaigns"],
     found: [
@@ -490,9 +495,9 @@ export const WORKFLOWS = [
     problem: "Platform conversions can make a campaign look efficient even when it creates little qualified pipeline.",
     customerOutput: "The workflow recommends a specific budget move, names the source and destination campaigns, and estimates the pipeline effect.",
     deliverable: "A sized budget move, campaign to campaign",
-    status: "active",
-    cadence: "Weekly \u00b7 Mondays, 7:00 AM",
-    lastRun: "Sep 1, 7:03 AM",
+    status: "available",
+    cadence: "Not scheduled",
+    lastRun: null,
     pending: 0,
     steps: [
       { agent: "measurement", type: "athena_query", label: "Benchmark cost per KPI, per campaign", ms: 1480,
@@ -646,8 +651,10 @@ export function activateWorkflow(id) {
   const resuming = w.status === "paused";
   w.status = "active";
   w.cadence = w.cadence && w.cadence !== "Not scheduled" ? w.cadence : "Daily · 7:00 AM";
-  w.nextRun = "Tomorrow, 7:00 AM";
-  if (!resuming) w.lastRun = "Not yet run";
+  // A just-deployed workflow reads as Running: its first run is in flight,
+  // so there is no next-run stamp and no history yet.
+  w.nextRun = resuming ? "Tomorrow, 7:00 AM" : null;
+  if (!resuming) w.lastRun = null;
   w.runs = w.runs || [];
   return w;
 }
@@ -721,7 +728,20 @@ export function listWorkflows(recItems) {
       ...w,
       pending,
       awaiting,
-      recommendation: w.recommendation ? { ...w.recommendation, waiting: pending } : w.recommendation,
+      // "Latest" is whatever the queue actually holds: the pending card if there
+      // is one, otherwise the most recent decided card. It never falls back to
+      // frozen copy — that is how the rail ended up claiming "Cap 9 accounts"
+      // beside a recommendation that says 8.
+      recommendation: w.recommendation
+        ? {
+            ...w.recommendation,
+            waiting: pending,
+            headline:
+              open.find((r) => r.workflowId === w.id)?.title ||
+              recItems.find((r) => r.workflowId === w.id)?.title ||
+              null,
+          }
+        : w.recommendation,
     };
   });
 }

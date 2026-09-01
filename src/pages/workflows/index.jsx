@@ -1,14 +1,15 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   MagnifyingGlass, CaretRight, Plus, ListChecks, Question, CircleDashed,
-  PauseCircle, XCircle, CalendarBlank, CircleNotch, CheckCircle, ClipboardText, Database,
+  PauseCircle, XCircle, CalendarBlank, CircleNotch, ClipboardText,
 } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
-import { apiGet } from "../../api";
+import { toast } from "sonner";
+import { apiGet, apiPost } from "../../api";
 import { cn } from "../../utils/cn";
-import { platformOf, AGENTS } from "../../mocks/agentWorkflows";
+import { platformOf, AGENTS, deckFamilyOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import SourceIcon from "../../components/SourceIcon";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
@@ -39,7 +40,7 @@ function operationalStatus(wf) {
     return { label: "Waiting for input", icon: Question, tone: "text-amber-600 font-medium", act: true };
   }
   if (wf.pending > 0) {
-    return { label: "Needs decision", icon: ListChecks, tone: "text-rose-600 font-medium", act: true };
+    return { label: "Needs your decision", icon: ListChecks, tone: "text-rose-600 font-medium", act: true };
   }
   if (wf.status === "paused") {
     return { label: "Paused", icon: PauseCircle, tone: "text-amber-600" };
@@ -61,7 +62,7 @@ function operationalStatus(wf) {
    the thing we are not allowed to paraphrase. ── */
 function AgentSummary({ steps }) {
   const keys = [...new Set(steps.filter((s) => s.agent).map((s) => s.agent))];
-  const names = keys.map((k) => AGENTS[k]?.label).filter(Boolean);
+  const names = [...new Set(keys.map((k) => deckFamilyOf(k)).filter(Boolean))];
   return (
     <Tooltip title={names.join("  ·  ")} placement="top">
       <span className="inline-flex items-center gap-1.5 cursor-default">
@@ -78,7 +79,7 @@ function AgentSummary({ steps }) {
 
 function HeaderCell({ label }) {
   return (
-    <span className="px-2 text-[12px] font-medium leading-[19px] text-[#757A97]">
+    <span className="px-2 text-[12px] font-medium leading-[19px] text-[var(--color-text-secondary)]">
       {label}
     </span>
   );
@@ -87,12 +88,12 @@ function HeaderCell({ label }) {
 /* One workflow — a spaced, bordered row on a single line, matching the goals
    and dashboards lists. The longer "what it automates" copy lives inside the
    workflow rather than on this page. */
-function Row({ wf, onOpen, onReview }) {
+function Row({ wf, onOpen, onReview, onDeploy }) {
   const st = operationalStatus(wf);
   return (
     <div
       onClick={onOpen}
-      className="grid items-center w-full px-3 h-[58px] shrink-0 bg-white border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all cursor-pointer"
+      className="grid items-center w-full px-3 min-h-[58px] py-2.5 shrink-0 bg-white border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all cursor-pointer"
       style={{ gridTemplateColumns: COLS }}
     >
       {/* One sentence per row. Section 1 describes a card carrying both the
@@ -100,25 +101,23 @@ function Row({ wf, onOpen, onReview }) {
           side by side, so the problem lives on the workflow page where it has
           room to be read. */}
       <span className="flex items-center min-w-0 px-2">
-        <span className="text-[12px] text-[var(--text-primary)] truncate">{wf.name}</span>
+        <span className="text-[12px] text-[var(--text-primary)] leading-snug">{wf.name}</span>
       </span>
 
       {/* Channel is metadata about the workflow, not part of its name, so it
           gets the column the header already promises. */}
       <span className="flex items-center gap-1.5 min-w-0 px-2">
         <SourceIcon name={platformOf(wf.platform).short} size={14} />
-        <span className="text-[12px] text-[#757A97] truncate">{platformOf(wf.platform).short}</span>
+        <span className="text-[12px] text-[#757A97]">{platformOf(wf.platform).short}</span>
       </span>
 
       <span className="px-2">
         <AgentSummary steps={wf.steps} />
       </span>
 
-      <Tooltip title={wf.customerOutput || wf.deliverable} placement="bottom">
-        <span className="px-2 min-w-0 text-[12px] text-[var(--text-primary)] truncate cursor-default">
-          {wf.customerOutput || wf.deliverable}
-        </span>
-      </Tooltip>
+      <span className="px-2 min-w-0 text-[12px] text-[var(--text-primary)] leading-snug">
+        {wf.customerOutput || wf.deliverable}
+      </span>
 
       {/* A row that says it is waiting on you links straight to what it is
           waiting on. The underline inherits the status colour, so the link does
@@ -137,12 +136,19 @@ function Row({ wf, onOpen, onReview }) {
             )}
           >
             <st.icon size={14} className="shrink-0" />
-            <span className="text-[12px] truncate">{st.label}</span>
+            <span className="text-[12px] leading-snug">{st.label}</span>
           </button>
+        ) : wf.status === "available" && onDeploy ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            label="Deploy workflow"
+            onClick={(e) => { e.stopPropagation(); onDeploy(); }}
+          />
         ) : (
           <span className="inline-flex items-center gap-1.5 min-w-0">
             <st.icon size={14} className={cn("shrink-0", st.tone)} />
-            <span className={cn("text-[12px] truncate", st.tone)}>{st.label}</span>
+            <span className={cn("text-[12px] leading-snug", st.tone)}>{st.label}</span>
           </span>
         )}
       </span>
@@ -154,67 +160,69 @@ function Row({ wf, onOpen, onReview }) {
   );
 }
 
-/* ── Foundation entries.
-   Not workflows: one is a one-off audit for people who don't know which
-   workflow to pick, the other is the data map everything else depends on. They
-   belong in the library — a prospect asks "what if I don't know where to
-   start?" — but they must not read as a seventh and eighth use case, so they
-   get no card, no border, and muted type. ── */
-const FOUNDATION = [
-  {
-    id: "assessment",
-    name: "Paid-media Assessment",
-    icon: ClipboardText,
-    tag: "All channels",
-    line: "Petavue reviews the account once and identifies the workflows most likely to improve the selected KPI.",
-    output: "You receive a downloadable assessment with evidence and a recommended deployment order.",
-    route: "/workflows/paid-media-assessment",
-  },
-  {
-    id: "discovery",
-    name: "Data Discovery",
-    icon: Database,
-    tag: "Foundation",
-    line: "Petavue maps campaigns, conversion events, CRM fields, and the selected KPI before any workflow runs.",
-    output: "You receive a verified data map that Petavue checks again when a source or field changes.",
-    state: "Complete",
-  },
-];
+/* ── The assessment, spelled out as a workflow.
+   Two kinds of customers arrive at this tab: those who already know where the
+   pipeline problem is and pick a workflow above, and those who don't. This
+   panel exists for the second kind — so it leads with their question, carries
+   the full spec like any other workflow, and stays visually distinct (tinted,
+   not muted) because it is the recommended first step, not a seventh use case. ── */
+const ASSESSMENT = {
+  name: "End-to-end assessment of your paid-media engine",
+  question: "Don\u2019t know which workflows to deploy?",
+  line:
+    "Run the full assessment. Petavue assesses campaign delivery, budgets, audience, and creatives across every connected paid-media platform, and recommends which agents to deploy to streamline your paid-media engine.",
+  output: "A downloadable assessment with the evidence and a recommended deployment order.",
+  reads: ["Google Ads", "LinkedIn Ads", "Meta Ads", "HubSpot", "GA4"],
+  route: "/workflows/paid-media-assessment",
+};
 
-function FoundationRow({ item, onOpen }) {
-  const Tag = onOpen ? "button" : "div";
+function AssessmentPanel({ onOpen }) {
   return (
-    <Tag
-      type={onOpen ? "button" : undefined}
+    <div
       onClick={onOpen}
-      className={cn(
-        "flex items-start gap-3 w-full text-left px-3 py-2.5 rounded-lg bg-transparent border-none",
-        onOpen && "cursor-pointer hover:bg-primary-50 transition-colors",
-      )}
+      className="flex flex-col gap-3 p-5 rounded-xl border border-[var(--color-primary-200)] bg-[var(--color-primary-50)] cursor-pointer transition-shadow hover:shadow-[0_4px_14px_-2px_rgba(54,97,237,0.18)]"
     >
-      <item.icon size={16} className="mt-0.5 shrink-0 text-[var(--text-muted)]" />
-      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
-        <span className="flex items-center gap-2 min-w-0">
-          <span className="text-[12px] text-[var(--text-primary)] truncate">{item.name}</span>
-          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{item.tag}</span>
-          {item.state && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] text-green-700">
-              <CheckCircle size={12} weight="fill" className="text-green-600" />
-              {item.state}
-            </span>
-          )}
+      <div className="flex items-center gap-2">
+        <ClipboardText size={16} className="shrink-0 text-[var(--color-primary-600)]" />
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--color-primary-600)]">
+          {ASSESSMENT.question}
         </span>
-        <span className="text-[12px] text-[#757A97] leading-snug">{item.line}</span>
-        {item.output && <span className="text-[12px] text-[#757A97] leading-snug">{item.output}</span>}
-      </span>
-      {onOpen && <CaretRight size={14} className="mt-1 shrink-0 text-[var(--text-muted)]" />}
-    </Tag>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 text-[12px] text-[#757A97]">
+          <i className="w-[6px] h-[6px] rounded-full bg-[var(--color-grey-300)]" />
+          Available · All channels
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[14px] font-medium text-[var(--text-primary)]">{ASSESSMENT.name}</span>
+        <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)] max-w-[860px]">{ASSESSMENT.line}</p>
+        <p className="m-0 text-[12px] leading-relaxed text-[#757A97] max-w-[860px]">
+          <span className="font-medium text-[var(--text-primary)]">You get: </span>
+          {ASSESSMENT.output}
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-3 pt-3 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-primary-100)]">
+        <span className="inline-flex items-center gap-2 min-w-0">
+          <span className="text-[12px] text-[#757A97] shrink-0">Assesses</span>
+          {ASSESSMENT.reads.map((r) => (
+            <span key={r} className="inline-flex items-center gap-1 text-[12px] text-[var(--text-primary)]">
+              <SourceIcon name={r} size={13} />
+              {r}
+            </span>
+          ))}
+        </span>
+        <Button
+          variant="primary"
+          size="sm"
+          label="Run the full assessment"
+          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        />
+      </div>
+    </div>
   );
 }
 
 
 const TABS = [
-  { k: "all", label: "All" },
   { k: "deployed", label: "Deployed" },
   { k: "available", label: "Available" },
 ];
@@ -222,11 +230,23 @@ const TABS = [
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get("tab") === "available" ? "available" : "deployed");
 
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["agent-workflows"],
     queryFn: () => apiGet("/api/agent-workflows"),
+  });
+  // Deploying from the row activates the workflow and lands you on the
+  // Deployed tab, where it reads Running: its first run is in flight.
+  const deploy = useMutation({
+    mutationFn: (id) => apiPost(`/api/agent-workflows/${id}/activate`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent-workflows"] });
+      setTab("deployed");
+      toast.success("Deployed. The first run is starting now.");
+    },
   });
   const workflows = data?.workflows || [];
 
@@ -234,19 +254,18 @@ export default function WorkflowsPage() {
   const counts = {
     deployed: workflows.filter(isDeployed).length,
     available: workflows.filter((w) => !isDeployed(w)).length,
-    all: workflows.length,
   };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return workflows
-      .filter((w) => (tab === "all" ? true : tab === "deployed" ? isDeployed(w) : !isDeployed(w)))
+      .filter((w) => (tab === "deployed" ? isDeployed(w) : !isDeployed(w)))
       .filter((w) => !q || `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q));
   }, [workflows, search, tab]);
 
-  // Foundation entries are not deployed, so they only belong under Available
-  // and All — and never while a search is narrowing the list.
-  const showFoundation = !search.trim() && tab !== "deployed";
+  // The assessment belongs with the workflows still to deploy, and never
+  // while a search is narrowing the list.
+  const showAssessment = !search.trim() && tab !== "deployed";
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -260,7 +279,6 @@ export default function WorkflowsPage() {
               changes. You review every change before Petavue applies it.
             </span>
           </span>
-          <Button variant="secondary" size="md" icon={Plus} label="Request a custom workflow" />
         </div>
 
         <div
@@ -395,8 +413,8 @@ export default function WorkflowsPage() {
                         <Button
                           variant="secondary"
                           size="sm"
-                          label={tab === "available" ? "See deployed workflows" : "See all workflows"}
-                          onClick={() => setTab(tab === "available" ? "deployed" : "all")}
+                          label={tab === "available" ? "See deployed workflows" : "See available workflows"}
+                          onClick={() => setTab(tab === "available" ? "deployed" : "available")}
                         />
                       )}
                     </div>
@@ -410,19 +428,28 @@ export default function WorkflowsPage() {
                           wf={wf}
                           onOpen={() => navigate(`/workflows/${wf.id}`)}
                           onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
+                          onDeploy={() => deploy.mutate(wf.id)}
                         />
                       ))
                   )}
                 </div>
 
-                {showFoundation && (
-                  <div className="mt-6 pt-4 border-t border-[var(--color-grey-100)] flex flex-col gap-1">
-                    <span className="px-3 pb-1 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                      Before you deploy
-                    </span>
-                    {FOUNDATION.map((f) => (
-                      <FoundationRow key={f.id} item={f} onOpen={f.route ? () => navigate(f.route) : undefined} />
-                    ))}
+                {showAssessment && (
+                  <div className="mt-5 flex flex-col gap-3">
+                    <AssessmentPanel onOpen={() => navigate(ASSESSMENT.route)} />
+                    <button
+                      type="button"
+                      onClick={() => toast.success("Request noted. The Petavue team will follow up to scope it with you.")}
+                      className="flex flex-col items-center justify-center gap-1 w-full py-5 px-4 rounded-xl border border-dashed border-[var(--color-grey-200)] bg-transparent cursor-pointer transition-colors hover:border-[var(--color-primary-300)] hover:bg-[var(--color-primary-50)] group"
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--color-primary-600)] transition-colors">
+                        <Plus size={14} />
+                        Request a custom workflow
+                      </span>
+                      <span className="text-[12px] text-[var(--text-muted)]">
+                        Have a recurring paid-media analysis these don’t cover? Petavue builds it as a workflow.
+                      </span>
+                    </button>
                   </div>
                 )}
 

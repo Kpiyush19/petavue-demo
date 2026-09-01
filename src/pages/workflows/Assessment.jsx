@@ -9,8 +9,9 @@ import SourceIcon from "../../components/SourceIcon";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
 
 /**
- * Paid-media Assessment: the one thing in the library you deploy rather than
- * review, and the only place the deployment path is visible.
+ * End-to-end assessment of your paid-media engine: for customers who don't
+ * know which workflows to deploy. One full pass over delivery, budgets,
+ * audience, and creatives, ending in a recommended deployment order.
  *
  * It exists here because every one of the six workflows is live in this demo,
  * so none of them can show "Available → Deploy → readiness check → first run".
@@ -81,7 +82,7 @@ export default function AssessmentPage() {
               Workflows
             </button>
             <CaretRight size={14} className="text-[var(--color-grey-400)] shrink-0" />
-            <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">Paid-media Assessment</span>
+            <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">End-to-end assessment of your paid-media engine</span>
           </div>
           <span
             className={cn(
@@ -108,7 +109,9 @@ export default function AssessmentPage() {
             <div className="flex flex-col gap-3 bg-white rounded-xl border border-[var(--color-grey-100)] p-5">
               <h3 className="m-0 text-[14px] font-semibold text-[var(--text-primary)]">What this does</h3>
               <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">
-                Petavue reviews the account once and identifies the workflows most likely to improve the selected KPI.
+                For teams that don’t yet know which workflows to deploy. Petavue assesses campaign delivery, budgets,
+                audience, and creatives across every connected paid-media platform, and recommends which agents to
+                deploy to streamline your paid-media engine.
               </p>
               <p className="m-0 text-[12px] leading-relaxed text-[#757A97]">
                 You receive a downloadable assessment with evidence and a recommended deployment order.
@@ -143,7 +146,7 @@ export default function AssessmentPage() {
                     >
                       <SourceIcon name={s.name} size={14} />
                       <span className="text-[12px] text-[var(--text-primary)] w-[120px] shrink-0">{s.name}</span>
-                      <span className="flex-1 min-w-0 truncate text-[12px] text-[#757A97]">{s.note}</span>
+                      <span className="flex-1 min-w-0 text-[12px] leading-snug text-[#757A97]">{s.note}</span>
                       <span className="shrink-0 text-[12px]">
                         {done ? (
                           <span className="inline-flex items-center gap-1 text-green-600">
@@ -216,7 +219,7 @@ export default function AssessmentPage() {
                           {i + 1}
                         </span>
                         <WorkflowGlyph size={14} className="shrink-0 text-[var(--text-muted)]" />
-                        <span className="flex-1 min-w-0 truncate text-[12px] text-[var(--text-primary)]">{w.name}</span>
+                        <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)]">{w.name}</span>
                         <span className="shrink-0 text-[12px] text-[#757A97]">
                           {w.pending} waiting
                         </span>
