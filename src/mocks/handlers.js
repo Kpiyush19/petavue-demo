@@ -519,9 +519,8 @@ const handlers = [
   // Findings no live workflow could have produced are dropped rather than
   // shown without a source.
   { method: "GET", pattern: /\/api\/goals\/recommendations$/, handler: () => ({ items: Recs.listRecommendations() }) },
-  { method: "POST", pattern: /\/api\/goals\/recommendations\/([^/]+)\/decide$/, handler: ({ params, body }) => ({ item: Recs.decide(String(params[0]), body?.lifecycle, body?.note) }) },
-  { method: "POST", pattern: /\/api\/goals\/recommendations\/([^/]+)\/test$/, handler: ({ params }) => ({ item: Recs.proposeTest(String(params[0])) }) },
-  { method: "POST", pattern: /\/api\/goals\/recommendations\/([^/]+)\/context$/, handler: ({ params, body }) => ({ item: Recs.addContext(String(params[0]), body?.note) }) },
+  { method: "POST", pattern: /\/api\/goals\/recommendations\/([^/]+)\/decide$/, handler: ({ params, body }) => ({ item: Recs.decide(String(params[0]), body?.decision, body?.note) }) },
+  { method: "POST", pattern: /\/api\/goals\/recommendations\/([^/]+)\/comment$/, handler: ({ params, body }) => ({ item: Recs.addComment(String(params[0]), body?.text) }) },
   { method: "GET", pattern: /\/api\/goals$/, handler: () => ({ goals: Goals.listGoals() }) },
   { method: "POST", pattern: /\/api\/goals$/, handler: ({ body }) => ({ goal: Goals.createGoal(body || {}) }) },
   { method: "GET", pattern: /\/api\/goals\/([^/]+)$/, handler: ({ params }) => Goals.getGoal(params[0]) || { detail: "not found" } },

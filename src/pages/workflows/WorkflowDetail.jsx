@@ -64,7 +64,7 @@ function blockStateFor(wf) {
   return "complete";
 }
 
-function FamilyNode({ step, agentKey, jobTitle, text, steps, state, selected, onSelect }) {
+function FamilyNode({ step, agentKey, jobTitle, specialist, text, steps, state, selected, onSelect }) {
   const a = AGENTS[agentKey];
   if (!a) return null;
   const Icon = agentIcon(agentKey);
@@ -94,9 +94,14 @@ function FamilyNode({ step, agentKey, jobTitle, text, steps, state, selected, on
           {step}
         </span>
       </div>
-      <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug mb-1.5">
+      <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug mb-1">
         {jobTitle || a.label}
       </span>
+      {specialist && (
+        <span className="text-[12px] text-[var(--text-muted)] leading-snug mb-1.5">
+          {specialist} · {deckFamilyOf(agentKey)}
+        </span>
+      )}
       <p className="text-[12px] text-[#757A97] leading-snug mb-2">{text}</p>
       <span className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] tabular-nums mt-auto">
         {st && (
@@ -200,24 +205,27 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
           {/* The sentence from the node. It was the one thing a reader had to
               close the panel to re-read. */}
           {family.text && (
-            <DrawerSection icon={Target} label="Role in this workflow">
+            <DrawerSection icon={Target} label="Analytical responsibility">
               <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{family.text}</p>
             </DrawerSection>
           )}
 
           {family.uses && (
-            <DrawerSection icon={Database} label="Inputs">
+            <DrawerSection icon={Database} label="Evidence used">
               <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.uses}</p>
             </DrawerSection>
           )}
 
           {(family.analyzes || family.config) && (
-            <DrawerSection icon={SlidersHorizontal} label="Checks">
+            <DrawerSection icon={SlidersHorizontal} label="Analysis performed">
               {family.analyzes && (
                 <p className="m-0 mb-3 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.analyzes}</p>
               )}
               {family.config?.length > 0 && (
                 <div className="flex flex-col">
+                  <span className="pt-1 pb-1 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    Decision criteria
+                  </span>
                   {family.config.map(([k, v]) => (
                     <div
                       key={k}
@@ -233,7 +241,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
           )}
 
           {family.produces && (
-            <DrawerSection icon={FileText} label="Output">
+            <DrawerSection icon={FileText} label="Deliverable">
               <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{family.produces}</p>
             </DrawerSection>
           )}
@@ -290,7 +298,7 @@ function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose
               closing it and looking back at the graph — and for the last agent
               it is where the approval gate finally gets named. */}
           {handoff.length > 0 && (
-            <DrawerSection icon={ArrowRight} label="Hands off to">
+            <DrawerSection icon={ArrowRight} label="Next analytical step">
               <div className="flex flex-col gap-2">
                 {handoff.map((h) => {
                   const HIcon = h.agentKey ? agentIcon(h.agentKey) : h.icon;
@@ -360,7 +368,7 @@ function AgentGraph({ families, system, platform, blockState, selected, onSelect
           been strictly sequential, starting with Measurement. */}
       <div className="flex items-stretch justify-center gap-0">
         {families.map((f, i) => (
-          <div key={f.agent} className="flex items-stretch min-w-0">
+          <div key={f.idx ?? i} className="flex items-stretch min-w-0">
             {i > 0 && (
               <div className="flex items-center px-2 shrink-0" aria-hidden="true">
                 <ArrowRight size={16} style={{ color: RAIL_ARROW }} />
@@ -370,11 +378,12 @@ function AgentGraph({ families, system, platform, blockState, selected, onSelect
               step={i + 1}
               agentKey={f.agent}
               jobTitle={f.jobTitle}
+              specialist={f.specialist}
               text={f.text}
               steps={f.steps}
               state={blockState}
-              selected={selected === f.agent}
-              onSelect={() => onSelect(selected === f.agent ? null : f.agent)}
+              selected={selected === f.idx}
+              onSelect={() => onSelect(selected === f.idx ? null : f.idx)}
             />
           </div>
         ))}
@@ -645,7 +654,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
         </div>
       )}
 
-      <RailGroup label="What you get">
+      <RailGroup label="Deliverables">
         <p className="text-[12px] text-[var(--text-primary)] leading-snug">
           {wf.customerOutput || wf.deliverable}
         </p>
@@ -660,7 +669,7 @@ function WorkflowRail({ wf, platform, families, live, paused, onReview }) {
       {/* The metrics this workflow is judged on. Without them the page says
           what will change but never what "better" is measured as. */}
       {wf.outcomes?.length > 0 && (
-        <RailGroup label="Outcomes tracked">
+        <RailGroup label="Success measures">
           <div className="flex flex-col gap-1.5">
             {wf.outcomes.map((o) => (
               <span key={o} className="flex items-start gap-2 text-[12px] text-[var(--text-primary)] leading-snug">
@@ -793,22 +802,21 @@ export default function WorkflowDetail() {
   const families = (
     wf.found ||
     [...new Set(wf.steps.filter((s) => s.agent).map((s) => s.agent))].map((a) => ({ agent: a, text: "" }))
-  ).map((f) => ({ ...f, steps: stepsFor(f.agent) }));
-  const selectedFamily = families.find((f) => f.agent === selected) || null;
+  ).map((f, i) => ({ ...f, idx: i, steps: stepsFor(f.agent) }));
+  const selectedFamily = families.find((f) => f.idx === selected) ?? null;
 
   // What the open agent passes its output to: the next agent in the sequence,
   // or — for the last one — the approval gate and then the ad platform.
   const handoff = (() => {
     if (!selectedFamily) return [];
-    const i = families.findIndex((f) => f.agent === selectedFamily.agent);
-    const next = families[i + 1];
+    const next = families[selectedFamily.idx + 1];
     if (next) {
       return [{
         agentKey: next.agent,
         label: deckFamilyOf(next.agent),
         detail: next.text,
         color: AGENTS[next.agent]?.color,
-        onClick: () => setSelected(next.agent),
+        onClick: () => setSelected(next.idx),
       }];
     }
     return [
@@ -872,9 +880,7 @@ export default function WorkflowDetail() {
                     stacked with margins, which read as one wall of text. */}
                 <div className="flex flex-col mb-5">
                   <div className="flex flex-col gap-2">
-                    <h3 className={SECTION_LABEL}>
-                      {live ? "How this workflow runs" : "Agents this workflow deploys"}
-                    </h3>
+                    <h3 className={SECTION_LABEL}>Business objective</h3>
                     {wf.problem && (
                       <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">{wf.problem}</p>
                     )}
@@ -885,13 +891,13 @@ export default function WorkflowDetail() {
 
                   {wf.manualWork && (
                     <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
-                      <span className={LABEL}>The manual work it replaces</span>
+                      <span className={LABEL}>Analyst playbook</span>
                       <p className="m-0 text-[12px] leading-relaxed text-[var(--text-secondary)]">{wf.manualWork}</p>
                     </div>
                   )}
 
                   <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-[var(--color-grey-100)]">
-                    <span className={LABEL}>Data readiness</span>
+                    <span className={LABEL}>Evidence readiness</span>
                     <span className="inline-flex items-center gap-1.5 text-[12px]">
                       <CheckCircle size={14} weight="fill" className="shrink-0 text-green-600" />
                       <span className="text-[var(--text-primary)]">Ready</span>
@@ -933,10 +939,10 @@ export default function WorkflowDetail() {
       <AnimatePresence>
         {selectedFamily && (
           <AgentConfigDrawer
-            key={selectedFamily.agent}
+            key={selectedFamily.idx}
             family={selectedFamily}
             accent={AGENTS[selectedFamily.agent].color}
-            index={families.findIndex((f) => f.agent === selectedFamily.agent)}
+            index={selectedFamily.idx}
             total={families.length}
             handoff={handoff}
             onClose={() => setSelected(null)}

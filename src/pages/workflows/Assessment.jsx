@@ -9,7 +9,7 @@ import SourceIcon from "../../components/SourceIcon";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
 
 /**
- * End-to-end assessment of your paid-media engine: for customers who don't
+ * End-to-end assessment of your paid media engine: for customers who don't
  * know which workflows to deploy. One full pass over delivery, budgets,
  * audience, and creatives, ending in a recommended deployment order.
  *
@@ -82,7 +82,7 @@ export default function AssessmentPage() {
               Workflows
             </button>
             <CaretRight size={14} className="text-[var(--color-grey-400)] shrink-0" />
-            <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">End-to-end assessment of your paid-media engine</span>
+            <span className="text-[16px] leading-[24px] font-medium truncate text-grey-900">End-to-end assessment of your paid media engine</span>
           </div>
           <span
             className={cn(
@@ -111,7 +111,7 @@ export default function AssessmentPage() {
               <p className="m-0 text-[12px] leading-relaxed text-[var(--text-primary)]">
                 For teams that don’t yet know which workflows to deploy. Petavue assesses campaign delivery, budgets,
                 audience, and creatives across every connected paid-media platform, and recommends which agents to
-                deploy to streamline your paid-media engine.
+                deploy to streamline your paid media engine.
               </p>
               <p className="m-0 text-[12px] leading-relaxed text-[#757A97]">
                 You receive a downloadable assessment with evidence and a recommended deployment order.

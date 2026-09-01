@@ -21,11 +21,11 @@
 // grunt work a human would otherwise do by hand.
 export const AGENTS = {
   measurement: {
-    key: "measurement", label: "Measurement & attribution", mark: "ME", color: "#3661ED", tint: "#E0EBFE",
+    key: "measurement", label: "Measurement", mark: "ME", color: "#3661ED", tint: "#E0EBFE",
     icon: "ChartLineUp", platforms: ["Google Search", "LinkedIn", "Web", "CRM"],
     owns: "What actually happened, and what it cost",
     blurb: "This family joins advertising and web activity to CRM outcomes so the workflows compare campaigns using the same definitions.",
-    specialists: ["Campaign Mapping", "Entity Attribution", "Conversion Signal", "Journey Measurement"],
+    specialists: ["Qualified Outcome Analyst", "Pipeline Measurement Analyst", "Delivery Outcome Analyst", "Targeting Evidence Analyst", "Account Delivery Analyst", "Account Journey Analyst"],
     does: [
       "Joins ad platform spend to CRM outcomes",
       "Benchmarks cost per KPI, per campaign",
@@ -33,11 +33,11 @@ export const AGENTS = {
     ],
   },
   budget: {
-    key: "budget", label: "Budget & allocation", mark: "BU", color: "#0F7B6C", tint: "#E3F4F1",
+    key: "budget", label: "Budget", mark: "BU", color: "#0F7B6C", tint: "#E3F4F1",
     icon: "Wallet", platforms: ["Google Search", "LinkedIn"],
     owns: "Where the money should sit",
     blurb: "This family compares campaign efficiency and prepares budget moves that respect learning, pacing, frequency, and cost guardrails.",
-    specialists: ["Budget Pacing", "Budget Reallocation", "Scale Optimization", "Bid & Cost-Control", "Time-Based Spend"],
+    specialists: ["Budget Allocation Analyst", "Spend Reallocation Planner"],
     does: [
       "Sizes reallocations between campaigns",
       "Quantifies spend released by an exclusion",
@@ -45,11 +45,11 @@ export const AGENTS = {
     ],
   },
   delivery: {
-    key: "delivery", label: "Campaign & delivery", mark: "CD", color: "#E0620D", tint: "#FDEEE2",
+    key: "delivery", label: "Campaign", mark: "CD", color: "#E0620D", tint: "#FDEEE2",
     icon: "Broadcast", platforms: ["Google Search", "LinkedIn"],
     owns: "Who sees the ad, when and where",
-    blurb: "This family evaluates and prepares changes to campaign structure, schedule, location, placement, and delivery settings.",
-    specialists: ["Campaign Delivery", "Campaign Structure", "Campaign Objective", "Schedule & Geography", "Placement & Network"],
+    blurb: "This family evaluates and prepares changes to campaign structure, schedule, location, and delivery settings.",
+    specialists: ["Negative Keyword Planner", "Delivery Guardrail Analyst", "Schedule and Geography Analyst", "Cap and Rotation Planner"],
     does: [
       "Trends performance by day-part and geo",
       "Finds accounts soaking up impressions",
@@ -57,11 +57,11 @@ export const AGENTS = {
     ],
   },
   demand: {
-    key: "demand", label: "Demand selection", mark: "DS", color: "#C4106A", tint: "#FCE7F1",
+    key: "demand", label: "Audience", mark: "DS", color: "#C4106A", tint: "#FCE7F1",
     icon: "Target", platforms: ["Google Search", "LinkedIn", "Web"],
     owns: "Which accounts and intent are worth paying for",
-    blurb: "This family evaluates the queries, audiences, and accounts that campaigns pay to reach.",
-    specialists: ["Google Search Intent", "Google Search Audience", "Meta Prospecting", "Meta Lookalike", "Meta Retargeting", "LinkedIn Prof. Audience", "LinkedIn ABM", "LinkedIn Retargeting"],
+    blurb: "This family evaluates the queries, titles, audiences, and accounts that campaigns pay to reach.",
+    specialists: ["Search Intent Analyst", "Title Strategy Analyst", "Title Delivery Analyst", "Account Reach Analyst", "Sales Eligibility Validator"],
     does: [
       "Classifies search intent behind the spend",
       "Scores delivered audiences against ICP bands",
@@ -84,8 +84,8 @@ export const AGENTS = {
     key: "conversion", label: "Conversion", mark: "CO", color: "#8A5524", tint: "#F5EBE1",
     icon: "FunnelSimple", platforms: ["Web", "CRM", "Pipeline"],
     owns: "What happens after the click",
-    blurb: "This family evaluates forms, landing pages, and account-level buying signals that can create pipeline.",
-    specialists: ["Lead Form Optimization", "Native vs Website", "Landing Page Conversion", "Form Quality", "Buying-Signal Scoring"],
+    blurb: "This family evaluates outcome definitions, CRM evidence, and account-level buying signals that can create pipeline.",
+    specialists: ["Buyer Outcome Validator", "Buying Signal Analyst"],
     does: [
       "Reads awareness from session and form behaviour",
       "Isolates where a funnel leak actually starts",
@@ -109,7 +109,9 @@ export function agentUsage(key) {
 }
 
 export function listAgents() {
-  return Object.values(AGENTS).map((a) => {
+  // Creative/Messaging is not one of the five families in this demo and no
+  // pilot workflow analyzes creatives (doc 17, appendix 10.1).
+  return Object.values(AGENTS).filter((a) => a.key !== "creative").map((a) => {
     const used = agentUsage(a.key);
     return { ...a, workflowCount: used.length, liveCount: used.filter((w) => w.status === "active").length };
   });
@@ -139,12 +141,11 @@ const PLATFORMS = {
 // (Campaign spans the delivery and budget keys); the underlying keys, colors,
 // and detail pages stay as they are.
 export const DECK_FAMILY = {
-  measurement: "Measurement Agent",
-  demand: "Audience Agent",
-  creative: "Messaging Agent",
-  delivery: "Campaign Agent",
-  budget: "Campaign Agent",
-  conversion: "Conversion Agent",
+  measurement: "Measurement",
+  demand: "Audience",
+  delivery: "Campaign",
+  budget: "Budget",
+  conversion: "Conversion",
 };
 export const deckFamilyOf = (key) => DECK_FAMILY[key] || AGENTS[key]?.label || "";
 
@@ -163,7 +164,7 @@ export const platformOf = (id) => PLATFORMS[id] || { label: id, short: id };
 export const WORKFLOWS = [
   {
     id: "icp-guardrails",
-    family: "Demand & audience",
+    family: "Measurement \u00b7 Audience \u00b7 Conversion",
     n: 4,
     nextRun: null,
     reads: ["LinkedIn Ads", "HubSpot"],
@@ -176,38 +177,46 @@ export const WORKFLOWS = [
     },
     found: [
       {
-        agent: "measurement", jobTitle: "Map each campaign to its ICP band", specialist: "Campaign Mapping",
-        text: "Turned the approved ICP into explicit bands and mapped every campaign to one.",
-        analyzes: "Converts the approved ICP into explicit bands for job titles, seniority, function, industry, and company size, then maps each campaign to the ICP band that campaign is meant to reach.",
-        uses: "The approved ICP document and the current LinkedIn Ads campaign settings.",
-        produces: "A campaign-level scoring rubric for the audience review.",
-        config: [["Bands source", "Approved ICP document"], ["Fields scored", "Title, seniority, function, industry, company size"], ["Sources joined", "LinkedIn Ads + HubSpot"], ["Refresh", "On every daily run"]],
+        agent: "measurement", jobTitle: "Freeze the evidence baseline", specialist: "Targeting Evidence Analyst",
+        text: "Fixes the scope, windows, and data limitations before any title is judged.",
+        analyzes: "Freezes the campaign scope and a matched 90-day window, converts the approved ICP into explicit bands for title, seniority, function, industry, and company size, records reporting coverage honestly (title-level clicks, spend, and conversions are privacy-suppressed partial signals, so campaign totals stay the control numbers), and sets the timing gate: no claim about post-change behavior until at least seven complete reporting days exist after the configuration change.",
+        uses: "The approved ICP document, current LinkedIn Ads campaign settings, and LinkedIn campaign and demographic reporting.",
+        produces: "The campaign-level declared decision rules plus a written baseline of scope, windows, coverage, and known limitations.",
+        config: [["Window", "Matched 90 days"], ["Control total", "Campaign grain"], ["Suppressed at title grain", "Clicks, spend, conversions"], ["Post-change gate", "7 complete days"]],
       },
       {
-        agent: "demand", jobTitle: "Shortlist titles for inclusion and exclusion", specialist: "LinkedIn Prof. Audience",
-        text: "Scored 1.9M impressions of reached audience against the campaign rubric.",
-        analyzes: "Scores 30 days of reached-audience attributes, covering 1.9 million impressions, against the campaign rubric. It also finds titles on won-deal contacts that none of the live campaigns target.",
-        uses: "The scoring rubric, LinkedIn demographic delivery, and HubSpot won-deal contacts.",
-        produces: "A campaign-level exclusion list and an inclusion shortlist with the impression and spend weight for each attribute.",
-        config: [["Attribution window", "30 days"], ["Sources joined", "LinkedIn, HubSpot"], ["Scoring rubric", "ICP bands v3, locked Aug 12"], ["Won-deal lookback", "24 months"]],
+        agent: "demand", jobTitle: "Decode and classify the title strategy", specialist: "Title Strategy Analyst",
+        text: "Builds the complete title universe and classifies every title so real peers can be compared.",
+        analyzes: "Reads every configured inclusion and exclusion across the campaigns, including the targeting facets left empty, builds the complete title universe (every configured title plus every title actually reached), normalizes titles without overwriting the raw value, classifies each title's function, seniority, and specialty, and flags configuration inconsistencies: near-synonyms treated differently, a senior title excluded while its junior peer is included, and gaps where an intended title family is missing members. Ambiguous titles are flagged for review, never guessed.",
+        uses: "The declared decision rules and baseline, LinkedIn demographic delivery, and current campaign targeting.",
+        produces: "The classified title universe and the current inclusion/exclusion strategy matrix, with every inconsistency listed.",
+        config: [["Universe", "Configured plus delivered titles"], ["Peer key", "Function \u00d7 seniority \u00d7 specialty"], ["Ambiguity rule", "Flagged, not guessed"]],
       },
       {
-        agent: "delivery", jobTitle: "Prepare per-campaign audience edits", specialist: "Campaign Structure",
-        text: "Forecast audience size after each edit and routed borderline titles to you.",
-        analyzes: "Forecasts audience size after each proposed edit and checks the LinkedIn minimum audience requirement. It sends borderline titles to Needs from you instead of classifying them without customer input.",
-        uses: "The inclusion and exclusion shortlist and the current campaign targeting.",
-        produces: "The exact audience edits for each campaign and a separate list of titles that need a decision.",
-        config: [["Audience floor", "LinkedIn minimum audience"], ["Borderline titles", "Routed to Needs from you"], ["Scope", "Campaign level"]],
+        agent: "demand", jobTitle: "Measure delivery and compare peers", specialist: "Title Delivery Analyst",
+        text: "Establishes what LinkedIn actually delivered per title and finds the differences that matter between real peers.",
+        analyzes: "Measures each title's delivery across the 90-day window in three 30-day slices plus the last 7 days, using each title's share of title-reported impressions rather than raw counts. Judges compliance only on the valid post-change window: an excluded title counts as leaking only when impressions appear after seven complete reporting days since the configuration change. Compares exact titles and peer groups across states and surfaces the outliers; low-volume titles receive insufficient evidence, not a trend verdict.",
+        uses: "The classified universe and strategy matrix, and LinkedIn demographic delivery.",
+        produces: "The title state matrix with trends, tiers, timing-unresolved marks, and named outliers.",
+        config: [["Windows", "3 \u00d7 30 days plus last 7"], ["Share basis", "Title-report impressions"], ["State", "Status \u00d7 recency"], ["Leakage gate", "7 complete post-change days"]],
+      },
+      {
+        agent: "conversion", jobTitle: "Validate outcomes and prepare the campaign edits", specialist: "Buyer Outcome Validator",
+        text: "Brings in every outcome source the data honestly supports and turns the decisions into safe campaign edits.",
+        analyzes: "Keeps the three outcome legs separate: platform conversions, CRM contacts and deals matched through exact campaign attribution, and identified website activity; never forces a join the data cannot support. Compares won-deal contact titles against the live targeting to find buyer titles no campaign currently reaches, evaluates every material title against the declared decision rules, attaches a confidence level with the limiting factor stated on every low-confidence call, forecasts audience size after each proposed edit, and routes borderline titles to Needs from you instead of deciding them.",
+        uses: "The title state matrix, LinkedIn conversion definitions, HubSpot contacts and deals, and identified website activity.",
+        produces: "The exact audience edits for each campaign, the evidence and confidence per title, and a separate list of titles that need the customer's decision.",
+        config: [["Outcome legs", "Platform, CRM, website, kept separate"], ["Decisions", "Keep, add, exclude, reconsider, test, investigate, insufficient"], ["Confidence", "High, medium, low with stated limits"]],
       },
     ],
     specialists: 7,
     approvalRequired: true,
     n: 4,
-    name: "ICP guardrails",
+    name: "LinkedIn buyer-title targeting",
     platform: "linkedin",
     // "What it automates" — the grunt work, in the practitioner's words.
-    automates: "This workflow compares the audience reached by each LinkedIn Ads campaign with the approved ICP. It prepares attributes to exclude and buyer titles to add.",
-    manualWork: "A paid-media analyst currently exports LinkedIn demographic delivery, scores titles, seniorities, functions, industries, and company sizes against the ICP, and repeats the work for each campaign. The analyst must also compare campaign targeting with the titles found on won deals. Reviewing 1.9 million impressions across four campaigns takes most of a day and becomes outdated quickly. This workflow refreshes the analysis daily.",
+    automates: "This workflow compares the audience reached by each LinkedIn Ads campaign with the approved ICP. It decides, title by title, what to keep, add, exclude, reconsider, or keep testing, and prepares the campaign edits.",
+    manualWork: "A paid-media analyst currently exports LinkedIn demographic delivery, evaluates titles, seniorities, functions, industries, and company sizes against the ICP, and repeats the work for each campaign. The analyst must also compare campaign targeting with the titles found on won deals, and separate real signals from privacy-suppressed reporting. Reviewing 1.9 million impressions across four campaigns takes most of a day and becomes outdated quickly. This workflow refreshes the analysis daily.",
     problem: "LinkedIn campaigns reach titles and audience attributes outside the approved ICP while missing titles found on won deals.",
     customerOutput: "The workflow prepares campaign-level exclusion and inclusion lists and shows the evidence behind every title.",
     // "What you get" — the concrete deliverable. Never a percentage promise.
@@ -226,18 +235,18 @@ export const WORKFLOWS = [
         code: "bands = icp['bands']  # size, industry, seniority, geo\ndf['in_band'] = df.apply(lambda r: match(r, bands), axis=1)\ndf['out_of_band_spend'] = df.loc[~df.in_band, 'spend']" },
       { agent: "demand", type: "ai_analyze", label: "Read ambiguous job titles against the ICP", ms: 3100,
         prompt: "For each job-title facet, decide whether it plausibly sits inside the customer's stated ICP seniority band. Return in_band true/false with a one-line reason." },
-      { agent: "delivery", type: "python_code", label: "Rank attributes by wasted exposure", ms: 640,
+      { agent: "conversion", type: "python_code", label: "Rank attributes by wasted exposure", ms: 640,
         code: "leak = df[~df.in_band].groupby('facet_value')\n         .agg(spend=('spend','sum'), impr=('impr','sum'))\n         .sort_values('spend', ascending=False)" },
-      { agent: "delivery", type: "write_file", label: "Draft the exclusion list per campaign", ms: 310 },
+      { agent: "conversion", type: "write_file", label: "Draft the exclusion list per campaign", ms: 310 },
       { kind: "approval", label: "Your approval", detail: "Review the exclusions before anything touches the ad account." },
       { kind: "system", label: "LinkedIn Ads", detail: "Applies the approved attribute exclusions at campaign level." },
     ],
   },
   {
     id: "audience-sharpening",
-    family: "Demand & audience",
+    family: "Measurement \u00b7 Audience \u00b7 Campaign",
     n: 5,
-    nextRun: "Tomorrow, 7:00 AM",
+    nextRun: "Sep 2, 7:00 AM",
     reads: ["LinkedIn Ads", "HubSpot"],
     outcomes: ["Tier-1 coverage %", "Top-8 impression share", "New engaged accounts per week"],
     runs: [
@@ -251,7 +260,7 @@ export const WORKFLOWS = [
     },
     found: [
       {
-        agent: "measurement", jobTitle: "Resolve impressions to named accounts", specialist: "Entity Attribution",
+        agent: "measurement", jobTitle: "Resolve impressions to named accounts", specialist: "Account Delivery Analyst",
         text: "Matched 30 days of company-level delivery to the 170-account target list.",
         analyzes: "Matches 30 days of company-level delivery to the 170-account target list and its tiers. It removes accounts with open opportunities or active sales sequences because sales already covers them.",
         uses: "LinkedIn Ads delivery, the target-account list, and HubSpot.",
@@ -259,7 +268,7 @@ export const WORKFLOWS = [
         config: [["Lookback", "30 days"], ["Target list", "170 accounts, by tier"], ["Excluded", "Open opportunities and active sales sequences"]],
       },
       {
-        agent: "demand", jobTitle: "Find saturated accounts crowding out the list", specialist: "LinkedIn ABM",
+        agent: "demand", jobTitle: "Find saturated accounts crowding out the list", specialist: "Account Reach Analyst",
         text: "Found the top eight accounts took 41% of impressions and produced no new pipeline.",
         analyzes: "Measures delivery concentration, engagement recency, and new pipeline from each account. In this run, the top eight accounts received 41% of impressions and produced no new pipeline in 60 days.",
         uses: "The eligible account distribution from the previous step.",
@@ -267,7 +276,7 @@ export const WORKFLOWS = [
         config: [["Concentration measure", "Top-8 impression share"], ["Pipeline lookback", "60 days"]],
       },
       {
-        agent: "delivery", jobTitle: "Set daily caps and rotation", specialist: "Campaign Delivery",
+        agent: "delivery", jobTitle: "Set daily caps and rotation", specialist: "Cap and Rotation Planner",
         text: "Calculated a 200 impressions per week cap that frees delivery without losing frequency.",
         analyzes: "Calculates a cap that releases impressions without removing useful frequency from engaged accounts. It also checks which under-served accounts can absorb the released delivery. This run recommends 200 impressions per week.",
         uses: "The cap candidates, account tiers, and current campaign delivery.",
@@ -278,7 +287,7 @@ export const WORKFLOWS = [
     specialists: 6,
     approvalRequired: true,
     n: 5,
-    name: "Audience sharpening",
+    name: "Target-account reach balancing",
     platform: "linkedin",
     automates: "This workflow measures how LinkedIn Ads distributes impressions across the target-account list and recommends caps when a few accounts absorb too much delivery.",
     manualWork: "A paid-media analyst currently exports company-level delivery, matches it to the 170-account target list, groups accounts by tier, and recalculates caps for saturated accounts. The analyst also removes accounts that already have an open opportunity or an active sales sequence. This workflow refreshes that work every day.",
@@ -308,9 +317,9 @@ export const WORKFLOWS = [
   },
   {
     id: "sales-handoff",
-    family: "Conversion & handoff",
+    family: "Measurement \u00b7 Conversion \u00b7 Audience",
     n: 6,
-    nextRun: "Fri, 8:00 AM",
+    nextRun: "Sep 8, 8:00 AM",
     reads: ["LinkedIn Ads", "HubSpot", "GA4"],
     outcomes: ["Warm handoffs per week", "Handoff to meeting rate", "Days from signal to first touch"],
     runs: [
@@ -324,7 +333,7 @@ export const WORKFLOWS = [
     },
     found: [
       {
-        agent: "measurement", jobTitle: "Stitch touches into account journeys", specialist: "Journey Measurement",
+        agent: "measurement", jobTitle: "Stitch touches into account journeys", specialist: "Account Journey Analyst",
         text: "Resolved 14 days of web, ad and contact activity to named accounts.",
         analyzes: "Resolves 14 days of web sessions, advertising engagement, and contact activity to named accounts using HubSpot and firmographic matching.",
         uses: "GA4, LinkedIn Ads, and HubSpot.",
@@ -332,7 +341,7 @@ export const WORKFLOWS = [
         config: [["Window", "14 days"], ["Resolution", "HubSpot + firmographic match"], ["Sources joined", "GA4 + LinkedIn Ads + HubSpot"]],
       },
       {
-        agent: "conversion", jobTitle: "Score solution-awareness", specialist: "Buying-Signal Scoring",
+        agent: "conversion", jobTitle: "Score solution-awareness", specialist: "Buying Signal Analyst",
         text: "Required two high-intent page visits in 14 days, then weighted depth and recency.",
         analyzes: "Requires at least two visits to high-intent pages in 14 days. It then weights contact depth, advertising engagement, and signal recency to calculate the final score.",
         uses: "The account journey timelines from the previous step.",
@@ -340,7 +349,7 @@ export const WORKFLOWS = [
         config: [["Minimum signal", "2 high-intent page visits in 14 days"], ["Weighted by", "Contact depth, engagement, recency"]],
       },
       {
-        agent: "demand", jobTitle: "Suppress accounts sales already owns", specialist: "LinkedIn ABM",
+        agent: "demand", jobTitle: "Suppress accounts sales already owns", specialist: "Sales Eligibility Validator",
         text: "Removed customers, open opportunities and anything contacted in the last 21 days.",
         analyzes: "Checks the shortlist against customers, open opportunities, and sales activity from the last 21 days. It removes any account that would create a duplicate or conflict with an active sales motion.",
         uses: "The ranked shortlist and HubSpot.",
@@ -351,7 +360,7 @@ export const WORKFLOWS = [
     specialists: 8,
     approvalRequired: true,
     n: 6,
-    name: "Sales handoff signals",
+    name: "Buying-signal sales handoff",
     platform: "linkedin-web",
     automates: "This workflow combines advertising, website, and CRM activity to identify accounts that show current buying intent and are not already owned by sales.",
     manualWork: "A revenue or paid-media analyst currently combines LinkedIn Ads engagement, GA4 visits, and HubSpot contact activity by account. The analyst checks which accounts meet the approved buying-intent model and removes customers, open opportunities, and recently contacted accounts. This workflow scores all 170 target accounts each week.",
@@ -359,7 +368,7 @@ export const WORKFLOWS = [
     customerOutput: "The workflow ranks qualified accounts, explains the signals for each account, and prepares the approved list for HubSpot.",
     deliverable: "A prioritised account list for sales to work",
     status: "active",
-    cadence: "Weekly \u00b7 Fridays, 8:00 AM",
+    cadence: "Weekly \u00b7 Tuesdays, 8:00 AM",
     lastRun: "Sep 1, 8:03 AM",
     lastRunOk: true,
     pending: 1,
@@ -381,9 +390,9 @@ export const WORKFLOWS = [
   },
   {
     id: "wasted-spend",
-    family: "Demand & audience",
+    family: "Measurement \u00b7 Audience \u00b7 Campaign",
     n: 1,
-    nextRun: "Mon, 7:00 AM",
+    nextRun: "Sep 8, 7:00 AM",
     runs: [
       { at: "Sep 1, 7:02 AM", status: "success", ms: 6400, produced: "1 recommendation", evaluated: "1,240 queries \u00b7 $9,800 spend" },
       { at: "Aug 25, 7:01 AM", status: "no-action", ms: 6100, produced: "", evaluated: "Irrelevant spend at 4.1%, inside target \u00b7 still watching 3 ambiguous queries below the spend threshold" },
@@ -395,7 +404,7 @@ export const WORKFLOWS = [
     outcomes: ["Irrelevant-spend % (target < 5%)", "$ redirected per month", "SQLs per $1K search spend"],
     found: [
       {
-        agent: "measurement", jobTitle: "Build the qualified-outcome baseline", specialist: "Conversion Signal",
+        agent: "measurement", jobTitle: "Build the qualified-outcome baseline", specialist: "Qualified Outcome Analyst",
         text: "Joined every Google Ads conversion to its HubSpot lifecycle stage over 90 days.",
         analyzes: "Joins every Google Ads conversion to its HubSpot lifecycle stage over a rolling 90-day period. It waits 30 days before judging an outcome so recent clicks are not classified too early.",
         uses: "Google Ads clicks and conversions, HubSpot contacts, and HubSpot deals.",
@@ -403,7 +412,7 @@ export const WORKFLOWS = [
         config: [["Lookback", "90 days"], ["Maturity window", "30 days"], ["Qualified event", "HubSpot lifecycle stage"]],
       },
       {
-        agent: "demand", jobTitle: "Classify every search query for buying fit", specialist: "Google Search Intent",
+        agent: "demand", jobTitle: "Classify every search query for buying fit", specialist: "Search Intent Analyst",
         text: "Classified about 1,240 queries against the 90-day qualified-outcome history.",
         analyzes: "Reviews about 1,240 queries from the last 30 days and compares them with the rolling 90-day outcome history. It classifies each query as product fit, competitor research, job-seeker intent, student or free-seeker intent, or customer-support intent, then checks whether each class has produced a qualified outcome.",
         uses: "The query-level baseline from the previous step.",
@@ -411,7 +420,7 @@ export const WORKFLOWS = [
         config: [["Queries reviewed", "About 1,240 over 30 days"], ["Intent classes", "Product fit, competitor, job-seeker, student, support"], ["Outcome history", "Rolling 90 days"]],
       },
       {
-        agent: "delivery", jobTitle: "Prepare campaign-level negative lists", specialist: "Campaign Structure",
+        agent: "delivery", jobTitle: "Prepare campaign-level negative lists", specialist: "Negative Keyword Planner",
         text: "Traced each irrelevant query to its campaign and checked it against the exception list.",
         analyzes: "Traces each irrelevant query to the campaign and ad group that matched it. It compares every proposed negative with the approved product and brand exception list before recommending a change.",
         uses: "The irrelevant query list and the approved exception list.",
@@ -422,15 +431,15 @@ export const WORKFLOWS = [
     specialists: 6,
     approvalRequired: true,
     n: 1,
-    name: "Wasted-spend cleanup",
+    name: "Search-query waste control",
     platform: "google-search",
     automates: "This workflow reviews every search query, connects it to HubSpot outcomes, and prepares negative keywords for queries that show no buying intent.",
-    manualWork: "A paid-media analyst currently exports the search-terms report, reviews about 1,200 queries in a spreadsheet, checks the queries against CRM outcomes, and updates negative keyword lists for each campaign. A complete review takes six to eight hours each week. This workflow applies the same classification rules to every query and repeats the analysis weekly.",
+    manualWork: "A paid-media analyst currently exports the search-terms report, reviews about 1,200 queries in a spreadsheet, checks the queries against CRM outcomes, and updates negative keyword lists for each campaign. A complete review takes most of a working day each week. This workflow applies the same classification rules to every query and repeats the analysis weekly.",
     problem: "Search terms with no buying intent consume budget and do not produce SQLs.",
     customerOutput: "The workflow separates relevant and irrelevant spend and prepares negative keywords for each campaign.",
     deliverable: "Negative keywords to add, per campaign",
     status: "active",
-    cadence: "Weekly \u00b7 Mondays, 7:00 AM",
+    cadence: "Weekly \u00b7 Tuesdays, 7:00 AM",
     lastRun: "Sep 1, 7:02 AM",
     pending: 0,
     steps: [
@@ -451,7 +460,7 @@ export const WORKFLOWS = [
   },
   {
     id: "spend-to-pipeline",
-    family: "Budget",
+    family: "Measurement \u00b7 Budget \u00b7 Campaign",
     n: 2,
     nextRun: null,
     // Never deployed, so it has no run history yet.
@@ -461,7 +470,7 @@ export const WORKFLOWS = [
     outcomes: ["Pipeline per $1K spend", "Cost per SQL by campaign", "% budget on above-benchmark campaigns"],
     found: [
       {
-        agent: "measurement", jobTitle: "Join every campaign to the pipeline it created", specialist: "Journey Measurement",
+        agent: "measurement", jobTitle: "Join every campaign to the pipeline it created", specialist: "Pipeline Measurement Analyst",
         text: "Joined 90 days of Google Ads touches to HubSpot opportunities.",
         analyzes: "Joins 90 days of Google Ads touches to HubSpot opportunities using the approved attribution logic. It applies the same 30-day maturity window to every campaign before comparing performance.",
         uses: "Google Ads campaign data and HubSpot deals.",
@@ -469,7 +478,7 @@ export const WORKFLOWS = [
         config: [["Lookback", "90 days"], ["Maturity window", "30 days"], ["Sources joined", "Google Ads + HubSpot"]],
       },
       {
-        agent: "budget", jobTitle: "Size the move from weakest to strongest", specialist: "Budget Reallocation",
+        agent: "budget", jobTitle: "Size the move from weakest to strongest", specialist: "Budget Allocation Analyst",
         text: "Estimated how much more budget the stronger campaign can absorb before cost per SQL slips.",
         analyzes: "Compares each campaign with the account benchmark and estimates how much additional budget the stronger campaign can absorb before its cost per SQL is likely to deteriorate.",
         uses: "The campaign benchmark table from the previous step.",
@@ -477,7 +486,7 @@ export const WORKFLOWS = [
         config: [["Benchmark", "Account cost per SQL"], ["Absorption test", "Before cost per SQL deteriorates"]],
       },
       {
-        agent: "delivery", jobTitle: "Check delivery limits before the move", specialist: "Campaign Delivery",
+        agent: "delivery", jobTitle: "Check delivery limits before the move", specialist: "Delivery Guardrail Analyst",
         text: "Checked learning floors, the 4.5 frequency cap and impression-share headroom.",
         analyzes: "Checks the minimum budget needed to preserve campaign learning, the receiving campaign's frequency against its 4.5 cap, and any impression-share ceiling.",
         uses: "The proposed transfer and the current delivery settings.",
@@ -488,7 +497,7 @@ export const WORKFLOWS = [
     specialists: 5,
     approvalRequired: true,
     n: 2,
-    name: "Spend-to-pipeline rebalancing",
+    name: "Pipeline-based budget rebalancing",
     platform: "google-search",
     automates: "This workflow connects campaign spend to qualified pipeline in HubSpot and recommends a specific budget move between campaigns.",
     manualWork: "A paid-media analyst currently joins campaign spend with CRM opportunities, resolves missing or inconsistent tracking values, applies the agreed attribution window, and compares cost per SQL across campaigns. Teams often complete this work only once a month or quarter because the spreadsheet takes several hours to rebuild. This workflow refreshes the same analysis every week using the approved logic.",
@@ -513,9 +522,9 @@ export const WORKFLOWS = [
   },
   {
     id: "delivery-leaks",
-    family: "Campaign & delivery",
+    family: "Measurement \u00b7 Campaign \u00b7 Budget",
     n: 3,
-    nextRun: "Wed, 7:00 AM",
+    nextRun: "Sep 8, 7:00 AM",
     runs: [
       { at: "Sep 1, 7:05 AM", status: "success", ms: 7100, produced: "1 recommendation", evaluated: "$28,400 spend \u00b7 214 conversions" },
       { at: "Aug 27, 7:04 AM", status: "no-action", ms: 6900, produced: "", evaluated: "No segment cleared the flag threshold \u00b7 still watching Saturday mornings, below the volume threshold" },
@@ -526,7 +535,7 @@ export const WORKFLOWS = [
     outcomes: ["% spend in converting windows", "Cost per conversion by daypart", "$ redirected per month"],
     found: [
       {
-        agent: "measurement", jobTitle: "Set the comparable outcome window", specialist: "Entity Attribution",
+        agent: "measurement", jobTitle: "Set the comparable outcome window", specialist: "Delivery Outcome Analyst",
         text: "Selected conversions past the 30-day maturity window and mapped them to time and place.",
         analyzes: "Selects conversions that have completed the 30-day maturity window and maps each outcome to its campaign, delivery time, and location.",
         uses: "Google Ads, HubSpot, and GA4.",
@@ -534,7 +543,7 @@ export const WORKFLOWS = [
         config: [["Maturity window", "30 days"], ["Grain", "Campaign x hour x day x state"], ["Sources joined", "Google Ads + HubSpot + GA4"]],
       },
       {
-        agent: "delivery", jobTitle: "Find the hours and regions that spend without converting", specialist: "Schedule & Geography",
+        agent: "delivery", jobTitle: "Find the hours and regions that spend without converting", specialist: "Schedule and Geography Analyst",
         text: "Flagged segments with enough spend to judge that converted at about 19 times the account cost.",
         analyzes: "Reviews 90 days of delivery by hour, day, and state. It flags segments with enough spend to judge that produced no conversions or a cost per conversion about 19 times worse than the account average. It removes low-volume segments that do not have enough evidence.",
         uses: "The comparable outcome table from the previous step.",
@@ -542,7 +551,7 @@ export const WORKFLOWS = [
         config: [["Lookback", "90 days"], ["Flag threshold", "No conversions, or about 19x account cost per conversion"], ["Low-volume segments", "Removed"]],
       },
       {
-        agent: "budget", jobTitle: "Re-shape delivery into converting windows", specialist: "Time-Based Spend",
+        agent: "budget", jobTitle: "Re-shape delivery into converting windows", specialist: "Spend Reallocation Planner",
         text: "Identified the business hours and 12 converting metros that can absorb the released spend.",
         analyzes: "Identifies the business hours and 12 converting metros that can absorb the released spend without exceeding daily budget limits.",
         uses: "The proposed exclusions and the current campaign budgets.",
@@ -553,7 +562,7 @@ export const WORKFLOWS = [
     specialists: 7,
     approvalRequired: true,
     n: 3,
-    name: "Leak detection in campaign delivery",
+    name: "Campaign delivery leakage control",
     platform: "google-search",
     automates: "This workflow identifies time periods and locations that consume budget without producing mature qualified outcomes, then prepares the exact delivery changes.",
     manualWork: "A paid-media analyst currently exports delivery by hour, day, and location, combines three reports, and joins the segments to qualified CRM outcomes. The analyst must also separate a real performance problem from a segment with too little data. This workflow repeats that analysis each week for every campaign, hour band, and state.",
@@ -561,7 +570,7 @@ export const WORKFLOWS = [
     customerOutput: "The workflow prepares the exact schedule and location changes for each affected campaign.",
     deliverable: "Day, time and geo exclusions, per campaign",
     status: "active",
-    cadence: "Weekly \u00b7 Wednesdays, 7:00 AM",
+    cadence: "Weekly \u00b7 Tuesdays, 7:00 AM",
     lastRun: "Sep 1, 7:05 AM",
     pending: 0,
     steps: [

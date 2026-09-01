@@ -49,7 +49,7 @@ function operationalStatus(wf) {
     return { label: "Failed", icon: XCircle, tone: "text-rose-600" };
   }
   return {
-    label: wf.nextRun ? `Next run ${wf.nextRun}` : "Running",
+    label: wf.nextRun ? `Live \u00b7 Next run ${wf.nextRun}` : "Live \u00b7 First run: Running",
     icon: CalendarBlank,
     tone: "text-[var(--text-secondary)]",
   };
@@ -170,9 +170,9 @@ function Row({ wf, onOpen, onReview, onDeploy, deploying }) {
    must not compete with the six workflows above it — so no tint, no shouting
    eyebrow: a name, one sentence, and a small button. ── */
 const ASSESSMENT = {
-  name: "End-to-end assessment of your paid-media engine",
+  name: "End-to-end assessment of your paid media engine",
   line:
-    "Don\u2019t know which workflows to deploy? Petavue assesses campaign delivery, budgets, audience, and creatives across every connected paid-media platform, and recommends which agents to deploy.",
+    "Don\u2019t know which workflows to deploy? Petavue assesses campaign delivery, budget allocation, audience quality, and conversion tracking across Google Ads, LinkedIn Ads, and Meta Ads, joined to HubSpot and GA4, and recommends a deployment order for the six workflows.",
   route: "/workflows/paid-media-assessment",
 };
 
@@ -184,7 +184,7 @@ function AssessmentPanel({ onOpen }) {
         <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{ASSESSMENT.name}</span>
         <span className="text-[12px] text-[#757A97] leading-snug">{ASSESSMENT.line}</span>
       </span>
-      <Button variant="secondary" size="sm" label="Run the full assessment" onClick={onOpen} />
+      <Button variant="secondary" size="sm" label="Run the assessment" onClick={onOpen} />
     </div>
   );
 }
@@ -291,8 +291,8 @@ export default function WorkflowsPage() {
                   >
                     <HeaderCell label="Workflow" />
                     <HeaderCell label="Channel" />
-                    <HeaderCell label="Agents" />
-                    <HeaderCell label="What you get" />
+                    <HeaderCell label="Families" />
+                    <HeaderCell label="Deliverables" />
                     <HeaderCell label="Status" />
                     <span />
                   </div>

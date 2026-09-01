@@ -11,39 +11,15 @@ import { agentIcon } from "../../components/AgentMark";
    The families organise the page; the individual agents inside them are the
    boxes. The mapping onto the underlying detail pages is presentation only —
    those pages stay as they are (Campaign spans two of them). ── */
-const FOUNDATION = {
-  label: "Measurement Agent",
-  desc: "Connects spend and engagement to pipeline, and calculates the metrics every other agent depends on.",
-  members: ["measurement"],
-};
-
 const FAMILIES = [
-  {
-    label: "Audience Agent",
-    desc: "Decides which accounts to engage and what they need next.",
-    members: ["demand"],
-  },
-  {
-    label: "Messaging Agent",
-    desc: "Identifies which messaging is working across channels, including sales calls, and recommends what to use.",
-    members: ["creative"],
-  },
-  {
-    label: "Campaign Agent",
-    desc: "Keeps budget and delivery on plan.",
-    members: ["delivery", "budget"],
-  },
-  {
-    label: "Conversion Agent",
-    desc: "Improves the path from click to conversion, then routes the lead.",
-    members: ["conversion"],
-  },
+  { key: "measurement", note: "Always the first agent in every workflow" },
+  { key: "demand" },
+  { key: "delivery" },
+  { key: "budget" },
+  { key: "conversion" },
 ];
 
-const searchText = (fam, members) =>
-  [fam.label, fam.desc, ...members.flatMap((m) => [m.label, m.owns, ...(m.specialists || [])])]
-    .join(" ")
-    .toLowerCase();
+const searchText = (m) => [m.label, m.owns, m.blurb, ...(m.specialists || [])].join(" ").toLowerCase();
 
 /* One individual agent — a compact box. The family it belongs to is the
    section it sits in; its colour comes from the family icon. */
@@ -75,17 +51,23 @@ function AgentBox({ name, color, badge, onOpen }) {
 
 /* One family group: the header names the family and carries the deck's line;
    the n × 2 grid below holds its agents as boxes. */
-function FamilySection({ fam, members, boxes }) {
-  const base = members[0];
-  const Icon = agentIcon(base.key);
+function FamilySection({ agent, note, boxes }) {
+  const Icon = agentIcon(agent.key);
   return (
-    <div className="flex flex-col gap-2.5">
-      <span className="flex items-center gap-2 flex-wrap">
-        <Icon size={14} weight="fill" style={{ color: base.color }} className="shrink-0" />
-        <span className="text-[12px] leading-[18px] font-semibold uppercase tracking-wider text-[var(--text-primary)]">
-          {fam.label}
+    <div className="flex flex-col gap-2.5 pb-6 border-solid border-x-0 border-t-0 border-b border-b-[var(--color-grey-100)] last:border-b-0 last:pb-0">
+      <span className="flex flex-col gap-1">
+        <span className="flex items-center gap-2">
+          <Icon size={16} weight="fill" style={{ color: agent.color }} className="shrink-0" />
+          <span className="text-[14px] leading-[20px] font-semibold uppercase tracking-wider text-[var(--text-primary)]">
+            {agent.label}
+          </span>
+          {note && <span className="text-[12px] leading-[18px] text-[var(--text-muted)]">{note}</span>}
+          <span className="ml-auto text-[12px] leading-[18px] text-[#757A97] tabular-nums">
+            Used by {agent.workflowCount} {agent.workflowCount === 1 ? "workflow" : "workflows"} ·{" "}
+            {agent.liveCount} active {agent.liveCount === 1 ? "deployment" : "deployments"}
+          </span>
         </span>
-        <span className="text-[12px] leading-[18px] text-[#757A97]">{fam.desc}</span>
+        <span className="text-[12px] leading-[18px] text-[#757A97]">{agent.blurb}</span>
       </span>
       <div className="grid grid-cols-4 gap-2.5">{boxes}</div>
     </div>
@@ -103,16 +85,11 @@ export default function AgentsPage() {
   const agents = data?.agents || [];
   const byKey = useMemo(() => Object.fromEntries(agents.map((a) => [a.key, a])), [agents]);
 
-  const resolve = (fam) => fam.members.map((k) => byKey[k]).filter(Boolean);
-
   const q = search.trim().toLowerCase();
-  const foundationMembers = resolve(FOUNDATION);
-  const showFoundation =
-    foundationMembers.length > 0 && (!q || searchText(FOUNDATION, foundationMembers).includes(q));
-  const analytics = FAMILIES.map((fam) => ({ fam, members: resolve(fam) })).filter(
-    ({ fam, members }) => members.length > 0 && (!q || searchText(fam, members).includes(q)),
+  const sections = FAMILIES.map((fam) => ({ ...fam, agent: byKey[fam.key] })).filter(
+    (fam) => fam.agent && (!q || searchText(fam.agent).includes(q)),
   );
-  const total = (showFoundation ? 1 : 0) + analytics.length;
+  const total = sections.length;
 
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
@@ -122,9 +99,8 @@ export default function AgentsPage() {
           <span className="flex flex-col min-w-0">
             <span className="text-[16px] leading-[24px] font-medium">Agents</span>
             <span className="text-[12px] leading-[18px] text-[#757A97]">
-              Every workflow deploys an ensemble: the Measurement Agent as its foundation, plus the analytics agents
-              the analysis needs. Each analytics agent belongs to one of the families below. You approve any proposed
-              platform change.
+              Petavue groups specialist agents into five families. Each workflow deploys the specialists it needs in
+              sequence. You approve any proposed platform change.
             </span>
           </span>
         </div>
@@ -178,36 +154,19 @@ export default function AgentsPage() {
                   </div>
                 ) : (
                   <>
-                    {showFoundation && (
+                    {sections.map((fam) => (
                       <FamilySection
-                        fam={FOUNDATION}
-                        members={foundationMembers}
-                        boxes={
+                        key={fam.key}
+                        agent={fam.agent}
+                        note={fam.note}
+                        boxes={(fam.agent.specialists || []).map((sp) => (
                           <AgentBox
-                            name={FOUNDATION.label}
-                            color={foundationMembers[0].color}
-                            badge="Foundational"
-                            onOpen={() => navigate("/agents/measurement")}
+                            key={sp}
+                            name={sp}
+                            color={fam.agent.color}
+                            onOpen={() => navigate(`/agents/${fam.key}`)}
                           />
-                        }
-                      />
-                    )}
-
-                    {analytics.map(({ fam, members }) => (
-                      <FamilySection
-                        key={fam.label}
-                        fam={fam}
-                        members={members}
-                        boxes={members.flatMap((m) =>
-                          (m.specialists || []).map((sp) => (
-                            <AgentBox
-                              key={sp}
-                              name={sp}
-                              color={members[0].color}
-                              onOpen={() => navigate(`/agents/${m.key}`)}
-                            />
-                          )),
-                        )}
+                        ))}
                       />
                     ))}
                   </>
