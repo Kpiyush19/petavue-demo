@@ -71,9 +71,9 @@ const ITEMS = [
     controls:
       "Every negative was checked against the approved product and brand exception list and against 90 days of converting queries; removing any of the 14 negatives reverses the change in one edit.",
     followUp: "Sep 15. That run verifies the blocked queries stopped spending and reports the amount redirected.",
-    noticed: "Search spend increased 12% during the last 30 days while CRM-qualified outcomes remained flat.",
+    noticed: "Search spend increased 12% during the last 30 days while HubSpot-qualified outcomes remained flat.",
     analyzed:
-      "The workflow analyzed 1,240 queries and $9,800 of spend from the last 30 days, then used 90 days of CRM history containing 312 outcomes to judge query quality.",
+      "The workflow analyzed 1,240 queries and $9,800 of spend from the last 30 days, then used 90 days of HubSpot history containing 312 outcomes to judge query quality.",
     dataCols: ["Query", "Spend", "Clicks", "Qualified outcomes"],
     dataRows: [
       ['"free crm template"', "$312", "41", "0"],
@@ -177,8 +177,8 @@ const ITEMS = [
     whyFollows:
       "The flagged segments consumed $3,360, or 12% of the reviewed spend. The worst segment's cost per SQL ran 18.6 times the $99 converting-metro benchmark, and two segments produced no SQLs at all. Apply the schedule and location changes listed above.",
     trace: [
-      { specialist: "Delivery Outcome Analyst", agent: "measurement", text: "selected conversions past the 30-day maturity window and mapped them to time and place, so no immature data enters the comparison." },
-      { specialist: "Schedule and Geography Analyst", agent: "delivery", text: "flagged the segments with enough spend to judge that converted at about 19 times the account average cost per SQL." },
+      { specialist: "Delivery Outcome Mapper", agent: "measurement", text: "selected conversions past the 30-day maturity window and mapped them to time and place, so no immature data enters the comparison." },
+      { specialist: "Schedule and Geography Strategist", agent: "delivery", text: "flagged the segments with enough spend to judge that converted at about 19 times the account average cost per SQL." },
       { specialist: "Spend Reallocation Planner", agent: "budget", text: "identified the business hours and 12 converting metros that can absorb the released spend." },
     ],
     appliedPrefix: "Applied to Google Ads",
@@ -222,9 +222,9 @@ const ITEMS = [
     whyFollows:
       "Eight already-engaged accounts absorbed 41% of reach and produced no new pipeline in 60 days. Cap them at 200 impressions per week and release delivery to the 63 under-served tier-one accounts.",
     trace: [
-      { specialist: "Account Delivery Analyst", agent: "measurement", text: "matched 30 days of company-level delivery to the 170-account target list and removed accounts sales already owns." },
-      { specialist: "Account Reach Analyst", agent: "demand", text: "measured delivery concentration and found eight accounts absorbing 41% of impressions with no new pipeline in 60 days." },
-      { specialist: "Cap and Rotation Planner", agent: "delivery", text: "calculated the 200-impression weekly cap that frees delivery for the 63 under-served tier-one accounts." },
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched 30 days of company-level delivery to the 170-account target list and removed accounts sales already owns." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "measured delivery concentration and found eight accounts absorbing 41% of impressions with no new pipeline in 60 days." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "calculated the 200-impression weekly cap that frees delivery for the 63 under-served tier-one accounts." },
     ],
     appliedPrefix: "Applied to LinkedIn Ads",
     readback: "Petavue read the saved audience settings back from LinkedIn Ads and confirmed the caps.",
@@ -270,9 +270,9 @@ const ITEMS = [
     whyFollows:
       "The cap is now truncating delivery to the only two capped accounts showing fresh engagement. Raise their cap to 400 impressions per week, leave the other three caps unchanged, and re-check on Sep 15.",
     trace: [
-      { specialist: "Account Delivery Analyst", agent: "measurement", text: "matched daily delivery to the capped cohort and recorded when each account reached its weekly cap." },
-      { specialist: "Account Reach Analyst", agent: "demand", text: "re-checked the capped cohort daily and surfaced the only two capped accounts showing new contact engagement." },
-      { specialist: "Cap and Rotation Planner", agent: "delivery", text: "verified tier-one coverage holds its 37% baseline while the raised caps are active." },
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched daily delivery to the capped cohort and recorded when each account reached its weekly cap." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "re-checked the capped cohort daily and surfaced the only two capped accounts showing new contact engagement." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "verified tier-one coverage holds its 37% baseline while the raised caps are active." },
     ],
     appliedPrefix: "Applied to LinkedIn Ads",
     readback: "Petavue read the saved audience settings back from LinkedIn Ads and confirmed the raised caps.",
@@ -319,12 +319,12 @@ const ITEMS = [
     whyFollows:
       "Twenty-three accounts passed the composite score. Nine already had open opportunities, so Petavue excluded them. Send the remaining 14 accounts to sales in the ranked order shown above.",
     trace: [
-      { specialist: "Account Journey Analyst", agent: "measurement", text: "resolved 14 days of web, advertising, and contact activity to named accounts, counting identified activity only." },
-      { specialist: "Buying Signal Analyst", agent: "conversion", text: "scored the 170 target accounts against the composite model and kept the evidence attached to each account's rank." },
+      { specialist: "Account Journey Builder", agent: "measurement", text: "resolved 14 days of web, advertising, and contact activity to named accounts, counting identified activity only." },
+      { specialist: "Buying Signal Scorer", agent: "conversion", text: "scored the 170 target accounts against the composite model and kept the evidence attached to each account's rank." },
       { specialist: "Sales Eligibility Validator", agent: "demand", text: "checked the shortlist against customers, open opportunities, and 21 days of sales activity, removing nine accounts." },
     ],
     appliedPrefix: "Pushed to HubSpot",
-    readback: "Petavue created the tasks in HubSpot and verified the task IDs. Confirmed in CRM.",
+    readback: "Petavue created the tasks in HubSpot and verified the task IDs. Confirmed in HubSpot.",
     decision: null,
     comments: [],
   },
@@ -351,7 +351,7 @@ const ITEMS = [
       "Every negative was checked against the approved product and brand exception list and against 90 days of converting queries; removing a negative reverses the change in one edit.",
     followUp: "Sep 1, completed. That run measured irrelevant spend down $1,910 per month.",
     noticed: "Irrelevant queries were consuming search spend without producing qualified outcomes.",
-    analyzed: "The Run 06 review classified the trailing 30 days of search queries against 90 days of CRM history.",
+    analyzed: "The Run 06 review classified the trailing 30 days of search queries against 90 days of HubSpot history.",
     whyFollows: "The flagged terms spent without producing a qualified outcome, so they were added as negatives to the affected campaigns.",
     trace: [
       { specialist: "Qualified Outcome Analyst", agent: "measurement", text: "joined every Google Ads conversion to its HubSpot lifecycle stage, so query quality was judged on qualified outcomes, not clicks." },
@@ -390,11 +390,11 @@ const ITEMS = [
       "Every pause and exclusion reverses in one edit; the next run flags the pauses for review if the remaining windows do not absorb the redirected spend.",
     followUp: "Sep 22. The mature cost-per-SQL verdict follows the 30-day maturity rule.",
     noticed: "Delivery windows and locations were spending without producing mature qualified outcomes.",
-    analyzed: "The Run 04 review analyzed delivery by hour, day of week, and state against mature CRM-qualified outcomes.",
+    analyzed: "The Run 04 review analyzed delivery by hour, day of week, and state against mature HubSpot-qualified outcomes.",
     whyFollows: "The flagged windows spent without mature qualified outcomes, so the schedule pauses and location exclusions were prepared and approved.",
     trace: [
-      { specialist: "Delivery Outcome Analyst", agent: "measurement", text: "selected conversions past the 30-day maturity window and mapped them to time and place." },
-      { specialist: "Schedule and Geography Analyst", agent: "delivery", text: "flagged the delivery segments with enough spend to judge that ran far above the converting-metro benchmark." },
+      { specialist: "Delivery Outcome Mapper", agent: "measurement", text: "selected conversions past the 30-day maturity window and mapped them to time and place." },
+      { specialist: "Schedule and Geography Strategist", agent: "delivery", text: "flagged the delivery segments with enough spend to judge that ran far above the converting-metro benchmark." },
       { specialist: "Spend Reallocation Planner", agent: "budget", text: "identified the converting business hours and metros that could absorb the released spend." },
     ],
     decision: { status: "accepted", by: "Maya Iyer", at: "Aug 18, 3:05 PM" },
@@ -425,9 +425,9 @@ const ITEMS = [
     analyzed: "The Run 22 review checked delivery concentration and engagement recency for the heaviest accounts on the 170-account target list.",
     whyFollows: "Heavy delivery with no new pipeline in 60 days met the saturation test, so the cap was proposed for review.",
     trace: [
-      { specialist: "Account Delivery Analyst", agent: "measurement", text: "matched company-level delivery to the 170-account target list and removed accounts sales already owns." },
-      { specialist: "Account Reach Analyst", agent: "demand", text: "applied the saturation test: heavy delivery with no new pipeline in 60 days despite recent engagement checks." },
-      { specialist: "Cap and Rotation Planner", agent: "delivery", text: "prepared the 200-impression weekly cap for review." },
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched company-level delivery to the 170-account target list and removed accounts sales already owns." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "applied the saturation test: heavy delivery with no new pipeline in 60 days despite recent engagement checks." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "prepared the 200-impression weekly cap for review." },
     ],
     followUp: null,
     decision: {
@@ -470,9 +470,9 @@ const ITEMS = [
     analyzed: "The Run 01 review analyzed 30 days of company-level delivery against the 170-account target list.",
     whyFollows: "Five saturated accounts met the saturation test, so the 200-impression weekly cap was prepared and approved.",
     trace: [
-      { specialist: "Account Delivery Analyst", agent: "measurement", text: "matched 30 days of company-level delivery to the target list and its tiers." },
-      { specialist: "Account Reach Analyst", agent: "demand", text: "separated productive frequency from saturation and named the accounts being crowded out." },
-      { specialist: "Cap and Rotation Planner", agent: "delivery", text: "calculated the cap that released impressions while preserving useful frequency." },
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched 30 days of company-level delivery to the target list and its tiers." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "separated productive frequency from saturation and named the accounts being crowded out." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "calculated the cap that released impressions while preserving useful frequency." },
     ],
     decision: { status: "accepted", by: "Maya Iyer", at: "Aug 10, 1:20 PM" },
     applied: "Applied to LinkedIn Ads on Aug 10. Petavue read the saved audience settings back and confirmed the caps.",
@@ -503,12 +503,12 @@ const ITEMS = [
     analyzed: "The Run 03 review scored 14 days of web, advertising, and contact activity for the 170 target accounts.",
     whyFollows: "Eleven net-new accounts passed the composite score and cleared suppression, so the ranked list was prepared for HubSpot.",
     trace: [
-      { specialist: "Account Journey Analyst", agent: "measurement", text: "resolved web, advertising, and contact activity to named accounts, counting identified activity only." },
-      { specialist: "Buying Signal Analyst", agent: "conversion", text: "scored the target accounts and kept the evidence attached to each account's rank." },
+      { specialist: "Account Journey Builder", agent: "measurement", text: "resolved web, advertising, and contact activity to named accounts, counting identified activity only." },
+      { specialist: "Buying Signal Scorer", agent: "conversion", text: "scored the target accounts and kept the evidence attached to each account's rank." },
       { specialist: "Sales Eligibility Validator", agent: "demand", text: "checked the shortlist against customers, open opportunities, and recent sales activity." },
     ],
     decision: { status: "accepted", by: "Maya Iyer", at: "Aug 25, 11:30 AM" },
-    applied: "Pushed to HubSpot on Aug 25. Petavue created tasks for 11 accounts in the SDR round-robin queue and verified the task IDs. Confirmed in CRM.",
+    applied: "Pushed to HubSpot on Aug 25. Petavue created tasks for 11 accounts in the SDR round-robin queue and verified the task IDs. Confirmed in HubSpot.",
     impact: "Sales booked four meetings during the first week, measured Sep 1.",
     comments: [],
   },
