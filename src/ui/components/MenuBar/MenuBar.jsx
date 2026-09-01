@@ -26,7 +26,7 @@ import './MenuBar.css';
 //
 // Deliberately NOT in the nav (route still live, reachable by URL):
 //   contexts — no page yet; it was a tooltip-only affordance.
-export const CANONICAL_NAV = [
+const ALL_NAV = [
   { id: 'workflows', label: 'Workflows', icon: 'workflows' },
   { id: 'agents', label: 'Agents', icon: 'agents' },
   { id: 'recommendations', label: 'Recommendations', icon: 'goals' },
@@ -34,6 +34,16 @@ export const CANONICAL_NAV = [
   { id: 'skills', label: 'Skills', icon: 'skills' },
   { id: 'data-hub', label: 'Data Hub', icon: 'data-hub' },
 ];
+
+// The demo shows only the three surfaces the story runs through. Dashboard,
+// Skills and Data Hub are real product sections but nothing in the walkthrough
+// visits them, and a nav item that opens an unrelated screen mid-demo is worse
+// than no nav item. Their routes still resolve if typed — this hides the
+// entrances, it does not delete the pages. Drop an id from HIDDEN_NAV to bring
+// one back.
+const HIDDEN_NAV = ['dashboard-live', 'skills', 'data-hub'];
+
+export const CANONICAL_NAV = ALL_NAV.filter((item) => !HIDDEN_NAV.includes(item.id));
 
 /*
  * Petavue MenuBar — collapsible sidebar navigation
@@ -125,7 +135,10 @@ export function MenuBar({
 
       {/* Navigation items */}
       <div className="menubar__nav">
-        {/* New Chat button */}
+        {/* Create New (chat) is hidden for the demo — the walkthrough never
+            starts from a blank chat, and it was the one button that could drop
+            a viewer out of the product story. Restore by un-commenting. */}
+        {/*
         <MenuBarItem
           icon="new-chat"
           label="Create New"
@@ -133,6 +146,7 @@ export function MenuBar({
           isAccent
           onClick={onNewChat}
         />
+        */}
 
         {/* Canonical nav — same ids/order as the app navbar so buttons never
             jump position between pages. The `items` prop is ignored on purpose. */}

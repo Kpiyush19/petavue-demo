@@ -101,7 +101,10 @@ export function MenuBar({
 
       {/* Navigation items */}
       <div className="menubar__nav">
-        {/* New Chat button */}
+        {/* Create New (chat) is hidden for the demo — the walkthrough never
+            starts from a blank chat, and it was the one button that could drop
+            a viewer out of the product story. Restore by un-commenting. */}
+        {/*
         <MenuBarItem
           icon="new-chat"
           label="Create New"
@@ -109,6 +112,7 @@ export function MenuBar({
           isAccent
           onClick={onNewChat}
         />
+        */}
 
         {items.map((item) => (
           <MenuBarItem

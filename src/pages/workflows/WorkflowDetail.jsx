@@ -5,6 +5,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CaretLeft, CaretRight, Database, Code, Brain, FileText,
   Play, Pause, ArrowRight, ArrowSquareOut, ShieldCheck, CheckCircle, XCircle, X,
+  SlidersHorizontal, UsersThree, StackSimple, Clock,
 } from "@phosphor-icons/react";
 import { Button as PvButton, Tooltip } from "@/ui";
 import { toast } from "sonner";
@@ -73,9 +74,33 @@ function FamilyNode({ step, agentKey, text, steps, selected, onSelect }) {
 
 /* ── What Prasanna actually asked to see on click: how this agent is
    configured, which specialists sit inside it, and the blocks it runs.
-   Opens as a right-hand panel so the graph stays visible behind it. ── */
-function AgentConfigDrawer({ family, accent, onClose, onOpenAgent }) {
+   Opens as a right-hand panel so the graph stays visible behind it.
+
+   Read top-down it answers, in order: what does this agent do here → what is
+   it set to → who is inside it → what does it actually run. The one action
+   (open the agent's own page) sits in a pinned footer rather than the header,
+   which keeps the title line clean and stops the panel trailing off into empty
+   white for the agents that only run two blocks. ── */
+function DrawerSection({ icon: Icon, label, count, children, tint }) {
+  return (
+    <section className="px-5 py-4 border-b border-[var(--color-grey-100)]" style={tint ? { background: tint } : undefined}>
+      <div className="flex items-center gap-1.5 mb-3">
+        <Icon size={13} className="shrink-0 text-[var(--text-muted)]" />
+        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">{label}</span>
+        {count != null && (
+          <span className="text-[12px] tabular-nums text-[var(--color-grey-400)]">{count}</span>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AgentConfigDrawer({ family, accent, index, total, handoff = [], onClose, onOpenAgent }) {
   const a = AGENTS[family.agent];
+  const Icon = agentIcon(family.agent);
+  const config = family.config || [];
+  const specialists = family.specialistNames || [];
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -101,17 +126,21 @@ function AgentConfigDrawer({ family, accent, onClose, onOpenAgent }) {
         aria-label={`${a.label} configuration`}
         className="absolute top-0 right-0 h-full w-[560px] max-w-[94vw] bg-white shadow-2xl flex flex-col overflow-hidden"
       >
-        <div className="shrink-0 flex items-center gap-2.5 px-5 h-[60px] border-b border-[var(--color-grey-100)]">
-          <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: accent }} />
-          <span className="text-[14px] font-medium text-[var(--text-primary)] truncate">{a.label}</span>
-          <span className="text-[12px] text-[#757A97] shrink-0">&middot; how it&rsquo;s configured</span>
-          <button
-            type="button"
-            onClick={onOpenAgent}
-            className="ml-auto shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-primary-600 hover:underline bg-transparent border-none cursor-pointer p-0"
+        {/* Identity only. The subtitle sat inline beside a truncating title and
+            read as part of the name; on its own line it reads as a caption. */}
+        <div className="shrink-0 flex items-start gap-3 px-5 pt-4 pb-4 border-b border-[var(--color-grey-100)]">
+          <span
+            className="shrink-0 grid place-items-center w-9 h-9 rounded-md mt-0.5"
+            style={{ background: accent + "14" }}
           >
-            View agent <ArrowSquareOut size={12} />
-          </button>
+            <Icon size={20} weight="fill" style={{ color: accent }} />
+          </span>
+          <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+            <span className="text-[14px] font-semibold text-[var(--text-primary)] truncate">{a.label}</span>
+            <span className="text-[12px] text-[#757A97]">
+              {index != null && total ? `Step ${index + 1} of ${total} · ` : ""}How it&rsquo;s configured in this workflow
+            </span>
+          </span>
           <button
             type="button"
             onClick={onClose}
@@ -123,48 +152,133 @@ function AgentConfigDrawer({ family, accent, onClose, onOpenAgent }) {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="grid md:grid-cols-2 gap-x-8 gap-y-0 px-4 py-1">
-        {(family.config || []).map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between gap-4 py-2.5 border-b border-[var(--color-grey-100)] last:border-b-0">
-            <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
-            <span className="text-[12px] text-[var(--text-primary)] text-right">{v}</span>
-          </div>
-        ))}
-      </div>
+          {/* The sentence from the node. It was the one thing a reader had to
+              close the panel to re-read. */}
+          {family.text && (
+            <p className="px-5 py-4 m-0 text-[13px] leading-relaxed text-[var(--text-primary)] border-b border-[var(--color-grey-100)]">
+              {family.text}
+            </p>
+          )}
 
-      {family.specialistNames?.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-4 py-3 border-t border-[var(--color-grey-100)]">
-          <span className="text-[12px] text-[#757A97] mr-1">Specialist agents</span>
-          {family.specialistNames.map((n) => (
-            <span key={n} className="text-[11px] px-2 py-1 rounded-full border" style={{ borderColor: accent + "55", color: accent }}>
-              {n}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="px-4 py-3 border-t border-[var(--color-grey-100)] bg-grey-50 flex flex-col gap-1.5">
-        <span className="text-[12px] text-[#757A97] mb-0.5">Blocks it runs</span>
-        {family.steps.map((st, i) => {
-          const meta = STEP[st.type] || {};
-          const Icon = meta.icon || Code;
-          const body = st.code || st.prompt;
-          return (
-            <div key={i} className="rounded-md border border-[var(--color-grey-100)] bg-white overflow-hidden">
-              <div className="flex items-center gap-2.5 px-3 py-2">
-                <Icon size={14} className="text-[var(--text-muted)] shrink-0" />
-                <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)] truncate">{st.label}</span>
-                <span className="shrink-0 text-[11px] text-[#757A97]">{meta.label}</span>
+          {config.length > 0 && (
+            <DrawerSection icon={SlidersHorizontal} label="Settings">
+              {/* One column. Two columns inside 560px forced values like
+                  "Sales-accepted opportunity" to wrap and right-align, which
+                  read as ragged rather than tabular. */}
+              <div className="flex flex-col">
+                {config.map(([k, v]) => (
+                  <div
+                    key={k}
+                    className="flex items-baseline justify-between gap-6 py-2 border-b border-dashed border-[var(--color-grey-100)] last:border-b-0"
+                  >
+                    <span className="text-[12px] text-[#757A97] shrink-0">{k}</span>
+                    <span className="text-[12px] text-[var(--text-primary)] text-right">{v}</span>
+                  </div>
+                ))}
               </div>
-              {body && (
-                <pre className="px-3 py-2 m-0 border-t border-[var(--color-grey-100)] text-[11px] leading-relaxed text-[var(--text-secondary)] overflow-x-auto whitespace-pre font-mono">
-                  {body}
-                </pre>
-              )}
+            </DrawerSection>
+          )}
+
+          {specialists.length > 0 && (
+            <DrawerSection icon={UsersThree} label="Specialist agents" count={specialists.length}>
+              <div className="flex flex-wrap gap-1.5">
+                {specialists.map((n) => (
+                  <span
+                    key={n}
+                    className="inline-flex items-center gap-1.5 text-[12px] pl-2 pr-2.5 py-1 rounded-full border"
+                    style={{ borderColor: accent + "40", color: accent, background: accent + "0A" }}
+                  >
+                    <i className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: accent }} />
+                    {n}
+                  </span>
+                ))}
+              </div>
+            </DrawerSection>
+          )}
+
+          <DrawerSection icon={StackSimple} label="Blocks it runs" count={family.steps.length}>
+            <div className="flex flex-col gap-2">
+              {family.steps.map((st, i) => {
+                const meta = STEP[st.type] || {};
+                const StepIcon = meta.icon || Code;
+                const body = st.code || st.prompt;
+                return (
+                  <div key={i} className="rounded-md border border-[var(--color-grey-100)] overflow-hidden">
+                    <div className="flex items-center gap-2.5 px-3 py-2 bg-white">
+                      <StepIcon size={14} className="text-[var(--text-secondary)] shrink-0" />
+                      <span className="flex-1 min-w-0 text-[12px] text-[var(--text-primary)] truncate">{st.label}</span>
+                      <span className="shrink-0 text-[12px] text-[#757A97]">{meta.label}</span>
+                      {st.ms != null && (
+                        <span className="shrink-0 inline-flex items-center gap-1 text-[12px] tabular-nums text-[var(--color-grey-400)]">
+                          <Clock size={12} />
+                          {(st.ms / 1000).toFixed(1)}s
+                        </span>
+                      )}
+                    </div>
+                    {body && (
+                      <pre className="px-3 py-2 m-0 border-t border-[var(--color-grey-100)] bg-grey-50 text-[11px] leading-relaxed text-[var(--text-secondary)] overflow-x-auto whitespace-pre font-mono">
+                        {body}
+                      </pre>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </DrawerSection>
+
+          {/* Where its output goes next. In a strictly sequential workflow this
+              is the question the panel otherwise leaves the reader to answer by
+              closing it and looking back at the graph — and for the last agent
+              it is where the approval gate finally gets named. */}
+          {handoff.length > 0 && (
+            <DrawerSection icon={ArrowRight} label="Hands off to">
+              <div className="flex flex-col gap-2">
+                {handoff.map((h) => {
+                  const HIcon = h.agentKey ? agentIcon(h.agentKey) : h.icon;
+                  const row = (
+                    <>
+                      <HIcon size={18} weight="fill" className="shrink-0" style={{ color: h.color }} />
+                      <span className="flex-1 min-w-0 flex flex-col">
+                        <span className="text-[12px] font-medium text-[var(--text-primary)] truncate">{h.label}</span>
+                        {h.detail && <span className="text-[12px] text-[#757A97] truncate">{h.detail}</span>}
+                      </span>
+                      {h.onClick && <CaretRight size={13} className="shrink-0 text-[var(--color-grey-400)]" />}
+                    </>
+                  );
+                  return h.onClick ? (
+                    <button
+                      key={h.label}
+                      type="button"
+                      onClick={h.onClick}
+                      className="flex items-center gap-2.5 text-left w-full px-3 py-2.5 rounded-md border border-[var(--color-grey-100)] bg-white hover:bg-grey-50 cursor-pointer transition-colors"
+                    >
+                      {row}
+                    </button>
+                  ) : (
+                    <div
+                      key={h.label}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border border-[var(--color-grey-100)] bg-white"
+                    >
+                      {row}
+                    </div>
+                  );
+                })}
+              </div>
+            </DrawerSection>
+          )}
+        </div>
+
+        {/* Pinned, so the panel has a bottom edge even when an agent runs two
+            blocks and the scroll area does not fill. */}
+        <div className="shrink-0 px-5 py-3 border-t border-[var(--color-grey-100)] bg-white">
+          <button
+            type="button"
+            onClick={onOpenAgent}
+            className="w-full h-9 inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--color-grey-200)] bg-white text-[13px] font-medium text-[var(--text-primary)] hover:bg-grey-50 cursor-pointer transition-colors"
+          >
+            View {a.label} agent
+            <ArrowSquareOut size={13} />
+          </button>
         </div>
       </motion.aside>
     </div>
@@ -530,6 +644,27 @@ export default function WorkflowDetail() {
   ).map((f) => ({ ...f, steps: stepsFor(f.agent) }));
   const selectedFamily = families.find((f) => f.agent === selected) || null;
 
+  // What the open agent passes its output to: the next agent in the sequence,
+  // or — for the last one — the approval gate and then the ad platform.
+  const handoff = (() => {
+    if (!selectedFamily) return [];
+    const i = families.findIndex((f) => f.agent === selectedFamily.agent);
+    const next = families[i + 1];
+    if (next) {
+      return [{
+        agentKey: next.agent,
+        label: AGENTS[next.agent]?.label,
+        detail: next.text,
+        color: AGENTS[next.agent]?.color,
+        onClick: () => setSelected(next.agent),
+      }];
+    }
+    return [
+      { icon: ShieldCheck, color: "#08BD50", label: "Your approval", detail: `Nothing reaches ${platform.short} until you approve` },
+      ...(system ? [{ icon: ArrowSquareOut, color: "var(--text-secondary)", label: system.label, detail: system.detail }] : []),
+    ];
+  })();
+
   return (
     <div className="flex flex-col w-full h-full overflow-x-auto">
       <div className="flex flex-col w-full h-full min-w-[800px]">
@@ -620,6 +755,9 @@ export default function WorkflowDetail() {
             key={selectedFamily.agent}
             family={selectedFamily}
             accent={AGENTS[selectedFamily.agent].color}
+            index={families.findIndex((f) => f.agent === selectedFamily.agent)}
+            total={families.length}
+            handoff={handoff}
             onClose={() => setSelected(null)}
             onOpenAgent={() => navigate(`/agents/${selectedFamily.agent}`)}
           />
