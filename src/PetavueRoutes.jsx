@@ -30,6 +30,7 @@ export default function PetavueRoutes() {
       dashboard: "/dashboards",
       "dashboards-pv": "/dashboards",
       workflows: "/workflows",
+      agents: "/agents",
       recommendations: "/recommendations",
       goals: "/recommendations",
       "data-hub": "/data-hub",

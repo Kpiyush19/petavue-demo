@@ -4,6 +4,7 @@ import { HistoryPanel } from './HistoryPanel';
 import { UserProfile } from './UserProfile';
 import { SidebarToggle } from './icons/SidebarToggle';
 import { BrandLogo } from './icons/BrandLogo';
+import { isEmbedded } from '@/utils/embed';
 import './MenuBar.css';
 
 // Canonical nav — the SINGLE source of truth for both navbars. The app navbar
@@ -35,13 +36,12 @@ const ALL_NAV = [
   { id: 'data-hub', label: 'Data Hub', icon: 'data-hub' },
 ];
 
-// The demo shows only the three surfaces the story runs through. Dashboard,
-// Skills and Data Hub are real product sections but nothing in the walkthrough
-// visits them, and a nav item that opens an unrelated screen mid-demo is worse
-// than no nav item. Their routes still resolve if typed — this hides the
-// entrances, it does not delete the pages. Drop an id from HIDDEN_NAV to bring
-// one back.
-const HIDDEN_NAV = ['dashboard-live', 'skills', 'data-hub'];
+// Nav items to hide. Empty in this prototype: every section, Create New
+// included, has an entrance here. A trimmed demo build can hide entrances by
+// listing ids (e.g. ['dashboard-live', 'skills', 'data-hub']); routes keep
+// resolving either way, since this hides links and never deletes pages. Both
+// navbars read CANONICAL_NAV, so a change here applies to both at once.
+const HIDDEN_NAV = [];
 
 export const CANONICAL_NAV = ALL_NAV.filter((item) => !HIDDEN_NAV.includes(item.id));
 
@@ -82,6 +82,11 @@ export function MenuBar({
   const isOpen = isControlled ? controlledOpen : internalOpen;
   const setIsOpen = isControlled ? (v) => onToggle && onToggle(v) : setInternalOpen;
   const [logoHovered, setLogoHovered] = useState(false);
+
+  // Framed into the product, which supplies its own nav. The app layout already
+  // skips its navbar when embedded; standalone pages (Data Hub, Settings,
+  // Profile) render this one directly, so the check has to live here too.
+  if (isEmbedded()) return null;
 
   return (
     <nav className={`menubar ${isOpen ? 'menubar--open' : 'menubar--closed'}`}>
@@ -135,10 +140,6 @@ export function MenuBar({
 
       {/* Navigation items */}
       <div className="menubar__nav">
-        {/* Create New (chat) is hidden for the demo — the walkthrough never
-            starts from a blank chat, and it was the one button that could drop
-            a viewer out of the product story. Restore by un-commenting. */}
-        {/*
         <MenuBarItem
           icon="new-chat"
           label="Create New"
@@ -146,7 +147,6 @@ export function MenuBar({
           isAccent
           onClick={onNewChat}
         />
-        */}
 
         {/* Canonical nav — same ids/order as the app navbar so buttons never
             jump position between pages. The `items` prop is ignored on purpose. */}
