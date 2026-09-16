@@ -146,7 +146,7 @@ function Row({ wf, onOpen, onReview, onDeploy, deploying }) {
         ) : wf.status === "available" && onDeploy ? (
           <Button
             variant="secondary"
-            size="sm"
+            size="md"
             label="Deploy workflow"
             onClick={(e) => { e.stopPropagation(); onDeploy(); }}
           />
@@ -184,7 +184,7 @@ function AssessmentPanel({ onOpen }) {
         <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{ASSESSMENT.name}</span>
         <span className="text-[12px] text-[#757A97] leading-snug">{ASSESSMENT.line}</span>
       </span>
-      <Button variant="secondary" size="sm" label="Run the assessment" onClick={onOpen} />
+      <Button variant="secondary" size="md" label="Run the assessment" onClick={onOpen} />
     </div>
   );
 }
