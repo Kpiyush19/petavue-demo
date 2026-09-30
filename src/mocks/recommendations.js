@@ -46,6 +46,88 @@ const stamp = (d = new Date()) => {
   return `${mo} ${d.getDate()}, ${h}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
 };
 
+/* The full lists behind the ranked tables. The Apply modal shows every
+   account it would act on, so each one can be seen and unticked. */
+const ROUTED_ACCOUNTS = [
+  "Meridian Health",
+  "Corville Logistics",
+  "Brightline Retail",
+  "Pinecrest Insurance",
+  "Aldermoor Health",
+  "Kestrel Freight",
+  "Ravenwood Retail",
+  "Summitline Software",
+  "Bluewater Claims",
+  "Oakhaven Medical",
+  "Northgate Supply",
+  "Copperfield Systems",
+  "Harborview Health",
+  "Lattice Freightworks",
+];
+
+const LOOKALIKE_ACCOUNTS = [
+  "Halden Medical Group",
+  "Northway Freight",
+  "Stratus Claims",
+  "Ashford Health",
+  "Bramblewood Freight",
+  "Cedarline Insurance",
+  "Driftwood Medical Group",
+  "Everline Logistics",
+  "Fairhaven Mutual",
+  "Glenmoor Care Partners",
+  "Hollis Transport",
+  "Ironbridge Claims Services",
+  "Juniper Software",
+  "Kingsway Health Systems",
+  "Larkspur Supply Chain",
+  "Millbrook Assurance",
+  "Northfield Analytics",
+  "Orchardgate Clinics",
+  "Parkline Distribution",
+  "Quarrystone Risk Partners",
+  "Redfern Data",
+  "Silverlake Health",
+  "Thornbury Freight",
+  "Upland Insurance",
+  "Valemont Medical Group",
+  "Westbrook Logistics",
+  "Yarrow Mutual",
+  "Amberley Care Partners",
+  "Birchwood Transport",
+  "Coldspring Claims Services",
+  "Dunmore Software",
+  "Elmhurst Health Systems",
+  "Foxglove Supply Chain",
+  "Graniteview Assurance",
+  "Ivywood Analytics",
+  "Jasperline Clinics",
+  "Kinsley Distribution",
+  "Lindenwood Risk Partners",
+  "Marlowe Data",
+  "Pembrook Health",
+  "Quillon Freight",
+  "Rosemont Insurance",
+  "Stonegate Medical Group",
+  "Tidewater Logistics",
+  "Verity Mutual",
+  "Willowbrook Care Partners",
+  "Wexford Transport",
+  "Ardentis Claims Services",
+  "Brightwater Software",
+  "Clearbrook Health Systems",
+  "Deerfield Supply Chain",
+  "Eastvale Assurance",
+  "Fernhill Analytics",
+  "Goldleaf Clinics",
+  "Hawthorne Distribution",
+  "Inverlane Risk Partners",
+  "Keswick Data",
+  "Lowmoor Health",
+  "Meadowcroft Freight",
+  "Newhaven Insurance",
+];
+
 const ITEMS = [
   /* ── The ABM and LinkedIn cards (Camunda demo, 30 Sep).
      Source: docs/Camunda Recommendations Demo.md. These four lead the queue.
@@ -114,7 +196,7 @@ const ITEMS = [
         name: { sdr: "SDR round-robin queue", ae: "Named account executive queue" },
         groups: [
           { heading: "New tasks, ranked", tone: "neutral", rows: [
-            { label: "Accounts", chips: ["1 · Meridian Health", "2 · Corville Logistics", "3 · Brightline Retail", "+11 more"] },
+            { label: "Accounts (ranked)", chips: ROUTED_ACCOUNTS.map((a, i) => `${i + 1} · ${a}`) },
           ] },
         ],
         fields: [
@@ -126,7 +208,7 @@ const ITEMS = [
         system: "HubSpot", kind: "Company list", name: "ABM · Routed to sales", ref: "#list 2231", state: "Active list",
         groups: [
           { heading: "Added to list", tone: "include", rows: [
-            { label: "Companies", chips: ["Meridian Health", "Corville Logistics", "Brightline Retail", "+11 more"] },
+            { label: "Companies", chips: ROUTED_ACCOUNTS },
           ] },
         ],
         fields: [{ field: "Marketing nurture", now: "Enrolled", after: "Paused while sales works the account" }],
@@ -364,9 +446,10 @@ const ITEMS = [
       {
         system: "LinkedIn Ads", kind: "Campaign group", name: "Lookalike accounts · Q4", ref: "New", state: "Active on apply",
         launches: true,
+        platformNote: "57 of the 60 companies matched a LinkedIn company page. The other 3 were left out of the audience.",
         groups: [
           { heading: "New inclusion targeting criteria", tone: "include", rows: [
-            { label: "Company list", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+            { label: "Company list", chips: LOOKALIKE_ACCOUNTS },
             { label: "Job Titles (Current)", chips: ["Chief Information Officer", "Vice President of Operations", "Vice President of Engineering"] },
           ] },
         ],
@@ -380,7 +463,7 @@ const ITEMS = [
         system: "HubSpot", kind: "Company list", name: "ABM · Target accounts", ref: "#list 1180", state: "Active list",
         groups: [
           { heading: "Added to list", tone: "include", rows: [
-            { label: "Companies", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+            { label: "Companies", chips: LOOKALIKE_ACCOUNTS },
           ] },
         ],
         fields: [{ field: "Owner", now: "—", after: "Assigned by territory" }],
@@ -390,7 +473,7 @@ const ITEMS = [
         system: "HubSpot", kind: "Company list", name: "Lookalike accounts · Marketing only", ref: "New list", state: "Active list",
         groups: [
           { heading: "Added to list", tone: "include", rows: [
-            { label: "Companies", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+            { label: "Companies", chips: LOOKALIKE_ACCOUNTS },
           ] },
         ],
         fields: [{ field: "Moves to the target account list", now: "—", after: "When it reaches the high-intent threshold" }],
@@ -804,7 +887,7 @@ export function decide(id, status, note, choice, applied) {
     const say = (label, text) => { it.comments = [...(it.comments || []), { author: currentUser.name, at, label, text }]; };
     if (!c.on) { if (c.reason) say("Left out when applied", `${c.name}: ${c.reason}`); continue; }
     for (const f of c.fields || []) {
-      if (!f.on && f.reason) say("Left out when applied", `${f.field} on ${c.name}: ${f.reason}`);
+      if (!f.on && f.reason) say(f.mode === "later" ? "Saved for later" : "Left out when applied", `${f.field} on ${c.name}: ${f.reason}`);
       else if (f.value !== f.rec && f.reason) say("Adjusted when applied", `${f.field} on ${c.name}, ${f.rec} → ${f.value}: ${f.reason}`);
     }
     for (const g of c.groups || []) {

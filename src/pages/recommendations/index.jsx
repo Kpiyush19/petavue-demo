@@ -369,7 +369,7 @@ function buildDraft(changes) {
     ...c,
     on: true,
     reason: "",
-    fields: (c.fields || []).map((f) => ({ ...f, rec: f.after, value: f.after, on: true, reason: "" })),
+    fields: (c.fields || []).map((f) => ({ ...f, rec: f.after, value: f.after, on: true, mode: "skip", reason: "" })),
     groups: (c.groups || []).map((g) => ({
       ...g,
       rows: g.rows.map((r) => ({
@@ -423,12 +423,34 @@ function missingReasons(draft) {
 function tally(draft) {
   let adjusted = 0;
   let off = 0;
+  let later = 0;
+  let reasons = 0;
   draft.forEach((c) => {
-    if (!c.on) { off += 1; return; }
-    c.fields.forEach((f) => { if (!f.on) off += 1; else if (isAdjusted(f)) adjusted += 1; });
-    c.groups.forEach((g) => g.rows.forEach((r) => r.chips.forEach((x) => { if (!x.fixed && !x.on) off += 1; })));
+    if (!c.on) { off += 1; if (c.reason) reasons += 1; return; }
+    c.fields.forEach((f) => {
+      if (!f.on) { off += 1; if (f.mode === "later") later += 1; }
+      else if (isAdjusted(f)) adjusted += 1;
+      if (f.reason) reasons += 1;
+    });
+    c.groups.forEach((g) => g.rows.forEach((r) => {
+      const n = r.chips.filter((x) => !x.fixed && !x.on).length;
+      off += n;
+      if (r.mode === "later") later += n;
+      if (n && r.reason) reasons += 1;
+    }));
   });
-  return { adjusted, off };
+  return { adjusted, off, later, reasons };
+}
+
+/* The one-line summary of what was done, in Ijas's words. */
+function appliedSummary(draft) {
+  const { adjusted, off, later } = tally(draft);
+  const dropped = off - later;
+  return [
+    adjusted ? `Applied with ${adjusted} adjusted` : "Applied as recommended",
+    later && `${later} still to do`,
+    dropped && `${dropped} not applied`,
+  ].filter(Boolean).join(" · ");
 }
 
 function unitsOf(c) {
@@ -501,6 +523,20 @@ function ApplyStatus({ status }) {
   );
 }
 
+function TickBox({ on }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid place-items-center w-4 h-4 shrink-0 rounded-[4px] border-solid border transition-colors",
+        on ? "bg-primary-500 border-primary-500" : "bg-white border-[var(--color-grey-300)]",
+      )}
+    >
+      {on && <Check size={11} weight="bold" className="text-white" />}
+    </span>
+  );
+}
+
 function Tick({ on, onChange, label }) {
   return (
     <button
@@ -533,6 +569,43 @@ function WhyInput({ value, onChange, example }) {
   );
 }
 
+function LaterOrSkip({ mode, onChange }) {
+  return (
+    <span className="inline-flex p-0.5 rounded-md bg-grey-50 border border-[var(--color-grey-200)]">
+      {[["skip", "Don’t apply"], ["later", "Save for later"]].map(([m, label]) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange(m)}
+          className={cn(
+            "h-7 px-2.5 rounded-[5px] text-[12px] cursor-pointer border-none whitespace-nowrap",
+            mode === m ? "bg-white font-semibold text-[var(--text-primary)] shadow-[0_1px_2px_0_rgba(16,24,40,0.08)]" : "bg-transparent text-[var(--text-secondary)]",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/* What happened to something that was not applied as recommended. */
+function DeviationTag({ mode }) {
+  return mode === "later" ? (
+    <span className="text-[12px] font-semibold text-amber-700">Saved for later, still to do</span>
+  ) : (
+    <span className="text-[12px] font-semibold text-[var(--text-muted)]">Not applied</span>
+  );
+}
+
+function WhyQuote({ reason }) {
+  if (!reason) return null;
+  return <span className="text-[12px] italic leading-relaxed text-[var(--text-secondary)]">Why: “{reason}”</span>;
+}
+
+const FOLD_AT = 20;
+const FOLD_SHOW = 12;
+
 const CHIP_TONE = {
   added: "bg-[#EEF8F1] border-[#CDEBD6]",
   removed: "bg-white border-[var(--color-grey-200)]",
@@ -544,8 +617,11 @@ const CHIP_TONE = {
    "read" (what changed). `update` mutates a clone of the draft. */
 function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
   const edit = mode === "edit";
+  const read = mode === "read";
   const [editing, setEditing] = useState(null);
   const [temp, setTemp] = useState("");
+  // rows longer than FOLD_AT start folded; "Show all" opens them in place
+  const [unfolded, setUnfolded] = useState(() => new Set());
   const u = unitsOf(c);
   const adjustedHere = c.on && c.fields.some(isAdjusted);
   const fieldCols = edit ? "16px minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1.4fr)" : "minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1.4fr)";
@@ -559,7 +635,12 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
   };
 
   return (
-    <div className="shrink-0 flex flex-col rounded-lg border border-[var(--color-grey-100)] bg-white overflow-hidden">
+    <div
+      className={cn(
+        "shrink-0 flex flex-col rounded-lg border bg-white overflow-hidden",
+        read && c.on ? "border-green-200" : "border-[var(--color-grey-100)]",
+      )}
+    >
       <div className="flex items-center gap-2.5 px-4 py-3 bg-grey-50 border-solid border-x-0 border-t-0 border-b border-b-[var(--color-grey-100)]">
         {edit && <Tick on={c.on} label={`Apply ${c.name}`} onChange={() => update((d) => { d[ci].on = !d[ci].on; })} />}
         <SourceIcon name={c.system} size={14} />
@@ -568,21 +649,19 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
           {c.name}
         </span>
         {(c.ref || c.state) && (
-          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{[c.ref, c.state].filter(Boolean).join(" · ")}</span>
+          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{(read ? [c.ref] : [c.ref, c.state]).filter(Boolean).join(" · ")}</span>
         )}
         <span className="ml-auto shrink-0 flex items-center gap-1.5">
-          {c.on && u.total > 0 && u.on < u.total && <Pill cls="border-[var(--color-grey-200)] bg-white text-[var(--text-secondary)]">{u.on} of {u.total} changes</Pill>}
-          {adjustedHere && <Pill cls="border-violet-200 bg-violet-50 text-violet-700">Adjusted</Pill>}
+          {!read && c.on && u.total > 0 && u.on < u.total && <Pill cls="border-[var(--color-grey-200)] bg-white text-[var(--text-secondary)]">{u.on} of {u.total} changes</Pill>}
+          {!read && adjustedHere && <Pill cls="border-violet-200 bg-violet-50 text-violet-700">Adjusted</Pill>}
           <ApplyStatus status={status} />
         </span>
       </div>
 
       {!c.on ? (
         <div className="flex flex-col gap-2 px-4 py-3">
-          <span className="text-[12px] text-[var(--text-muted)]">
-            {edit ? "This change won’t be applied." : "Not applied."}
-            {!edit && c.reason && <span className="text-[var(--text-primary)]"> {c.reason}</span>}
-          </span>
+          <span className="text-[12px] text-[var(--text-muted)]">{edit ? "This change won’t be applied." : "Not applied."}</span>
+          {!edit && <WhyQuote reason={c.reason} />}
           {edit && <WhyInput value={c.reason} example="Not this quarter" onChange={(v) => update((d) => { d[ci].reason = v; })} />}
         </div>
       ) : (
@@ -597,52 +676,61 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
                     <div className="grid items-start gap-3" style={{ gridTemplateColumns: "170px minmax(0,1fr)" }}>
                       <span className="pt-1 text-[12px] font-medium text-[var(--text-primary)]">{r.label}</span>
                       <span className="flex flex-wrap gap-1.5">
-                        {r.chips.map((x, xi) => (
-                          <span
-                            key={x.label}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] leading-snug",
-                              x.on || x.fixed
-                                ? cn("border-solid text-[var(--text-primary)]", CHIP_TONE[verbOf(g)])
-                                : "border-dashed border-[var(--color-grey-300)] bg-white text-[var(--text-muted)]",
-                            )}
+                        {(r.chips.length > FOLD_AT && !unfolded.has(`${gi}:${ri}`)
+                          ? r.chips.slice(0, FOLD_SHOW)
+                          : r.chips
+                        ).map((x, xi) => {
+                          const toggle = edit && !x.fixed;
+                          const Chip = toggle ? "button" : "span";
+                          return (
+                            <Chip
+                              key={x.label}
+                              {...(toggle && {
+                                type: "button",
+                                role: "checkbox",
+                                "aria-checked": x.on,
+                                onClick: () => update((d) => { const t = d[ci].groups[gi].rows[ri].chips[xi]; t.on = !t.on; }),
+                              })}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] leading-snug",
+                                x.on || x.fixed
+                                  ? cn("border-solid text-[var(--text-primary)]", CHIP_TONE[verbOf(g)])
+                                  : "border-dashed border-[var(--color-grey-300)] bg-white text-[var(--text-muted)]",
+                                toggle && "cursor-pointer transition-colors hover:border-primary-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500",
+                              )}
+                            >
+                              {toggle && <TickBox on={x.on} />}
+                              <span className={cn(!edit && !x.on && !x.fixed && "line-through")}>{x.label}</span>
+                              {edit && !x.on && !x.fixed && <span className="italic"> — {offWord(g)}</span>}
+                            </Chip>
+                          );
+                        })}
+                        {r.chips.length > FOLD_AT && (
+                          <button
+                            type="button"
+                            onClick={() => setUnfolded((set) => {
+                              const next = new Set(set);
+                              const k = `${gi}:${ri}`;
+                              if (next.has(k)) next.delete(k); else next.add(k);
+                              return next;
+                            })}
+                            className="self-center px-1 bg-transparent border-none cursor-pointer text-[12px] font-medium text-[var(--color-primary-600)] hover:underline"
                           >
-                            {edit && !x.fixed && (
-                              <Tick
-                                on={x.on}
-                                label={x.label}
-                                onChange={() => update((d) => { const t = d[ci].groups[gi].rows[ri].chips[xi]; t.on = !t.on; })}
-                              />
-                            )}
-                            {x.label}
-                            {!x.on && !x.fixed && (
-                              <span className="italic">
-                                {" "}
-                                — {edit ? offWord(g) : r.mode === "later" ? "saved for later" : offWord(g).replace("won’t be", "not")}
-                              </span>
-                            )}
-                          </span>
-                        ))}
+                            {unfolded.has(`${gi}:${ri}`)
+                              ? "Show fewer"
+                              : (() => {
+                                  // say so when an unticked value is folded out of sight
+                                  const hiddenOff = r.chips.slice(FOLD_SHOW).filter((x) => !x.on).length;
+                                  return `Show all ${r.chips.length}${hiddenOff ? ` · ${hiddenOff} unticked` : ""}`;
+                                })()}
+                          </button>
+                        )}
                       </span>
                     </div>
                     {off && edit && (
                       <div className="grid items-center gap-2 mt-2" style={{ gridTemplateColumns: "170px auto minmax(0,1fr)" }}>
                         <span />
-                        <span className="inline-flex p-0.5 rounded-md bg-grey-50 border border-[var(--color-grey-200)]">
-                          {[["skip", "Don’t apply"], ["later", "Save for later"]].map(([m, label]) => (
-                            <button
-                              key={m}
-                              type="button"
-                              onClick={() => update((d) => { d[ci].groups[gi].rows[ri].mode = m; })}
-                              className={cn(
-                                "h-7 px-2.5 rounded-[5px] text-[12px] cursor-pointer border-none whitespace-nowrap",
-                                r.mode === m ? "bg-white font-semibold text-[var(--text-primary)] shadow-[0_1px_2px_0_rgba(16,24,40,0.08)]" : "bg-transparent text-[var(--text-secondary)]",
-                              )}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </span>
+                        <LaterOrSkip mode={r.mode} onChange={(m) => update((d) => { d[ci].groups[gi].rows[ri].mode = m; })} />
                         <WhyInput
                           value={r.reason}
                           example="Sales already owns this account"
@@ -650,11 +738,11 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
                         />
                       </div>
                     )}
-                    {off && !edit && r.reason && (
-                      <p className="m-0 mt-1.5 text-[12px] text-[var(--text-muted)]" style={{ paddingLeft: 182 }}>
-                        {r.mode === "later" ? "Saved for later: " : "Not applied: "}
-                        <span className="text-[var(--text-primary)]">{r.reason}</span>
-                      </p>
+                    {off && !edit && (
+                      <span className="flex flex-col gap-0.5 mt-1.5" style={{ paddingLeft: 182 }}>
+                        <DeviationTag mode={r.mode} />
+                        <WhyQuote reason={r.reason} />
+                      </span>
                     )}
                   </div>
                 );
@@ -680,7 +768,7 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
               )}
               <div className="grid gap-3 py-1.5" style={{ gridTemplateColumns: fieldCols }}>
                 {edit && <span />}
-                {[c.fieldHead || "Field", nowLabel(c.system), "After"].map((h) => (
+                {[c.fieldHead || "Field", read ? "Before" : nowLabel(c.system), "After"].map((h) => (
                   <span key={h} className="text-[12px] font-semibold uppercase tracking-wider text-[#757A97]">{h}</span>
                 ))}
               </div>
@@ -698,7 +786,7 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
                         <Tick on={f.on} label={f.field} onChange={() => update((d) => { d[ci].fields[fi].on = !d[ci].fields[fi].on; })} />
                       </span>
                     )}
-                    <span className={cn("text-[12px] leading-snug", f.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
+                    <span className={cn("text-[12px] leading-snug", f.on ? "text-[var(--text-primary)]" : cn("text-[var(--text-muted)]", edit && "line-through"))}>
                       {f.field}
                     </span>
                     <span className="text-[12px] leading-snug text-[var(--text-muted)]">{f.now}</span>
@@ -715,9 +803,10 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
                         />
                       ) : (
                         <span className="flex items-center gap-2 flex-wrap">
-                          <span className={cn("text-[12px] leading-snug font-semibold", f.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
-                            {f.value}
+                          <span className={cn("text-[12px] leading-snug", f.on ? "font-semibold text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
+                            {f.on ? f.value : f.rec}
                           </span>
+                          {!edit && !f.on && <DeviationTag mode={f.mode} />}
                           {edit && f.edit && f.on && (
                             <button
                               type="button"
@@ -747,19 +836,17 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
                           )}
                         </span>
                       )}
+                      {edit && !f.on && (
+                        <LaterOrSkip mode={f.mode} onChange={(m) => update((d) => { d[ci].fields[fi].mode = m; })} />
+                      )}
                       {edit && (adj || !f.on) && (
                         <WhyInput
                           value={f.reason}
-                          example={adj ? "Finance capped us at this amount" : "Sales wants this kept as is"}
+                          example={adj ? "Finance capped us at this amount" : "Turning it on once the new creative is approved"}
                           onChange={(v) => update((d) => { d[ci].fields[fi].reason = v; })}
                         />
                       )}
-                      {!edit && (adj || !f.on) && f.reason && (
-                        <span className="text-[12px] text-[var(--text-muted)]">
-                          {f.on ? "Why: " : "Not applied: "}
-                          <span className="text-[var(--text-primary)]">{f.reason}</span>
-                        </span>
-                      )}
+                      {!edit && (adj || !f.on) && <WhyQuote reason={f.reason} />}
                     </span>
                   </div>
                 );
@@ -771,6 +858,12 @@ function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
         </>
       )}
 
+      {read && c.on && c.platformNote && (
+        <p className="m-0 flex items-start gap-1.5 px-4 py-2.5 bg-amber-50 text-[12px] leading-relaxed text-amber-800">
+          <Warning size={14} className="mt-[2px] shrink-0" />
+          {shortSystem(c.system)} said: {c.platformNote}
+        </p>
+      )}
       {appliedLine && c.on && (
         <p className="m-0 px-4 py-2.5 text-[12px] text-[var(--text-muted)] border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]">
           {appliedLine}
@@ -864,7 +957,7 @@ function ApplyModal({ item, platform, mode, onClose, onApplied }) {
                 ? `${itemsLabel} · untick anything you don’t want, or change a value${extras ? ` · ${extras}` : ""}`
                 : busy
                   ? "Sending changes one at a time. Please keep this window open."
-                  : `${n} applied${extras ? ` · ${extras}` : ""}`}
+                  : appliedSummary(draft)}
             </p>
           </div>
           {!busy && (
@@ -880,6 +973,9 @@ function ApplyModal({ item, platform, mode, onClose, onApplied }) {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3 px-6 py-4">
+          {phase === "done" && tally(draft).reasons > 0 && (
+            <p className="m-0 shrink-0 text-[12px] text-[var(--text-muted)]">Each change’s reason sits under it.</p>
+          )}
           {draft.map((c, ci) => (
             <ChangeCard
               key={`${c.system}-${c.name}`}
@@ -961,12 +1057,9 @@ function ApplyModal({ item, platform, mode, onClose, onApplied }) {
             </>
           )}
           {phase === "done" && (
-            <>
-              <span className="text-[12px] text-[var(--text-muted)]">
-                Read-only. Petavue read each change back from {where} before marking it Applied.
-              </span>
+            <span className="ml-auto">
               <Button variant="secondary" size="md" label="Close" onClick={onClose} />
-            </>
+            </span>
           )}
         </div>
       </motion.div>
@@ -1099,7 +1192,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
                 <u.icon size={12} /> {u.label}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-grey-200)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)]">
+            <span className="rec-card-tag">
               <t.icon size={12} /> {t.label}
             </span>
             <button
@@ -1110,7 +1203,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
               {workflow?.name || item.workflowId}
             </button>
             {workflow && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-grey-200)] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)]">
+              <span className="rec-card-tag">
                 <SourceIcon name={platform} size={13} />
                 {platform}
               </span>
@@ -1118,7 +1211,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
           </div>
 
           {/* 2 · headline, basis, metadata line */}
-          <h2 className="m-0 text-[20px] leading-[1.2] tracking-[-0.5px] font-semibold text-[var(--text-primary)]">
+          <h2 className="m-0 text-[18px] leading-[1.25] tracking-[-0.4px] font-semibold text-[var(--text-primary)]">
             {item.title}
           </h2>
           <p className="m-0 mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">{item.basis}</p>
@@ -1356,7 +1449,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         <div className="shrink-0 border-t border-[var(--color-grey-100)] bg-white px-[34px] py-3">
           {open || deciding ? (
             <div className="flex items-center gap-2">
-              <Button variant="primary" size="md" icon={Check} label="Apply" onClick={() => setModal("accepted")} />
+              <Button variant="primary" size="md" icon={CheckCircle} iconWeight="fill" label="Apply" onClick={() => setModal("accepted")} />
               {open && <Button variant="secondary" size="md" icon={PauseCircle} label="Hold" onClick={() => setModal("on-hold")} />}
               <Button variant="blueGhost" size="md" icon={Prohibit} label="Reject" onClick={() => setModal("rejected")} />
               {deciding && <Button variant="ghost" size="md" label="Cancel" onClick={() => setDeciding(false)} />}
