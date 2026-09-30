@@ -14,6 +14,7 @@ import { cn } from "../../utils/cn";
 import { platformOf, deckFamilyOf, AGENTS } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import SourceIcon from "../../components/SourceIcon";
+import WorkflowGlyph from "../../components/WorkflowGlyph";
 import { SAGE_GRADIENT } from "../goals/SageWidget";
 import { AnalyticsChat } from "../../components/dashboards/analytics-chat-widget";
 import { ChatOverlay } from "../../components/dashboards/dashboard-viewer-widget";
@@ -91,15 +92,15 @@ function RecSageDrawer({ open, onClose, context }) {
    decision status takes its chip position. Type says what kind of
    recommendation the card is and never becomes a page-level filter. ── */
 const URGENCY = {
-  "act-now": { label: "Act now", icon: Lightning, chip: "text-rose-600 border-rose-200 bg-rose-50" },
-  "this-week": { label: "This week", icon: Warning, chip: "text-amber-700 border-amber-200 bg-amber-50" },
-  monitor: { label: "Next run", icon: Eye, chip: "text-blue-700 border-blue-200 bg-blue-50" },
+  "act-now": { label: "Act now", icon: Lightning },
+  "this-week": { label: "This week", icon: Warning },
+  monitor: { label: "Next run", icon: Eye },
 };
 
 const DECISION = {
-  accepted: { label: "Accepted", icon: CheckCircle, chip: "text-green-700 border-green-200 bg-green-50" },
-  rejected: { label: "Rejected", icon: Prohibit, chip: "text-rose-700/80 border-rose-200 bg-rose-50/60" },
-  "on-hold": { label: "On hold", icon: PauseCircle, chip: "text-amber-700 border-amber-200 bg-amber-50" },
+  accepted: { label: "Accepted", icon: CheckCircle },
+  rejected: { label: "Rejected", icon: Prohibit },
+  "on-hold": { label: "On hold", icon: PauseCircle },
 };
 
 const TYPE = {
@@ -1183,23 +1184,21 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         <div className="flex flex-col">
           <div className="flex items-center gap-2 flex-wrap mb-3.5">
             {d ? (
-              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", d.chip)}>
+              <span className={`rec-card-status rec-card-status--${item.decision.status}`}>
                 <d.icon size={12} />
                 {d.label}
               </span>
             ) : (
-              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", u.chip)}>
-                <u.icon size={12} /> {u.label}
+              <span className={`rec-card-status rec-card-status--${item.urgency || "monitor"}`}>
+                <u.icon size={12} />
+                {u.label}
               </span>
             )}
             <span className="rec-card-tag">
               <t.icon size={12} /> {t.label}
             </span>
-            <button
-              type="button"
-              onClick={onOpenWorkflow}
-              className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-[12px] font-semibold text-[var(--color-primary-600)] cursor-pointer"
-            >
+            <button type="button" onClick={onOpenWorkflow} className="rec-card-link">
+              <WorkflowGlyph size={13} />
               {workflow?.name || item.workflowId}
             </button>
             {workflow && (

@@ -138,3 +138,49 @@
   line-height: 20px;
   color: var(--text-secondary);
 }
+
+/* The workflow this came from: a link to it, marked with the Workflows nav
+   icon. No chip, so it reads as navigation rather than a status. */
+.rec-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--color-primary-600);
+  text-underline-offset: 3px;
+}
+
+.rec-card-link:hover {
+  text-decoration: underline;
+}
+
+.rec-card-link:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Urgency while open, the decision once decided: coloured text and icon,
+   no pill, so the header row is all plain labels plus one link. */
+.rec-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.rec-card-status--act-now { color: #e11d48; }
+.rec-card-status--this-week { color: #b45309; }
+.rec-card-status--monitor { color: #1d4ed8; }
+.rec-card-status--accepted { color: #15803d; }
+.rec-card-status--rejected { color: #be123c; }
+.rec-card-status--on-hold { color: #b45309; }
