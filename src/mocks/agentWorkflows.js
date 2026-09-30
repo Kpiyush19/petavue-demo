@@ -171,11 +171,16 @@ export const WORKFLOWS = [
     id: "icp-guardrails",
     family: "Measurement \u00b7 Audience \u00b7 Conversion",
     n: 4,
-    nextRun: null,
+    nextRun: "Sep 30, 7:00 AM",
     reads: ["LinkedIn Ads", "HubSpot"],
     outcomes: ["% impressions inside ICP bands", "$ exposure redirected per month", "SQL rate per 1K impressions"],
-    // Never deployed, so it has no run history yet.
-    runs: [],
+    // Deployed Sep 24 for the ABM demo, daily at 7:00, so Sep 29 is run 06 —
+    // the run behind the title-budget recommendation.
+    runs: [
+      { at: "Sep 29, 7:04 AM", status: "success", ms: 8400, produced: "1 recommendation", evaluated: "90 days \u00b7 7 title groups \u00b7 $40K/month LinkedIn spend" },
+      { at: "Sep 28, 7:04 AM", status: "no-action", ms: 8100, produced: "", evaluated: "Title mix inside the approved bands \u00b7 still watching IT Manager frequency" },
+      { at: "Sep 24, 7:05 AM", status: "success", ms: 9300, produced: "Baseline set", evaluated: "First run \u00b7 title universe classified" },
+    ],
     recommendation: {
       impact: "$4,200 a week of exposure landing outside your ICP bands",
       waiting: 2,
@@ -226,10 +231,10 @@ export const WORKFLOWS = [
     customerOutput: "The workflow prepares campaign-level exclusion and inclusion lists and shows the evidence behind every title.",
     // "What you get" — the concrete deliverable. Never a percentage promise.
     deliverable: "Audience attributes to exclude, per campaign",
-    status: "available",
-    cadence: "Not scheduled",
-    lastRun: null,
-    lastRunOk: null,
+    status: "active",
+    cadence: "Daily \u00b7 7:00 AM",
+    lastRun: "Sep 29, 7:04 AM",
+    lastRunOk: true,
     pending: 2,
     steps: [
       { agent: "measurement", type: "athena_query", label: "Pull delivery by audience attribute", ms: 1840,
@@ -251,10 +256,11 @@ export const WORKFLOWS = [
     id: "audience-sharpening",
     family: "Measurement \u00b7 Audience \u00b7 Campaign",
     n: 5,
-    nextRun: "Sep 2, 7:00 AM",
+    nextRun: "Sep 30, 7:00 AM",
     reads: ["LinkedIn Ads", "HubSpot"],
     outcomes: ["Tier-1 coverage %", "Top-8 impression share", "New engaged accounts per week"],
     runs: [
+      { at: "Sep 29, 7:06 AM", status: "success", ms: 8200, produced: "2 recommendations", evaluated: "23 capped accounts \u00b7 4,200 ICP companies scored" },
       { at: "Sep 1, 7:06 AM", status: "success", ms: 7600, produced: "1 recommendation", evaluated: "170 target accounts \u00b7 840K impressions" },
       { at: "Aug 31, 7:06 AM", status: "no-action", ms: 7400, produced: "", evaluated: "Caps refreshed, no rule change" },
       { at: "Aug 30, 7:05 AM", status: "no-action", ms: 7550, produced: "", evaluated: "Caps refreshed, no rule change" },
@@ -301,7 +307,7 @@ export const WORKFLOWS = [
     deliverable: "Per-account impression caps, refreshed daily",
     status: "active",
     cadence: "Daily · 7:00 AM",
-    lastRun: "Sep 1, 7:06 AM",
+    lastRun: "Sep 29, 7:06 AM",
     lastRunOk: true,
     pending: 3,
     steps: [

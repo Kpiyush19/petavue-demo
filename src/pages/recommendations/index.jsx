@@ -6,6 +6,7 @@ import {
   Lightning, Warning, Eye, CheckCircle, CaretRight,
   Flask, CaretDown, Sparkle, PaperPlaneRight,
   ArrowsClockwise, Handshake, PencilSimpleLine, PauseCircle, Prohibit,
+  Clock, CircleNotch, X, Check, PencilSimple,
 } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
 import { apiGet, apiPost, getApiBase, getAuthToken } from "../../api";
@@ -20,6 +21,7 @@ import { PUSHER_KEY, PUSHER_CLUSTER } from "../../config";
 // the chat widget's own stylesheet — without it Sage renders as unstyled
 // stacked text (other pages import it, this page must too)
 import "../../components/dashboards/analytics-chat-widget/styles.css";
+import "./recommendations.css";
 
 /* ── Sage, scoped to the recommendation on screen. ── */
 function recFollowups(ctx) {
@@ -95,9 +97,9 @@ const URGENCY = {
 };
 
 const DECISION = {
-  accepted: { label: "Accepted", chip: "text-green-700 border-green-200 bg-green-50", dot: "bg-green-500" },
-  rejected: { label: "Rejected", chip: "text-rose-700/80 border-rose-200 bg-rose-50/60", dot: "bg-rose-300" },
-  "on-hold": { label: "On hold", chip: "text-amber-700 border-amber-200 bg-amber-50", dot: "bg-amber-500" },
+  accepted: { label: "Accepted", icon: CheckCircle, chip: "text-green-700 border-green-200 bg-green-50" },
+  rejected: { label: "Rejected", icon: Prohibit, chip: "text-rose-700/80 border-rose-200 bg-rose-50/60" },
+  "on-hold": { label: "On hold", icon: PauseCircle, chip: "text-amber-700 border-amber-200 bg-amber-50" },
 };
 
 const TYPE = {
@@ -307,8 +309,9 @@ function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm", alig
             >
               {o.icon}
               <span
+                title={o.label}
                 className={cn(
-                  "flex-1 min-w-0 text-[12px] leading-snug text-[var(--text-primary)]",
+                  "flex-1 min-w-0 truncate text-[12px] leading-snug text-[var(--text-primary)]",
                   o.value === value && "font-medium",
                 )}
               >
@@ -322,6 +325,652 @@ function FilterDropdown({ value, options, onChange, ariaLabel, size = "sm", alig
         </div>
       )}
     </span>
+  );
+}
+
+/* ── Apply (Ijas's design, from the product at ccpoc-dev).
+   Every change the recommendation makes is a card naming the exact object
+   on the platform. Before applying, anything can be unticked (a whole card,
+   one field, one title) and any number can be changed inline. Every
+   departure from the recommendation needs a one-line reason, and Apply
+   stays disabled until each has one. The amber summary recalculates the
+   spend effect of what is still ticked. Apply then sends the ticked cards
+   one at a time (Applying, Waiting, Applied) and turns into the read-only
+   "What changed" view, which See what changed reopens later. ── */
+const APPLY_STEP_MS = 1400;
+
+const dayStamp = (d) => `${d.toLocaleString("en-US", { month: "short" })} ${d.getDate()}`;
+const joinNames = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+const systemsOf = (changes) => joinNames([...new Set(changes.map((c) => c.system))]);
+const nowLabel = (system) => (system === "LinkedIn Ads" ? "Now on LinkedIn" : `Now in ${system}`);
+const shortSystem = (system) => (system === "LinkedIn Ads" ? "LinkedIn" : system);
+
+/* The changes for one answer to "Needs from you". Cards predating per-object
+   changes show their proposed-change table as a single change. */
+function resolveChanges(item, choice, ts, platform) {
+  const pick = (v) => (v && typeof v === "object" ? v[choice] ?? Object.values(v)[0] : v);
+  const fill = (v) => (typeof v === "string" ? v.replace("{revert21}", dayStamp(new Date(ts + 21 * 864e5))) : v);
+  if (!item.changes) {
+    const system = item.appliedPrefix?.replace(/^(Applied to|Pushed to|Started in|Launched in)\s+/, "") || platform || "Platform";
+    return [{ system, kind: "Change", name: item.changeTitle, table: { cols: item.changeCols, rows: item.changeRows } }];
+  }
+  return item.changes
+    .filter((c) => !c.when || c.when === choice)
+    .map((c) => ({
+      ...c,
+      name: pick(c.name),
+      fields: c.fields?.map((f) => ({ ...f, now: fill(pick(f.now)), after: fill(pick(f.after)) })),
+    }));
+}
+
+/* The editable copy of those changes: everything ticked, nothing adjusted. */
+function buildDraft(changes) {
+  return changes.map((c) => ({
+    ...c,
+    on: true,
+    reason: "",
+    fields: (c.fields || []).map((f) => ({ ...f, rec: f.after, value: f.after, on: true, reason: "" })),
+    groups: (c.groups || []).map((g) => ({
+      ...g,
+      rows: g.rows.map((r) => ({
+        ...r,
+        mode: "skip",
+        reason: "",
+        chips: r.chips.map((label) => (typeof label === "string" ? { label, on: true, fixed: label.startsWith("+") } : label)),
+      })),
+    })),
+  }));
+}
+
+/* Numbers keep the shape they were written in: "$9.0K", "$2,850", "400 impressions". */
+const NUM_RE = /^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/;
+function parseNum(v) {
+  const m = String(v ?? "").match(NUM_RE);
+  if (!m) return null;
+  return { prefix: m[1], num: parseFloat(m[2].replace(/,/g, "")), suffix: m[3], decimals: (m[2].split(".")[1] || "").length, commas: m[2].includes(",") };
+}
+function formatLike(sample, n) {
+  const p = parseNum(sample);
+  if (!p) return String(n);
+  const body = p.decimals ? n.toFixed(p.decimals) : p.commas || Math.abs(n) >= 1000 ? Math.round(n).toLocaleString("en-US") : String(Math.round(n));
+  return `${p.prefix}${body}${p.suffix}`;
+}
+const moneyOf = (v) => {
+  const p = parseNum(v);
+  return p ? p.num * (/^K/.test(p.suffix.trim()) ? 1000 : 1) : 0;
+};
+const moneyText = (sample, amount) =>
+  /K/.test(parseNum(sample)?.suffix || "") ? `$${(Math.abs(amount) / 1000).toFixed(1)}K` : `$${Math.round(Math.abs(amount)).toLocaleString("en-US")}`;
+
+const isAdjusted = (f) => f.on && f.value !== f.rec;
+const rowOff = (r) => r.chips.some((x) => !x.fixed && !x.on);
+const verbOf = (g) => (/removal/i.test(g.heading) ? "removed" : /exclusion/i.test(g.heading) ? "excluded" : /new inclusion|added/i.test(g.heading) ? "added" : "included");
+const offWord = (g) => ({ added: "won’t be added", removed: "stays", excluded: "won’t be excluded", included: "left out" })[verbOf(g)];
+
+function missingReasons(draft) {
+  const out = [];
+  draft.forEach((c) => {
+    if (!c.on) {
+      if (!c.reason.trim()) out.push(`${c.name} (left out)`);
+      return;
+    }
+    c.fields.forEach((f) => (!f.on || isAdjusted(f)) && !f.reason.trim() && out.push(`${f.field} on ${c.name}`));
+    c.groups.forEach((g) => g.rows.forEach((r) => rowOff(r) && !r.reason.trim() && out.push(`${r.label} (${verbOf(g)}) on ${c.name}`)));
+  });
+  return out;
+}
+
+function tally(draft) {
+  let adjusted = 0;
+  let off = 0;
+  draft.forEach((c) => {
+    if (!c.on) { off += 1; return; }
+    c.fields.forEach((f) => { if (!f.on) off += 1; else if (isAdjusted(f)) adjusted += 1; });
+    c.groups.forEach((g) => g.rows.forEach((r) => r.chips.forEach((x) => { if (!x.fixed && !x.on) off += 1; })));
+  });
+  return { adjusted, off };
+}
+
+function unitsOf(c) {
+  const chips = c.groups.flatMap((g) => g.rows.flatMap((r) => r.chips.filter((x) => !x.fixed)));
+  return { total: c.fields.length + chips.length, on: c.fields.filter((f) => f.on).length + chips.filter((x) => x.on).length };
+}
+
+/* The spend effect of what is still ticked, recalculated as values change. */
+function impactLines(draft) {
+  const launches = [];
+  const notes = [];
+  const periods = {};
+  draft.forEach((c) => {
+    if (!c.on) return;
+    if (c.impact) notes.push({ text: c.impact });
+    c.fields.forEach((f) => {
+      if (!f.on || !f.money) return;
+      if (c.launches) launches.push({ strong: `This turns ${c.name} on.`, text: ` It starts spending up to ${f.value} a ${f.money} as soon as it is live.` });
+      const delta = moneyOf(f.value) - moneyOf(f.now);
+      const p = (periods[f.money] ||= { inc: 0, dec: 0, nInc: 0, nDec: 0, sample: f.value });
+      if (delta > 0) { p.inc += delta; p.nInc += 1; }
+      if (delta < 0) { p.dec -= delta; p.nDec += 1; }
+    });
+  });
+  const budget = Object.entries(periods).flatMap(([per, p]) => {
+    if (!p.inc && !p.dec) return [];
+    const lead = `${{ day: "Daily", week: "Weekly", month: "Monthly" }[per]} budgets: `;
+    const across = (k) => `across ${k} ${k === 1 ? "campaign" : "campaigns"}`;
+    if (!p.dec) return [{ lead, strong: `+${moneyText(p.sample, p.inc)} a ${per}`, text: ` ${across(p.nInc)}.` }];
+    if (!p.inc) return [{ lead, strong: `−${moneyText(p.sample, p.dec)} a ${per}`, text: ` ${across(p.nDec)}.` }];
+    const net = p.inc - p.dec;
+    return [{
+      lead,
+      strong: `+${moneyText(p.sample, p.inc)} ${across(p.nInc)}, −${moneyText(p.sample, p.dec)} ${across(p.nDec)}.`,
+      text: Math.abs(net) < 1 ? " Total spend stays the same." : ` Net ${net > 0 ? "+" : "−"}${moneyText(p.sample, net)} a ${per}.`,
+    }];
+  });
+  return [...launches, ...notes, ...budget];
+}
+
+const APPLY_STATUS = {
+  will: { label: "Will change", cls: "border-primary-200 bg-white text-[var(--color-primary-600)]" },
+  waiting: { label: "Waiting", icon: Clock, cls: "border-[var(--color-grey-200)] bg-grey-50 text-[var(--text-muted)]" },
+  applying: { label: "Applying", icon: CircleNotch, spin: true, cls: "border-[var(--color-grey-200)] bg-white text-[var(--text-secondary)]" },
+  applied: { label: "Applied", icon: CheckCircle, fill: true, cls: "border-green-200 bg-green-50 text-green-700" },
+  skipped: { label: "Not applied", cls: "border-[var(--color-grey-200)] bg-grey-50 text-[var(--text-muted)]" },
+};
+
+function Pill({ cls, children }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full border-solid border px-2.5 py-1 text-[12px] font-medium whitespace-nowrap", cls)}>
+      {children}
+    </span>
+  );
+}
+
+function ApplyStatus({ status }) {
+  const st = APPLY_STATUS[status];
+  return (
+    <Pill cls={st.cls}>
+      {st.icon && (
+        <st.icon
+          size={12}
+          weight={st.fill ? "fill" : "regular"}
+          className={cn("shrink-0", st.spin && "animate-spin", status === "applied" && "text-green-600")}
+        />
+      )}
+      {st.label}
+    </Pill>
+  );
+}
+
+function Tick({ on, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onChange}
+      className={cn(
+        "grid place-items-center w-4 h-4 shrink-0 rounded-[4px] border-solid border cursor-pointer p-0 transition-colors",
+        on ? "bg-primary-500 border-primary-500" : "bg-white border-[var(--color-grey-300)] hover:border-primary-500",
+      )}
+    >
+      {on && <Check size={11} weight="bold" className="text-white" />}
+    </button>
+  );
+}
+
+function WhyInput({ value, onChange, example }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={`Why? (required) e.g. ${example}`}
+      className={cn(
+        "w-full min-w-0 h-8 px-2.5 rounded-md border-solid border text-[12px] outline-none bg-white placeholder:text-[var(--text-muted)] focus:border-primary-500",
+        value.trim() ? "border-[var(--color-grey-200)]" : "border-rose-300",
+      )}
+    />
+  );
+}
+
+const CHIP_TONE = {
+  added: "bg-[#EEF8F1] border-[#CDEBD6]",
+  removed: "bg-white border-[var(--color-grey-200)]",
+  excluded: "bg-white border-[var(--color-grey-200)]",
+  included: "bg-white border-[var(--color-grey-200)]",
+};
+
+/* One change card. mode: "edit" (before applying), "run" (while applying),
+   "read" (what changed). `update` mutates a clone of the draft. */
+function ChangeCard({ c, ci, mode, status, update, appliedLine }) {
+  const edit = mode === "edit";
+  const [editing, setEditing] = useState(null);
+  const [temp, setTemp] = useState("");
+  const u = unitsOf(c);
+  const adjustedHere = c.on && c.fields.some(isAdjusted);
+  const fieldCols = edit ? "16px minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1.4fr)" : "minmax(0,1.2fr) minmax(0,0.9fr) minmax(0,1.4fr)";
+
+  const commit = (fi) => {
+    const f = c.fields[fi];
+    const p = parseNum(f.rec);
+    const n = parseFloat(String(temp).replace(/[^\d.-]/g, ""));
+    if (p && Number.isFinite(n)) update((d) => { d[ci].fields[fi].value = formatLike(f.rec, n); });
+    setEditing(null);
+  };
+
+  return (
+    <div className="shrink-0 flex flex-col rounded-lg border border-[var(--color-grey-100)] bg-white overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 bg-grey-50 border-solid border-x-0 border-t-0 border-b border-b-[var(--color-grey-100)]">
+        {edit && <Tick on={c.on} label={`Apply ${c.name}`} onChange={() => update((d) => { d[ci].on = !d[ci].on; })} />}
+        <SourceIcon name={c.system} size={14} />
+        <span className="shrink-0 text-[12px] font-semibold uppercase tracking-wider text-[#757A97]">{c.kind}</span>
+        <span className={cn("min-w-0 text-[14px] font-semibold leading-snug", c.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
+          {c.name}
+        </span>
+        {(c.ref || c.state) && (
+          <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{[c.ref, c.state].filter(Boolean).join(" · ")}</span>
+        )}
+        <span className="ml-auto shrink-0 flex items-center gap-1.5">
+          {c.on && u.total > 0 && u.on < u.total && <Pill cls="border-[var(--color-grey-200)] bg-white text-[var(--text-secondary)]">{u.on} of {u.total} changes</Pill>}
+          {adjustedHere && <Pill cls="border-violet-200 bg-violet-50 text-violet-700">Adjusted</Pill>}
+          <ApplyStatus status={status} />
+        </span>
+      </div>
+
+      {!c.on ? (
+        <div className="flex flex-col gap-2 px-4 py-3">
+          <span className="text-[12px] text-[var(--text-muted)]">
+            {edit ? "This change won’t be applied." : "Not applied."}
+            {!edit && c.reason && <span className="text-[var(--text-primary)]"> {c.reason}</span>}
+          </span>
+          {edit && <WhyInput value={c.reason} example="Not this quarter" onChange={(v) => update((d) => { d[ci].reason = v; })} />}
+        </div>
+      ) : (
+        <>
+          {c.groups.map((g, gi) => (
+            <div key={g.heading} className="flex flex-col px-4 pt-3 pb-2">
+              <span className="mb-1 text-[12px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">{g.heading}</span>
+              {g.rows.map((r, ri) => {
+                const off = rowOff(r);
+                return (
+                  <div key={r.label} className="flex flex-col py-1.5">
+                    <div className="grid items-start gap-3" style={{ gridTemplateColumns: "170px minmax(0,1fr)" }}>
+                      <span className="pt-1 text-[12px] font-medium text-[var(--text-primary)]">{r.label}</span>
+                      <span className="flex flex-wrap gap-1.5">
+                        {r.chips.map((x, xi) => (
+                          <span
+                            key={x.label}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[12px] leading-snug",
+                              x.on || x.fixed
+                                ? cn("border-solid text-[var(--text-primary)]", CHIP_TONE[verbOf(g)])
+                                : "border-dashed border-[var(--color-grey-300)] bg-white text-[var(--text-muted)]",
+                            )}
+                          >
+                            {edit && !x.fixed && (
+                              <Tick
+                                on={x.on}
+                                label={x.label}
+                                onChange={() => update((d) => { const t = d[ci].groups[gi].rows[ri].chips[xi]; t.on = !t.on; })}
+                              />
+                            )}
+                            {x.label}
+                            {!x.on && !x.fixed && (
+                              <span className="italic">
+                                {" "}
+                                — {edit ? offWord(g) : r.mode === "later" ? "saved for later" : offWord(g).replace("won’t be", "not")}
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                    {off && edit && (
+                      <div className="grid items-center gap-2 mt-2" style={{ gridTemplateColumns: "170px auto minmax(0,1fr)" }}>
+                        <span />
+                        <span className="inline-flex p-0.5 rounded-md bg-grey-50 border border-[var(--color-grey-200)]">
+                          {[["skip", "Don’t apply"], ["later", "Save for later"]].map(([m, label]) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => update((d) => { d[ci].groups[gi].rows[ri].mode = m; })}
+                              className={cn(
+                                "h-7 px-2.5 rounded-[5px] text-[12px] cursor-pointer border-none whitespace-nowrap",
+                                r.mode === m ? "bg-white font-semibold text-[var(--text-primary)] shadow-[0_1px_2px_0_rgba(16,24,40,0.08)]" : "bg-transparent text-[var(--text-secondary)]",
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </span>
+                        <WhyInput
+                          value={r.reason}
+                          example="Sales already owns this account"
+                          onChange={(v) => update((d) => { d[ci].groups[gi].rows[ri].reason = v; })}
+                        />
+                      </div>
+                    )}
+                    {off && !edit && r.reason && (
+                      <p className="m-0 mt-1.5 text-[12px] text-[var(--text-muted)]" style={{ paddingLeft: 182 }}>
+                        {r.mode === "later" ? "Saved for later: " : "Not applied: "}
+                        <span className="text-[var(--text-primary)]">{r.reason}</span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+              {edit && verbOf(g) === "removed" && (
+                <span className="mt-1 text-[12px] text-[var(--text-muted)]">Untick a value to leave it out. New values can’t be added here.</span>
+              )}
+            </div>
+          ))}
+
+          {c.fields.length > 0 && (
+            <div
+              className={cn(
+                "flex flex-col px-4 py-2",
+                c.groups.length > 0 && "border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]",
+              )}
+            >
+              {edit && c.fields.length > 1 && (
+                <p className="m-0 pt-1 pb-1.5 text-[12px] text-[var(--text-muted)]">
+                  <span className="font-semibold text-[var(--text-secondary)]">{c.fields.length} changes from this recommendation,</span> sent as
+                  one update. The ticked ones land together or not at all.
+                </p>
+              )}
+              <div className="grid gap-3 py-1.5" style={{ gridTemplateColumns: fieldCols }}>
+                {edit && <span />}
+                {[c.fieldHead || "Field", nowLabel(c.system), "After"].map((h) => (
+                  <span key={h} className="text-[12px] font-semibold uppercase tracking-wider text-[#757A97]">{h}</span>
+                ))}
+              </div>
+              {c.fields.map((f, fi) => {
+                const adj = isAdjusted(f);
+                const key = `${ci}:${fi}`;
+                return (
+                  <div
+                    key={f.field}
+                    className="grid items-start gap-3 py-2 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]"
+                    style={{ gridTemplateColumns: fieldCols }}
+                  >
+                    {edit && (
+                      <span className="pt-px">
+                        <Tick on={f.on} label={f.field} onChange={() => update((d) => { d[ci].fields[fi].on = !d[ci].fields[fi].on; })} />
+                      </span>
+                    )}
+                    <span className={cn("text-[12px] leading-snug", f.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
+                      {f.field}
+                    </span>
+                    <span className="text-[12px] leading-snug text-[var(--text-muted)]">{f.now}</span>
+                    <span className="flex flex-col gap-1 min-w-0">
+                      {edit && editing === key ? (
+                        <input
+                          autoFocus
+                          value={temp}
+                          onChange={(e) => setTemp(e.target.value)}
+                          onBlur={() => commit(fi)}
+                          onKeyDown={(e) => { if (e.key === "Enter") commit(fi); if (e.key === "Escape") setEditing(null); }}
+                          aria-label={`New value for ${f.field}`}
+                          className="w-[140px] h-7 px-2 rounded-md border-solid border border-primary-500 text-[12px] outline-none"
+                        />
+                      ) : (
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <span className={cn("text-[12px] leading-snug font-semibold", f.on ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] line-through")}>
+                            {f.value}
+                          </span>
+                          {edit && f.edit && f.on && (
+                            <button
+                              type="button"
+                              onClick={() => { setTemp(String(parseNum(f.value)?.num ?? "")); setEditing(key); }}
+                              className="inline-flex items-center gap-1 p-0 bg-transparent border-none cursor-pointer text-[12px] text-[var(--color-primary-600)] hover:underline"
+                            >
+                              <PencilSimple size={12} /> Change
+                            </button>
+                          )}
+                        </span>
+                      )}
+                      {edit && !f.edit && f.on && <span className="text-[12px] text-[var(--text-muted)]">Keep it or leave it out</span>}
+                      {adj && (
+                        <span className="text-[12px] text-[var(--color-primary-600)]">
+                          Recommended: {f.rec}
+                          {edit && (
+                            <>
+                              {" · "}
+                              <button
+                                type="button"
+                                onClick={() => update((d) => { d[ci].fields[fi].value = f.rec; d[ci].fields[fi].reason = ""; })}
+                                className="p-0 bg-transparent border-none cursor-pointer text-[12px] text-[var(--color-primary-600)] underline"
+                              >
+                                use recommended
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      )}
+                      {edit && (adj || !f.on) && (
+                        <WhyInput
+                          value={f.reason}
+                          example={adj ? "Finance capped us at this amount" : "Sales wants this kept as is"}
+                          onChange={(v) => update((d) => { d[ci].fields[fi].reason = v; })}
+                        />
+                      )}
+                      {!edit && (adj || !f.on) && f.reason && (
+                        <span className="text-[12px] text-[var(--text-muted)]">
+                          {f.on ? "Why: " : "Not applied: "}
+                          <span className="text-[var(--text-primary)]">{f.reason}</span>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {c.table && <DataTable cols={c.table.cols} rows={c.table.rows} emphasise bare />}
+        </>
+      )}
+
+      {appliedLine && c.on && (
+        <p className="m-0 px-4 py-2.5 text-[12px] text-[var(--text-muted)] border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]">
+          {appliedLine}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ApplyModal({ item, platform, mode, onClose, onApplied }) {
+  const ts = useRef(item.decision?.ts || Date.now());
+  // "Needs from you" is not asked here (Ijas's design has no picker): the
+  // card applies its first option, and anyone who disagrees can Hold with a reason.
+  const choice = item.decision?.choice || item.choice?.options?.[0]?.id || null;
+  const [draft, setDraft] = useState(
+    () => item.decision?.applied || buildDraft(resolveChanges(item, choice, ts.current, platform)),
+  );
+  const [note, setNote] = useState("");
+  const [phase, setPhase] = useState(mode === "view" ? "done" : "review");
+  const [step, setStep] = useState(0);
+  const update = (fn) => setDraft((d) => { const next = structuredClone(d); fn(next); return next; });
+
+  const live = draft.filter((c) => c.on);
+  const n = live.length;
+  const where = systemsOf(live.length ? live : draft);
+  const missing = missingReasons(draft);
+  const { adjusted, off } = tally(draft);
+  const impact = impactLines(draft);
+  const busy = phase === "applying";
+
+  // one ticked card at a time; the decision is recorded once the last lands
+  useEffect(() => {
+    if (!busy) return;
+    if (step >= n) {
+      setPhase("done");
+      onApplied(note.trim() || null, choice, draft);
+      return;
+    }
+    const t = setTimeout(() => setStep((i) => i + 1), APPLY_STEP_MS);
+    return () => clearTimeout(t);
+  }, [busy, step, n]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+
+  const statusAt = (c) => {
+    if (!c.on) return phase === "review" ? "will" : "skipped";
+    if (phase === "review") return "will";
+    if (phase === "done") return "applied";
+    const i = live.indexOf(c);
+    return i < step ? "applied" : i === step ? "applying" : "waiting";
+  };
+  const d = item.decision;
+  const appliedLine = phase === "done" ? `Applied ${d?.at || "just now"} by ${d?.by || "you"}` : null;
+  const extras = [adjusted && `${adjusted} adjusted`, off && `${off} not applied`].filter(Boolean).join(", ");
+  const systemsCount = new Set(draft.map((c) => c.system)).size;
+  const itemsLabel =
+    systemsCount === 1
+      ? `${draft.length} ${shortSystem(draft[0]?.system)} ${draft.length === 1 ? "item" : "items"}`
+      : `${draft.length} items on ${systemsOf(draft)}`;
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="absolute inset-0"
+        style={{ background: "rgba(15,22,36,0.28)" }}
+        onClick={busy ? undefined : onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 8, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.18 }}
+        role="dialog"
+        aria-label={phase === "done" ? `What changed on ${where}` : "Apply this recommendation"}
+        className="relative flex flex-col w-[820px] max-w-[94vw] max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden border-solid border-x-0 border-b-0 border-t-[3px] border-t-primary-500"
+      >
+        <div className="shrink-0 flex items-start gap-3 px-6 pt-5 pb-3 border-solid border-x-0 border-t-0 border-b border-b-[var(--color-grey-100)]">
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <h3 className="m-0 text-[16px] font-semibold text-[var(--text-primary)]">
+              {phase === "done" ? `What changed on ${where}` : "Apply this recommendation"}
+            </h3>
+            <p className="m-0 text-[12px] text-[var(--text-muted)]">
+              {phase === "review"
+                ? `${itemsLabel} · untick anything you don’t want, or change a value${extras ? ` · ${extras}` : ""}`
+                : busy
+                  ? "Sending changes one at a time. Please keep this window open."
+                  : `${n} applied${extras ? ` · ${extras}` : ""}`}
+            </p>
+          </div>
+          {!busy && (
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={onClose}
+              className="shrink-0 grid place-items-center w-7 h-7 rounded-md bg-transparent border-none cursor-pointer text-[var(--text-muted)] hover:bg-grey-50"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3 px-6 py-4">
+          {draft.map((c, ci) => (
+            <ChangeCard
+              key={`${c.system}-${c.name}`}
+              c={c}
+              ci={ci}
+              mode={phase === "review" ? "edit" : phase === "done" ? "read" : "run"}
+              status={statusAt(c)}
+              update={update}
+              appliedLine={appliedLine}
+            />
+          ))}
+        </div>
+
+        {phase === "review" && (
+          <div className="shrink-0 flex flex-col gap-3 px-6 pt-3 pb-1 border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]">
+            {impact.length > 0 && (
+              <div className="flex flex-col gap-1 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50">
+                {impact.map((l, i) => (
+                  <p key={i} className="m-0 flex items-start gap-1.5 text-[12px] leading-relaxed text-amber-900">
+                    {i === 0 ? <Warning size={14} weight="fill" className="mt-[2px] shrink-0 text-amber-600" /> : <span className="w-[14px] shrink-0" />}
+                    <span>
+                      {l.lead}
+                      {l.strong && <span className="font-semibold">{l.strong}</span>}
+                      {l.text}
+                    </span>
+                  </p>
+                ))}
+              </div>
+            )}
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-semibold text-[var(--text-secondary)]">
+                Anything else your team should know? <span className="font-normal text-[var(--text-muted)]">(optional)</span>
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="e.g. Part of the Q4 ABM push."
+                className="w-full resize-none rounded-md border border-[var(--color-grey-200)] px-3 py-2 text-[12px] outline-none focus:border-primary-500 placeholder:text-[var(--text-muted)]"
+              />
+            </label>
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "shrink-0 flex items-center justify-between gap-4 px-6 py-3",
+            phase !== "review" && "border-t border-[var(--color-grey-100)] bg-grey-50",
+          )}
+        >
+          {phase === "review" && (
+            <>
+              <span className="text-[12px] leading-snug text-[var(--text-muted)]">
+                {missing.length > 0
+                  ? `${missing.length} ${missing.length === 1 ? "change still needs a reason" : "changes still need a reason"}: ${missing.join("; ")}. One line under each is enough.`
+                  : n === 0
+                    ? "Everything is unticked, so there is nothing to apply."
+                    : ""}
+              </span>
+              <span className="shrink-0 flex items-center gap-2">
+                <Button variant="secondary" size="md" label="Cancel" onClick={onClose} />
+                <Button
+                  variant="primary"
+                  size="md"
+                  label="Apply"
+                  disabled={missing.length > 0 || n === 0}
+                  onClick={() => { setStep(0); setPhase("applying"); }}
+                />
+              </span>
+            </>
+          )}
+          {busy && (
+            <>
+              <Button variant="ghost" size="md" label="Close" disabled />
+              <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--color-grey-200)] bg-white text-[12px] text-[var(--text-muted)]">
+                <CircleNotch size={13} className="animate-spin" />
+                Sending change {Math.min(step + 1, n)} of {n}…
+              </span>
+            </>
+          )}
+          {phase === "done" && (
+            <>
+              <span className="text-[12px] text-[var(--text-muted)]">
+                Read-only. Petavue read each change back from {where} before marking it Applied.
+              </span>
+              <Button variant="secondary" size="md" label="Close" onClick={onClose} />
+            </>
+          )}
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -341,31 +990,21 @@ function EvidenceRow({ label, children }) {
 function QueueRow({ item, workflowName, selected, onClick }) {
   const u = URGENCY[item.urgency] || URGENCY.monitor;
   const d = item.decision ? DECISION[item.decision.status] : null;
-  const dot = d
-    ? d.dot
-    : item.urgency === "act-now" ? "bg-rose-500" : item.urgency === "this-week" ? "bg-amber-500" : "bg-blue-500";
+  const mark = d || u;
+  const state = item.decision ? item.decision.status : item.urgency || "monitor";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={selected ? "true" : undefined}
-      className={cn(
-        "w-full text-left flex items-start gap-2.5 px-4 py-3 cursor-pointer transition-colors",
-        "border-solid border-t-0 border-r-0 border-b border-b-[var(--color-grey-100)] border-l-[3px] border-l-transparent",
-        selected ? "bg-primary-50 border-l-primary-500" : "bg-transparent hover:bg-primary-50",
-        d && !selected && "opacity-70",
-      )}
+      className={cn("rec-queue-row", selected && "rec-queue-row--selected", d && "rec-queue-row--decided")}
     >
-      <i className={cn("mt-[7px] w-[7px] h-[7px] rounded-full shrink-0", dot)} aria-hidden="true" />
-      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+      <mark.icon size={12} className={`rec-queue-row__icon rec-queue-row__icon--${state}`} aria-label={mark.label} role="img" />
+      <span className="rec-queue-row__body">
         <Tooltip title={item.title} placement="right">
-          <span className={cn("min-w-0 text-[14px] leading-snug text-[var(--text-primary)]", d ? "font-normal" : "font-medium")}>
-            {item.shortTitle || item.title}
-          </span>
+          <span className="rec-queue-row__title">{item.shortTitle || item.title}</span>
         </Tooltip>
-        <span className="min-w-0 text-[12px] leading-snug text-[var(--text-muted)]">
-          {workflowName} · {d ? d.label : u.label}
-        </span>
+        <span className="rec-queue-row__meta">{workflowName}</span>
       </span>
     </button>
   );
@@ -439,7 +1078,8 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
   const platform = workflow ? platformOf(workflow.platform).short : null;
   const specialist = workflow?.found?.find((f) => f.agent === item.agent)?.specialist;
   const onHold = item.decision?.status === "on-hold";
-  const showBar = open || onHold;
+  const applied = item.decision?.status === "accepted";
+  const showBar = open || onHold || applied;
 
   return (
     <div className="flex-1 min-w-0 flex flex-col">
@@ -450,7 +1090,8 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         <div className="flex flex-col">
           <div className="flex items-center gap-2 flex-wrap mb-3.5">
             {d ? (
-              <span className={cn("inline-flex items-center rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", d.chip)}>
+              <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] font-semibold", d.chip)}>
+                <d.icon size={12} />
                 {d.label}
               </span>
             ) : (
@@ -481,21 +1122,36 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
             {item.title}
           </h2>
           <p className="m-0 mt-2 text-[14px] leading-relaxed text-[var(--text-secondary)]">{item.basis}</p>
-          <p className="m-0 mt-2.5 inline-flex items-center gap-1.5 flex-wrap text-[12px] text-[#757A97]">
+          <dl className="rec-meta">
             {specialist && (
-              <>
-                Found by <span className="font-medium text-[var(--text-secondary)]">{specialist}</span>
-                <FamilyPill agentKey={item.agent} />
-                <span aria-hidden="true">·</span>
-              </>
+              <div className="rec-meta__item">
+                <dt className="rec-meta__label">Found by</dt>
+                <dd className="rec-meta__value">
+                  {specialist} <FamilyPill agentKey={item.agent} />
+                </dd>
+              </div>
             )}
             {item.run?.n && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-grey-100 text-[12px] leading-[16px] font-medium text-[var(--text-secondary)]">
-                Workflow run {item.run.n}
-              </span>
+              <div className="rec-meta__item">
+                <dt className="rec-meta__label">Workflow run</dt>
+                <dd className="rec-meta__value">
+                  <span className="rec-meta__run">{item.run.n}</span>
+                </dd>
+              </div>
             )}
-            {item.run?.at} · {item.scope}
-          </p>
+            {item.run?.at && (
+              <div className="rec-meta__item">
+                <dt className="rec-meta__label">Run date</dt>
+                <dd className="rec-meta__value">{item.run.at}</dd>
+              </div>
+            )}
+            {item.scope && (
+              <div className="rec-meta__item">
+                <dt className="rec-meta__label">Scope</dt>
+                <dd className="rec-meta__value">{item.scope}</dd>
+              </div>
+            )}
+          </dl>
 
           {/* 3 · decided-by line and applied summary (decided cards only) */}
           {item.decision && (
@@ -516,6 +1172,18 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
                   {item.decision.note}
                 </p>
               )}
+              {item.decision.status === "accepted" && item.decision.applied && (() => {
+                const done = item.decision.applied.filter((c) => c.on);
+                const { adjusted, off } = tally(item.decision.applied);
+                const extras = [adjusted && `${adjusted} adjusted`, off && `${off} not applied`].filter(Boolean).join(", ");
+                return (
+                  <p className="m-0 flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--text-primary)]">
+                    <CheckCircle size={13} weight="fill" className="mt-[3px] shrink-0 text-green-600" />
+                    {done.length} {done.length === 1 ? "change" : "changes"} applied on {systemsOf(done)}
+                    {extras ? ` (${extras})` : ""}. Petavue read each one back and confirmed it saved.
+                  </p>
+                );
+              })()}
               {item.decision.status === "accepted" && item.applied && (
                 <p className="m-0 flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--text-primary)]">
                   {item.applied.includes("is confirming") ? (
@@ -566,6 +1234,26 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
             item.controls && ["Controls and checks", item.controls],
             (item.followUp || item.needsFromYou) && ["Follow-up check", item.followUp],
           ].filter(Boolean);
+          const long = [...cells.map((c) => c[1]), item.needsFromYou].some((b) => (b || "").length > 220);
+          if (long) {
+            return (
+              <div className="flex flex-col border border-[var(--color-grey-100)] rounded-lg overflow-hidden">
+                {cells.map(([label, body]) => (
+                  <EvidenceRow key={label} label={label}>{body}</EvidenceRow>
+                ))}
+                {item.needsFromYou && (
+                  <div className="flex items-start gap-4 px-4 py-3 bg-[#f8f9ff] border-solid border-x-0 border-b-0 border-t border-t-[var(--color-grey-100)]">
+                    <span className="w-[150px] shrink-0 pt-0.5 text-[12px] font-semibold text-[var(--color-primary-600)]">
+                      Needs from you
+                    </span>
+                    <p className="m-0 flex-1 min-w-0 text-[12px] leading-relaxed text-[var(--text-primary)]">
+                      {item.needsFromYou}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          }
           return (
             <div
               className="grid border border-[var(--color-grey-100)] rounded-lg overflow-hidden divide-x divide-[var(--color-grey-100)]"
@@ -612,7 +1300,12 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
                     <DataTable cols={item.dataCols} rows={item.dataRows} />
                   </div>
                 )}
-                <EvidenceRow label="Why this action follows">{item.whyFollows}</EvidenceRow>
+                {item.found && <EvidenceRow label="What we found">{item.found}</EvidenceRow>}
+                {item.estimate && <EvidenceRow label="How we estimated the impact">{item.estimate}</EvidenceRow>}
+                {item.whyNow && <EvidenceRow label="Why now">{item.whyNow}</EvidenceRow>}
+                {item.whyFollows && <EvidenceRow label="Why this action follows">{item.whyFollows}</EvidenceRow>}
+                {item.excluded && <EvidenceRow label="What we excluded">{item.excluded}</EvidenceRow>}
+                {item.confidence && <EvidenceRow label="Confidence and limits">{item.confidence}</EvidenceRow>}
                 {item.trace?.length > 0 && (
                   <EvidenceRow label="How this was analyzed">
                     <div className="flex flex-col gap-2">
@@ -634,7 +1327,16 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         <Comments comments={item.comments || []} onPost={onComment} posting={commentPosting} />
 
         <AnimatePresence>
-          {modal && (
+          {(modal === "accepted" || modal === "view") && (
+            <ApplyModal
+              item={item}
+              platform={platform}
+              mode={modal === "view" ? "view" : "apply"}
+              onClose={() => setModal(null)}
+              onApplied={(note, choice, applied) => { setDeciding(false); onDecide("accepted", note, choice, applied); }}
+            />
+          )}
+          {(modal === "on-hold" || modal === "rejected") && (
             <DecisionModal
               kind={modal}
               item={item}
@@ -654,10 +1356,15 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
         <div className="shrink-0 border-t border-[var(--color-grey-100)] bg-white px-[34px] py-3">
           {open || deciding ? (
             <div className="flex items-center gap-2">
-              <Button variant="primary" size="md" label="Accept" onClick={() => setModal("accepted")} />
+              <Button variant="primary" size="md" icon={Check} label="Apply" onClick={() => setModal("accepted")} />
               {open && <Button variant="secondary" size="md" icon={PauseCircle} label="Hold" onClick={() => setModal("on-hold")} />}
-              <Button variant="secondary" size="md" icon={Prohibit} label="Reject" onClick={() => setModal("rejected")} />
+              <Button variant="blueGhost" size="md" icon={Prohibit} label="Reject" onClick={() => setModal("rejected")} />
               {deciding && <Button variant="ghost" size="md" label="Cancel" onClick={() => setDeciding(false)} />}
+            </div>
+          ) : applied ? (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[12px] text-[var(--text-muted)]">Decided. This recommendation is closed.</span>
+              <Button variant="secondary" size="md" label="See what changed" onClick={() => setModal("view")} />
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -684,7 +1391,7 @@ export default function RecommendationsPage() {
     queryFn: () => apiGet("/api/goals/recommendations"),
     // the applied line walks from "is confirming" to the read-back clause on
     // elapsed time, so the accepted card updates in place
-    refetchInterval: 1200,
+    refetchInterval: 700,
   });
   const { data: wfData } = useQuery({
     queryKey: ["agent-workflows"],
@@ -698,7 +1405,8 @@ export default function RecommendationsPage() {
   // One click on the modal's confirm commits the decision; the card itself
   // changing state is the confirmation, so there is no toast.
   const decide = useMutation({
-    mutationFn: ({ id, decision, note }) => apiPost(`/api/goals/recommendations/${id}/decide`, { decision, note }),
+    mutationFn: ({ id, decision, note, choice, applied }) =>
+      apiPost(`/api/goals/recommendations/${id}/decide`, { decision, note, choice, applied }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["goals-recommendations"] });
       qc.invalidateQueries({ queryKey: ["agent-workflows"] });
@@ -889,7 +1597,7 @@ export default function RecommendationsPage() {
                   key={selected.id}
                   item={selected}
                   workflow={wfById[selected.workflowId]}
-                  onDecide={(decision, note) => decide.mutate({ id: selected.id, decision, note })}
+                  onDecide={(decision, note, choice, applied) => decide.mutate({ id: selected.id, decision, note, choice, applied })}
                   onComment={(text) => comment.mutate({ id: selected.id, text })}
                   commentPosting={comment.isPending}
                   onOpenWorkflow={() => navigate(`/workflows/${selected.workflowId}?from=/recommendations`)}

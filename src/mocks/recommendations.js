@@ -47,7 +47,360 @@ const stamp = (d = new Date()) => {
 };
 
 const ITEMS = [
-  /* ── The six pending cards (doc 17 §6) ─────────────────────────── */
+  /* ── The ABM and LinkedIn cards (Camunda demo, 30 Sep).
+     Source: docs/Camunda Recommendations Demo.md. These four lead the queue.
+     Recommendations 1 and 2 extend the earlier handoff and cap-raise cards;
+     3 and 4 are new. Each carries the systems it updates on Accept, and the
+     ones with a "Needs from you" carry that question as a choice the Accept
+     modal asks, so the confirmation can say exactly what was done. ── */
+  {
+    id: "rec-bssh-01",
+    workflowId: "sales-handoff",
+    agent: "conversion",
+    type: "handoff",
+    urgency: "this-week",
+    lifecycle: "needs-decision",
+    scope: "170 accounts scored",
+    run: { n: "04", at: "Sep 1, 8:01 AM" },
+    awaitingYou: true,
+    shortTitle: "ABM",
+    title: "Route 14 warm accounts to sales now",
+    basis:
+      "They saw our LinkedIn ads, visited pricing pages, and resemble mid-funnel opportunities. They are warm and look like they are actively evaluating, so don’t wait for form fills and risk losing them to faster competitors.",
+    changeTitle: "The list, ranked",
+    changeCols: ["Rank", "Account", "Signal"],
+    changeRows: [
+      ["1", "Meridian Health", "Pricing page ×3, 4 engaged contacts (Finance, IT, Ops), LinkedIn ad clicks ×5"],
+      ["2", "Corville Logistics", "Comparison page ×2, CISO engaged twice, 3-person committee forming"],
+      ["3", "Brightline Retail", "Pricing + integrations pages, VP Ops watched demo 90%"],
+      ["4–14", "+11 more", "Full ranked list in the export"],
+    ],
+    timing:
+      "Route the accounts this week. Intent is highest in the 7–10 days after pricing and comparison visits, and most of these visits happened in the last 5 days.",
+    expect:
+      "Sales gets 14 warm, committee-level accounts at once, instead of the roughly three weekly handoffs that form fills produce today. Reps start with context on who is engaged and what they viewed.",
+    controls:
+      "Before routing, Petavue re-checks each account against existing customers, open opportunities, and the last 21 days of sales activity. If a conflict appears after this run, no duplicate handoff is created and the account’s owner stays the same.",
+    followUp:
+      "Sep 15. That run reports first sales touches, replies, and meetings booked for the 14 accounts, compared with the form-fill baseline.",
+    needsFromYou: "Choose the Salesforce queue for the tasks: the SDR round-robin queue or the named account executive queue.",
+    choice: {
+      question: "Which Salesforce queue should the tasks go to?",
+      options: [
+        { id: "sdr", label: "SDR round-robin queue" },
+        { id: "ae", label: "Named account executive queue" },
+      ],
+    },
+    noticed:
+      "Traffic to high-intent pages (pricing, comparison, integrations) keeps growing, but only about three accounts a week reach sales through form fills. Most accounts showing buying behavior never fill out a form.",
+    analyzed:
+      "The workflow reviewed 14 days of web sessions, LinkedIn Ads engagement, and contact activity for 170 target accounts. To qualify, an account needed at least two high-intent page visits. The composite score also weighed contact depth, meaning how many distinct people from the account were engaged, and how recent the activity was.",
+    found:
+      "14 of the 170 accounts qualified. Each had engagement from 3 or more contacts, usually from different functions, which suggests a buying committee is forming. 11 of the 14 first engaged through a LinkedIn ad before visiting pricing. None had submitted a form.",
+    whyNow:
+      "These accounts are comparing options now. Pricing and comparison visits usually come late in an evaluation, so waiting for inbound gives competitors the first conversation.",
+    excluded:
+      "We excluded existing customers, accounts with open opportunities, accounts contacted by sales in the last 21 days, and single-visitor accounts, which are often research or job-seeker traffic.",
+    confidence:
+      "Confidence is high on the top 5, which have strong multi-signal activity, and moderate on ranks 6–14, where activity is recent but lighter. Web identification relies on reverse-IP and known contacts, so some visitors may be missing from the counts.",
+    trace: [
+      { specialist: "Account Journey Builder", agent: "measurement", text: "resolved 14 days of web sessions, LinkedIn Ads engagement, and contact activity to the 170 target accounts, using reverse-IP and known contacts." },
+      { specialist: "Buying Signal Scorer", agent: "conversion", text: "scored every account on high-intent visits, contact depth, and recency, and ranked the 14 that qualified." },
+      { specialist: "Sales Eligibility Validator", agent: "demand", text: "removed existing customers, open opportunities, accounts sales contacted in the last 21 days, and single-visitor accounts." },
+    ],
+    changes: [
+      {
+        system: "Salesforce", kind: "Queue", ref: "14 new tasks",
+        name: { sdr: "SDR round-robin queue", ae: "Named account executive queue" },
+        groups: [
+          { heading: "New tasks, ranked", tone: "neutral", rows: [
+            { label: "Accounts", chips: ["1 · Meridian Health", "2 · Corville Logistics", "3 · Brightline Retail", "+11 more"] },
+          ] },
+        ],
+        fields: [
+          { field: "Task owner", now: "—", after: { sdr: "Round-robin across the SDR team", ae: "Each account’s named AE" } },
+          { field: "Attached to each task", now: "—", after: "Signals, pages viewed, engaged contacts" },
+        ],
+      },
+      {
+        system: "HubSpot", kind: "Company list", name: "ABM · Routed to sales", ref: "#list 2231", state: "Active list",
+        groups: [
+          { heading: "Added to list", tone: "include", rows: [
+            { label: "Companies", chips: ["Meridian Health", "Corville Logistics", "Brightline Retail", "+11 more"] },
+          ] },
+        ],
+        fields: [{ field: "Marketing nurture", now: "Enrolled", after: "Paused while sales works the account" }],
+      },
+    ],
+    decision: null,
+    comments: [],
+  },
+  {
+    id: "rec-tarb-02",
+    workflowId: "audience-sharpening",
+    agent: "demand",
+    type: "change",
+    urgency: "act-now",
+    lifecycle: "needs-decision",
+    scope: "2 of 23 capped accounts",
+    run: { n: "51", at: "Sep 29, 7:00 AM" },
+    shortTitle: "LinkedIn Impression caps",
+    title: "Raise impression caps for Trellis Software and Beacon Insurance to 400/week",
+    basis:
+      "They are the only capped accounts with new contact engagement. New buying committee members just joined, so they need full reach to every decision-maker during this evaluation window, or we risk losing them to faster competitors.",
+    changeTitle: "Caps to raise",
+    changeCols: ["Rank", "Account", "Current cap → New cap", "Signal"],
+    changeRows: [
+      ["1", "Trellis Software", "150 → 400/week", "3 new contacts engaged (CFO, Head of RevOps, IT Director), cap hit by Wednesday 2 weeks running"],
+      ["2", "Beacon Insurance", "150 → 400/week", "2 new contacts engaged (VP Claims, Procurement lead), pricing page ×2 this week"],
+    ],
+    timing:
+      "Raise the caps today. The new contacts joined in the last 7 days, and at the current cap the weekly impressions run out mid-week, so these people see us for only half of each week.",
+    expect:
+      "Both accounts get full-week coverage. The ads reach the whole buying committee, including the new members, and not only the contacts who were already engaged. Across both accounts, weekly impressions should rise from about 300 to up to 800.",
+    controls:
+      "The increase applies only to these two accounts. Every other capped account keeps its current limit. Petavue checks frequency per contact daily and pulls back if any single person goes above 6 impressions a week, which keeps ad fatigue down. The higher caps revert automatically after 21 days unless you extend them.",
+    followUp:
+      "Oct 13. That run reports impressions delivered, reach across the committee, new contact engagement, and any movement into pricing or demo pages for both accounts.",
+    needsFromYou:
+      "Approve the extra spend, estimated at about $50/week across both accounts, and confirm whether it comes from the existing ABM campaign budget or a separate line.",
+    choice: {
+      question: "Where should the extra spend of about $50/week come from?",
+      options: [
+        { id: "abm", label: "The existing ABM campaign budget" },
+        { id: "separate", label: "A separate budget line" },
+      ],
+    },
+    noticed:
+      "Several target accounts hit their LinkedIn impression cap early in the week. For most of them that’s fine, because engagement is flat. Trellis Software and Beacon Insurance are different: new people from both companies started engaging with our ads while the cap was limiting delivery.",
+    analyzed:
+      "The workflow reviewed 14 days of LinkedIn Ads delivery and engagement, web sessions, and contact-level activity for all 23 accounts that are currently capped. For each account it compared how quickly the cap was reached with changes in engagement, and it flagged contacts engaging for the first time in the last 7 days.",
+    found:
+      "Only 2 of the 23 capped accounts showed new contact engagement. Both hit their cap by Wednesday in each of the past two weeks. The new contacts are senior or budget-holding roles (finance, procurement, operations), which usually join an evaluation as it moves toward a decision. The other 21 capped accounts showed steady or declining engagement, so raising their caps would add spend without adding reach to new people.",
+    whyNow:
+      "When new stakeholders join, the buying committee is widening, and these people are forming their first impression of the vendors. With the current cap, they stop seeing us partway through each week, right when they are most likely to be comparing options.",
+    excluded:
+      "We left out capped accounts with no new contacts, accounts that are existing customers or have open opportunities, and engagement from contacts who could not be matched to a known role at the account.",
+    confidence:
+      "Confidence is high that the cap is limiting reach, since delivery stops mid-week consistently. Confidence is moderate that more impressions will turn into pipeline, because LinkedIn engagement signals intent but does not confirm it. Contact matching depends on LinkedIn’s company and job-title data, which may miss or mislabel some people.",
+    trace: [
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched 14 days of LinkedIn Ads delivery to the 23 capped accounts and recorded the day each one hit its cap." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "flagged contacts engaging for the first time in the last 7 days and found them at only Trellis Software and Beacon Insurance." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "set the 400/week caps for the two accounts, the 6-per-person frequency ceiling, and the 21-day automatic revert." },
+    ],
+    changes: [
+      {
+        system: "LinkedIn Ads", kind: "Campaign", name: "ABM · Tier 1 target accounts", ref: "#512330871", state: "Active",
+        fields: [
+          { field: "Weekly cap · Trellis Software", now: "150 impressions", after: "400 impressions", edit: true },
+          { field: "Weekly cap · Beacon Insurance", now: "150 impressions", after: "400 impressions", edit: true },
+          { field: "Caps revert", now: "—", after: "{revert21}" },
+        ],
+      },
+      {
+        when: "abm",
+        system: "LinkedIn Ads", kind: "Campaign group", name: "ABM · FY26", ref: "#735084746", state: "Active",
+        fields: [{ field: "Weekly budget", now: "$2,800", after: "$2,850", edit: true, money: "week" }],
+      },
+      {
+        when: "separate",
+        system: "LinkedIn Ads", kind: "Campaign group", name: "ABM · Committee expansion", ref: "New", state: "Active on apply",
+        launches: true,
+        fields: [{ field: "Weekly budget", now: "—", after: "$50", edit: true, money: "week" }],
+      },
+      {
+        system: "Salesforce", kind: "Accounts", name: "Trellis Software, Beacon Insurance", ref: "2 owners notified",
+        groups: [
+          { heading: "New contacts flagged to the account owner", tone: "neutral", rows: [
+            { label: "Trellis Software", chips: ["CFO", "Head of RevOps", "IT Director"] },
+            { label: "Beacon Insurance", chips: ["VP Claims", "Procurement lead"] },
+          ] },
+        ],
+      },
+    ],
+    decision: null,
+    comments: [],
+  },
+  {
+    id: "rec-lbtt-01",
+    workflowId: "icp-guardrails",
+    agent: "demand",
+    type: "change",
+    urgency: "act-now",
+    lifecycle: "needs-decision",
+    scope: "$40K/month across 7 title groups",
+    run: { n: "06", at: "Sep 29, 7:00 AM" },
+    shortTitle: "Title Optimization and Reduce Leakage",
+    title: "Shift LinkedIn budget to CIO, VP Ops, and VP Engineering",
+    basis:
+      "These 3 titles account for 68% of pipeline conversions but receive only 40% of budget. Reallocating $8K/month from underperforming titles could generate $150K–$300K in additional pipeline.",
+    changeTitle: "Budget by title",
+    changeCols: ["Title", "Share of conversions", "Current budget", "New budget", "Change"],
+    changeRows: [
+      ["VP Operations", "26%", "$6.0K", "$9.0K", "+$3.0K"],
+      ["CIO", "22%", "$4.8K", "$7.2K", "+$2.4K"],
+      ["VP Engineering", "20%", "$5.2K", "$7.8K", "+$2.6K"],
+      ["IT Manager", "12%", "$10.0K", "$7.0K", "−$3.0K"],
+      ["Marketing Manager", "4%", "$6.0K", "$3.5K", "−$2.5K"],
+      ["Business Analyst", "3%", "$5.0K", "$2.5K", "−$2.5K"],
+      ["Other titles", "13%", "$3.0K", "$3.0K", "No change"],
+    ],
+    scopeNote: "Total monthly spend stays at $40K. The three high-intent titles go from 40% to 60% of budget.",
+    timing:
+      "Reallocate today. Many buyers are setting Q4 budgets and 2027 plans right now, and the high-intent titles are the ones who own those decisions.",
+    expect:
+      "The same spend reaches more of the people who actually drive deals. Cost per lead may rise slightly, because senior audiences cost more per impression, but pipeline per dollar should improve. Over the next quarter, we estimate an additional $150K–$300K in pipeline.",
+    controls:
+      "Total spend stays the same; only the split changes. Each reduced title keeps a floor of at least $2.5K/month so we still reach champions and evaluators who influence deals. Petavue watches audience saturation daily. If frequency for a high-intent title goes above 6 impressions per person per week, the extra budget goes back to the reduced titles. If cost per opportunity for the high-intent titles rises more than 25% above baseline for two weeks, the change reverts.",
+    followUp:
+      "Oct 27. That run reports spend delivered by title, frequency, cost per lead, opportunities created, and early pipeline compared with the prior 4 weeks.",
+    needsFromYou:
+      "Approve the reallocation and confirm that the reduced titles are acceptable to cut. In particular, IT Manager still drives 12% of conversions and often acts as a champion. If sales relies on that group, we can take more from Marketing Manager instead.",
+    noticed:
+      "LinkedIn spend is spread across titles roughly by audience size, not by results. The largest share goes to IT Manager and Marketing Manager audiences, while most opportunities come from a small group of senior titles.",
+    analyzed:
+      "The workflow reviewed 90 days of LinkedIn Ads spend and engagement by job title and matched engaged contacts to HubSpot opportunities and pipeline created. It compared each title’s share of budget with its share of conversions, and it estimated pipeline generated per dollar spent for each title.",
+    found:
+      "CIO, VP Ops, and VP Engineering produced 68% of pipeline conversions on 40% of spend. They generated about $22 in pipeline per dollar, compared with about $6 for the three titles we recommend reducing. Marketing Manager and Business Analyst together used 28% of the budget but produced 7% of conversions.",
+    estimate:
+      "If the $8K moved performed at the current gap of $22 versus $6 in pipeline per dollar, the gain would be about $128K a month, or roughly $384K over a quarter. We discounted that to $150K–$300K because returns drop as spend grows: senior audiences are smaller and reach saturation sooner, and cost per impression rises as we compete for the same people.",
+    excluded:
+      "We left out contacts who could not be matched to a known title, engagement from existing customers, and opportunities where LinkedIn was not a touchpoint before creation. We also left out titles with fewer than 20 engaged contacts, because too few conversions would make their results unreliable.",
+    confidence:
+      "Confidence is high that budget is out of line with conversions, since the gap is large and consistent over 90 days. Confidence is moderate on the pipeline estimate. LinkedIn is usually one of several touchpoints, so this attribution credits it with influence, not sole cause. Enterprise pipeline also takes weeks to show up, so early results will be partial by the follow-up date.",
+    trace: [
+      { specialist: "Targeting Evidence Examiner", agent: "measurement", text: "matched 90 days of LinkedIn Ads engagement by job title to HubSpot opportunities and the pipeline they created." },
+      { specialist: "Title Targeting Strategist", agent: "demand", text: "compared each title’s share of budget with its share of conversions and its pipeline per dollar." },
+      { specialist: "Title Delivery Reviewer", agent: "demand", text: "set the $2.5K floor for each reduced title and the saturation and cost-per-opportunity rules that pull the change back." },
+      { specialist: "Buyer Outcome Validator", agent: "conversion", text: "discounted the $384K straight-line estimate to $150K–$300K for saturation and rising cost per impression." },
+    ],
+    changes: [
+      {
+        system: "LinkedIn Ads", kind: "Campaign group", name: "Title audiences · High intent", ref: "#735084801", state: "Active",
+        fields: [
+          { field: "VP Operations · monthly budget", now: "$6.0K", after: "$9.0K", edit: true, money: "month" },
+          { field: "CIO · monthly budget", now: "$4.8K", after: "$7.2K", edit: true, money: "month" },
+          { field: "VP Engineering · monthly budget", now: "$5.2K", after: "$7.8K", edit: true, money: "month" },
+        ],
+      },
+      {
+        system: "LinkedIn Ads", kind: "Campaign group", name: "Title audiences · Broad", ref: "#735084822", state: "Active",
+        fields: [
+          { field: "IT Manager · monthly budget", now: "$10.0K", after: "$7.0K", edit: true, money: "month" },
+          { field: "Marketing Manager · monthly budget", now: "$6.0K", after: "$3.5K", edit: true, money: "month" },
+          { field: "Business Analyst · monthly budget", now: "$5.0K", after: "$2.5K", edit: true, money: "month" },
+        ],
+      },
+    ],
+    decision: null,
+    comments: [],
+  },
+  {
+    id: "rec-tarb-03",
+    workflowId: "audience-sharpening",
+    agent: "demand",
+    type: "test",
+    urgency: "act-now",
+    lifecycle: "needs-decision",
+    scope: "60 net-new accounts",
+    run: { n: "51", at: "Sep 29, 7:00 AM" },
+    shortTitle: "LinkedIn Campaign with Lookalike Audience",
+    title: "Launch a LinkedIn campaign to 60 lookalike accounts",
+    basis:
+      "The 170-account target list is close to saturation, and Audience Expansion spends about $5K/month on reach that rarely converts. Moving that budget to 60 accounts modeled on our 18 fastest-closing customers adds net-new pipeline without increasing spend.",
+    changeTitle: "Lookalike accounts, ranked",
+    changeCols: ["Rank", "Account", "Similarity", "Why it matches"],
+    changeRows: [
+      ["1", "Halden Medical Group", "0.91", "Same size and segment as Meridian Health, same CRM and data stack, hiring 4 RevOps roles"],
+      ["2", "Northway Freight", "0.88", "Mid-market logistics like Corville, recent Series C, new CIO in the last 90 days"],
+      ["3", "Stratus Claims", "0.86", "Insurance carrier profile close to Beacon, VP Ops and IT Director both active on LinkedIn"],
+      ["4–60", "+57 more", "0.80+", "Full ranked list in the export"],
+    ],
+    timing:
+      "Launch today. Several target accounts are already capped and engagement across the current list has flattened, so every week without new accounts means spend goes to people who have already seen the ads.",
+    expect:
+      "LinkedIn reach grows by about 60 accounts that closely match the customers we win fastest. Ads go to the high-intent titles from the budget recommendation (CIO, VP Ops, VP Engineering). Based on how the seed customers first engaged, we expect 6–9 lookalike accounts to reach the high-intent threshold within 6 weeks, and 3–5 of those to become opportunities.",
+    controls:
+      "Before upload, Petavue removes existing customers, open opportunities, current target accounts, competitors, and partners from the list. The campaign runs as its own LinkedIn campaign group so results stay separate from the core target list. Frequency is capped at 5 impressions per person per week. If click-through rate is below 50% of the core campaign’s rate after 3 weeks, the lowest-scoring third of the list is removed and its budget goes to the top 40. When a lookalike account hits the high-intent threshold (two or more high-intent visits and three or more engaged contacts), it enters the same sales routing workflow as the 14 accounts in the handoff recommendation.",
+    followUp:
+      "Interim check Oct 20 for delivery, match rate, and early engagement. Full check Nov 10, which reports accounts reaching high intent, meetings booked, opportunities created, and cost per engaged account compared with the core target list.",
+    needsFromYou:
+      "Approve turning off Audience Expansion and moving its roughly $5K/month to the lookalike campaign. Then choose how lookalikes enter HubSpot: add all 60 to the target account list now with owners assigned, or keep them marketing-only until each one reaches the high-intent threshold.",
+    choice: {
+      question: "How should the 60 lookalike accounts enter HubSpot?",
+      options: [
+        { id: "now", label: "Add all 60 to the target account list now, with owners assigned" },
+        { id: "later", label: "Keep them marketing-only until each reaches the high-intent threshold" },
+      ],
+    },
+    noticed:
+      "Across the 170 target accounts, the engagement rate has been flat for four weeks while frequency keeps rising, which means we’re reaching the same people more often but no new ones. Meanwhile, Audience Expansion is turned on for three campaigns and uses about 12% of LinkedIn spend, yet it has produced one opportunity in 90 days.",
+    analyzed:
+      "The workflow built a seed set of 18 customers who closed in the last 12 months with a sales cycle under 90 days. For each one it pulled firmographics (industry, employee count, revenue band, region), technographics (CRM, data warehouse, marketing automation), growth signals (funding, headcount growth, open roles in RevOps and data), and buying committee coverage (whether CIO, VP Ops, and VP Engineering roles exist and are active on LinkedIn). It then scored about 4,200 companies in our ICP universe against that seed profile.",
+    found:
+      "187 companies scored 0.80 or higher. After exclusions, 60 net-new accounts remained. The strongest predictors of similarity were a shared tech stack, recent growth in RevOps or data hiring, and having all three high-intent titles on LinkedIn, which were also the traits the seed customers had in common before they converted. More than half of the 60 are in healthcare, logistics, and insurance, the same segments as our fastest recent wins.",
+    whyNow:
+      "The current target list can’t absorb more spend without adding frequency instead of reach. Many of these companies are in Q4 planning, and several show signs of new leadership or new budget, such as a new CIO or a recent funding round, which often come before a platform evaluation.",
+    excluded:
+      "We left out existing customers, open opportunities, closed-lost deals from the last 6 months, current target accounts, competitors, partners, and companies with fewer than 300 matchable LinkedIn members, since LinkedIn won’t serve audiences below that size.",
+    confidence:
+      "Confidence is high on list quality, because the seed profile is consistent and the top-ranked accounts match on several dimensions. Confidence is moderate on conversion. The seed set is small (18 customers), and lookalike accounts show no current intent, so they will take longer to warm up than the accounts in the handoff recommendation. Technographic and hiring data come from third-party sources and may be incomplete for private companies.",
+    trace: [
+      { specialist: "Account Delivery Resolver", agent: "measurement", text: "built the seed set of 18 customers who closed in the last 12 months with a sales cycle under 90 days." },
+      { specialist: "Account Reach Monitor", agent: "demand", text: "found engagement flat for four weeks across the 170-account list and scored about 4,200 ICP companies against the seed profile." },
+      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "planned the separate campaign group, the 5-per-person weekly frequency cap, and turning off Audience Expansion on three campaigns." },
+    ],
+    changes: [
+      {
+        system: "LinkedIn Ads", kind: "Setting", name: "Audience Expansion", ref: "3 campaigns",
+        fieldHead: "Campaign",
+        impact: "Turning off Audience Expansion releases about $5K a month from 3 campaigns.",
+        fields: [
+          { field: "ABM · Tier 1 target accounts", now: "On", after: "Off" },
+          { field: "ABM · Retargeting", now: "On", after: "Off" },
+          { field: "Brand · Awareness", now: "On", after: "Off" },
+        ],
+      },
+      {
+        system: "LinkedIn Ads", kind: "Campaign group", name: "Lookalike accounts · Q4", ref: "New", state: "Active on apply",
+        launches: true,
+        groups: [
+          { heading: "New inclusion targeting criteria", tone: "include", rows: [
+            { label: "Company list", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+            { label: "Job Titles (Current)", chips: ["Chief Information Officer", "Vice President of Operations", "Vice President of Engineering"] },
+          ] },
+        ],
+        fields: [
+          { field: "Monthly budget", now: "—", after: "$5.0K", edit: true, money: "month" },
+          { field: "Frequency cap", now: "—", after: "5 per person per week", edit: true },
+        ],
+      },
+      {
+        when: "now",
+        system: "HubSpot", kind: "Company list", name: "ABM · Target accounts", ref: "#list 1180", state: "Active list",
+        groups: [
+          { heading: "Added to list", tone: "include", rows: [
+            { label: "Companies", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+          ] },
+        ],
+        fields: [{ field: "Owner", now: "—", after: "Assigned by territory" }],
+      },
+      {
+        when: "later",
+        system: "HubSpot", kind: "Company list", name: "Lookalike accounts · Marketing only", ref: "New list", state: "Active list",
+        groups: [
+          { heading: "Added to list", tone: "include", rows: [
+            { label: "Companies", chips: ["Halden Medical Group", "Northway Freight", "Stratus Claims", "+57 more"] },
+          ] },
+        ],
+        fields: [{ field: "Moves to the target account list", now: "—", after: "When it reaches the high-intent threshold" }],
+      },
+    ],
+    decision: null,
+    comments: [],
+  },
+
+  /* ── The earlier pending cards (doc 17 §6) ──────────────────────── */
   {
     id: "rec-sqwc-01",
     workflowId: "wasted-spend",
@@ -57,7 +410,7 @@ const ITEMS = [
     lifecycle: "needs-decision",
     scope: "2 campaigns",
     run: { n: "08", at: "Sep 1, 7:02 AM" },
-    shortTitle: "Add 14 negative keywords",
+    shortTitle: "Search Query Negative Keywords",
     title: "Add 14 negative keywords to block irrelevant search traffic",
     basis: "$2,310 of last month's $9,800 search spend went to queries with zero fit.",
     changeTitle: "Add 14 negative keywords to two campaigns",
@@ -103,7 +456,7 @@ const ITEMS = [
     lifecycle: "needs-decision",
     scope: "1 campaign",
     run: { n: "08", at: "Sep 1, 7:02 AM" },
-    shortTitle: "Narrow one old negative keyword",
+    shortTitle: "Negative Keyword Narrowing Test",
     title: "Narrow one old negative keyword that blocks converting query families",
     basis:
       'Brand Search produced 8 qualified outcomes in 90 days on checklist queries that Brand + Generic Search cannot enter, because a broad negative added manually in March 2026 blocks every query containing "checklist".',
@@ -149,7 +502,7 @@ const ITEMS = [
     lifecycle: "needs-decision",
     scope: "2 campaigns",
     run: { n: "06", at: "Sep 1, 7:04 AM" },
-    shortTitle: "Pause low-performing hours and locations",
+    shortTitle: "Google Ads Schedule and Location Leakage",
     title: "Pause low-performing hours and locations in two campaigns",
     basis: "The flagged hours and locations consumed 12% of the reviewed spend but produced only one SQL in 90 days.",
     changeTitle: "Two schedule changes, one geo change",
@@ -195,7 +548,7 @@ const ITEMS = [
     lifecycle: "needs-decision",
     scope: "170-account list",
     run: { n: "23", at: "Sep 1, 7:00 AM" },
-    shortTitle: "Cap 8 saturated accounts",
+    shortTitle: "LinkedIn Account Saturation Caps",
     title: "Cap 8 saturated accounts at 200 impressions per week",
     basis: "8 accounts took 41% of impressions; 63 tier-1 targets got fewer than 50 each.",
     changeTitle: "The caps (refreshed daily by the workflow)",
@@ -231,103 +584,6 @@ const ITEMS = [
     decision: null,
     comments: [],
   },
-  {
-    id: "rec-tarb-02",
-    workflowId: "audience-sharpening",
-    agent: "demand",
-    type: "change",
-    urgency: "this-week",
-    lifecycle: "needs-decision",
-    scope: "2 accounts",
-    run: { n: "23", at: "Sep 1, 7:00 AM" },
-    shortTitle: "Raise two re-engaged account caps",
-    title: "Raise two re-engaged account caps to 400 weekly",
-    basis:
-      "Trellis Software and Beacon Insurance reach their 200-impression cap by Wednesday each week and are the only capped accounts showing new contact engagement.",
-    changeTitle: "The change",
-    changeCols: ["Account", "Cap now", "Cap after", "Evidence"],
-    changeRows: [
-      ["Trellis Software", "200/wk", "400/wk", "2 new engaged contacts in 14 days; cap reached by Wednesday in all 3 weeks since Aug 10"],
-      ["Beacon Insurance", "200/wk", "400/wk", "Webinar signup plus 1 engaged contact in 14 days; cap reached by Wednesday in 2 of the 3 weeks since Aug 10"],
-    ],
-    scopeNote:
-      "Both accounts belong to the five-account cohort capped on Aug 10 (Run 01). They are separate from the eight accounts in this run's new cap recommendation.",
-    timing: "Apply the change this week; the daily 7:00 AM run recalculates within the new rule.",
-    expect:
-      "Restore mid-week delivery to the two re-engaging accounts; new engagement does not guarantee pipeline, so the Sep 15 check measures whether engaged contacts keep appearing.",
-    controls:
-      "Tier-one coverage must hold its 37% baseline while the raised caps are active; the daily run checks coverage and flags the raise the same day coverage slips below it. If either account shows no new engaged contact by Sep 15, its cap returns to 200 impressions per week.",
-    followUp: "Sep 15.",
-    noticed: "Two capped accounts stopped receiving delivery midweek while showing their first new contact engagement in 60 days.",
-    analyzed:
-      "The workflow reviewed daily delivery against the cap rule and 14 days of contact engagement for all five accounts in the Aug 10 capped cohort.",
-    dataCols: ["Account", "Weeks at cap by Wednesday", "New engaged contacts (14d)", "Open opportunity"],
-    dataRows: [
-      ["Trellis Software", "3 of 3", "2", "No"],
-      ["Beacon Insurance", "2 of 3", "1", "No"],
-      ["Other capped accounts (3)", "0", "0", "No"],
-    ],
-    whyFollows:
-      "The cap is now truncating delivery to the only two capped accounts showing fresh engagement. Raise their cap to 400 impressions per week, leave the other three caps unchanged, and re-check on Sep 15.",
-    trace: [
-      { specialist: "Account Delivery Resolver", agent: "measurement", text: "matched daily delivery to the capped cohort and recorded when each account reached its weekly cap." },
-      { specialist: "Account Reach Monitor", agent: "demand", text: "re-checked the capped cohort daily and surfaced the only two capped accounts showing new contact engagement." },
-      { specialist: "Cap and Rotation Coordinator", agent: "delivery", text: "verified tier-one coverage holds its 37% baseline while the raised caps are active." },
-    ],
-    appliedPrefix: "Applied to LinkedIn Ads",
-    readback: "Petavue read the saved audience settings back from LinkedIn Ads and confirmed the raised caps.",
-    decision: null,
-    comments: [],
-  },
-  {
-    id: "rec-bssh-01",
-    workflowId: "sales-handoff",
-    agent: "conversion",
-    type: "handoff",
-    urgency: "this-week",
-    lifecycle: "needs-decision",
-    scope: "170 accounts scored",
-    run: { n: "04", at: "Sep 1, 8:01 AM" },
-    awaitingYou: true,
-    shortTitle: "Send 14 accounts to sales",
-    title: "Send 14 high-intent accounts to the selected sales queue",
-    basis:
-      "All 14 accounts visited high-intent pages at least twice in 14 days and passed the approved composite score for contact engagement and recency.",
-    changeTitle: "The list, ranked",
-    changeCols: ["Rank", "Account", "Signal"],
-    changeRows: [
-      ["1", "Meridian Health", "Pricing page ×3, 4 engaged contacts, demo video 80%"],
-      ["2", "Corville Logistics", "Comparison page ×2, CISO engaged twice"],
-      ["3–14", "+12 more", "Full ranked list in the export"],
-    ],
-    timing: "Send the accounts this week while the activity is recent.",
-    expect: "Give sales 14 qualified account handoffs instead of the roughly three weekly handoffs created by form fills alone.",
-    controls:
-      "Petavue re-checks every account against customers, open opportunities, and the last 21 days of sales activity at the moment of the push, so a conflict that appears after this run cannot create a duplicate handoff.",
-    followUp: "Sep 15. That run reports first sales touches and meetings booked for the 14 accounts.",
-    needsFromYou: "Select the HubSpot destination, either the SDR round-robin queue or the named account executive queue.",
-    noticed: "Only about three accounts per week reach sales through form fills even though traffic to high-intent pages continues to grow.",
-    analyzed:
-      "The workflow analyzed 14 days of web sessions, LinkedIn Ads engagement, and contact activity for 170 target accounts. Two or more high-intent visits were required. Contact depth and recency contributed to the composite score.",
-    dataCols: ["Signal threshold", "Accounts hitting it"],
-    dataRows: [
-      ["2+ high-intent page visits in 14 days", "31"],
-      ["Passed the composite engagement and recency score", "23"],
-      ["Already in an open opportunity (excluded)", "9"],
-      ["Net-new accounts ready for sales", "14"],
-    ],
-    whyFollows:
-      "Twenty-three accounts passed the composite score. Nine already had open opportunities, so Petavue excluded them. Send the remaining 14 accounts to sales in the ranked order shown above.",
-    trace: [
-      { specialist: "Account Journey Builder", agent: "measurement", text: "resolved 14 days of web, advertising, and contact activity to named accounts, counting identified activity only." },
-      { specialist: "Buying Signal Scorer", agent: "conversion", text: "scored the 170 target accounts against the composite model and kept the evidence attached to each account's rank." },
-      { specialist: "Sales Eligibility Validator", agent: "demand", text: "checked the shortlist against customers, open opportunities, and 21 days of sales activity, removing nine accounts." },
-    ],
-    appliedPrefix: "Pushed to HubSpot",
-    readback: "Petavue created the tasks in HubSpot and verified the task IDs. Confirmed in HubSpot.",
-    decision: null,
-    comments: [],
-  },
 
   /* ── The five closed lifecycle cards (doc 17, Lifecycle examples) ── */
   {
@@ -339,7 +595,7 @@ const ITEMS = [
     lifecycle: "accepted",
     scope: "3 campaigns",
     run: { n: "06", at: "Aug 18, 7:01 AM" },
-    shortTitle: "Add negative keywords",
+    shortTitle: "Search Query Negative Keywords",
     title: "Add negative keywords to block irrelevant search traffic",
     basis: "Approved Aug 18; the Sep 1 run measured irrelevant spend down $1,910 per month.",
     changeTitle: "Negative keywords added Aug 18",
@@ -378,7 +634,7 @@ const ITEMS = [
     lifecycle: "accepted",
     scope: "2 campaigns",
     run: { n: "04", at: "Aug 18, 7:03 AM" },
-    shortTitle: "Pause leaking delivery windows",
+    shortTitle: "Google Ads Delivery Window Leakage",
     title: "Pause low-performing delivery windows",
     basis: "Approved Aug 18; the Sep 1 run verified the paused windows spent $0.",
     changeTitle: "Schedule and location changes applied Aug 18",
@@ -411,7 +667,7 @@ const ITEMS = [
     lifecycle: "rejected",
     scope: "1 account",
     run: { n: "22", at: "Aug 31, 7:00 AM" },
-    shortTitle: "Cap delivery to Deloitte",
+    shortTitle: "Deloitte Impression Cap",
     title: "Cap Deloitte at 200 impressions per week",
     basis: "Deloitte reached heavy delivery with no new pipeline in 60 days.",
     changeTitle: "The proposed cap",
@@ -455,7 +711,7 @@ const ITEMS = [
     lifecycle: "accepted",
     scope: "5 accounts",
     run: { n: "01", at: "Aug 10, 7:00 AM" },
-    shortTitle: "Cap 5 saturated accounts",
+    shortTitle: "LinkedIn Account Saturation Caps",
     title: "Cap 5 accounts at 200 impressions per week",
     basis: "Approved Aug 10; the Aug 24 run measured tier-one coverage up from 29% to 37%.",
     changeTitle: "Caps applied Aug 10",
@@ -488,7 +744,7 @@ const ITEMS = [
     lifecycle: "accepted",
     scope: "11 accounts",
     run: { n: "03", at: "Aug 25, 8:01 AM" },
-    shortTitle: "Send 11 accounts to sales",
+    shortTitle: "ABM",
     title: "Send 11 high-intent accounts to the SDR round-robin queue",
     basis: "Pushed Aug 25; sales booked four meetings during the first week.",
     changeTitle: "The handoff",
@@ -514,21 +770,14 @@ const ITEMS = [
   },
 ];
 
-/* ── The live apply progression (doc 19 section 6 line rules).
-   After an in-session Accept the applied line appears once Petavue has
-   applied the change, first with "is confirming", then with the read-back
-   clause. Facts only, each with its date; the page polls, so the card
-   updates in place. ── */
+/* ── Applying happens in the Apply modal, change by change (Ijas's design):
+   Will change → Waiting → Applying → Applied, then a read-only "What changed"
+   view. The card keeps the decision; an in-session decision carries no
+   one-line applied text. Seeded decisions keep theirs. ── */
 function withLiveApply(item) {
   const d = item.decision;
   if (!d || d.status !== "accepted" || !d.ts) return item;
-  const elapsed = Date.now() - d.ts;
-  if (elapsed < 1800) return { ...item, applied: null };
-  const appliedAt = stamp(new Date(d.ts + 1800));
-  if (elapsed < 5200) {
-    return { ...item, applied: `${item.appliedPrefix} on ${appliedAt}. Petavue is confirming the saved settings.` };
-  }
-  return { ...item, applied: `${item.appliedPrefix} on ${appliedAt}. ${item.readback}` };
+  return { ...item, applied: null };
 }
 
 export function listRecommendations() {
@@ -538,11 +787,35 @@ export function listRecommendations() {
 /* One decision: accepted, rejected, or on-hold. The note is optional on
    accept and required on reject and hold (enforced in the UI); a note also
    lands in the comments thread with its decision label. */
-export function decide(id, status, note) {
+export function decide(id, status, note, choice, applied) {
   const it = ITEMS.find((r) => r.id === id);
   if (!it || !DECISION[status]) return it || null;
   const at = stamp();
-  it.decision = { status, by: currentUser.name, at, ts: Date.now(), note: note || null };
+  // the "Needs from you" answer, asked by the Accept modal
+  const picked = status === "accepted" ? it.choice?.options.find((o) => o.id === choice) : null;
+  it.decision = {
+    status, by: currentUser.name, at, ts: Date.now(), note: note || null,
+    choice: picked?.id || null, choiceLabel: picked?.label || null,
+    applied: status === "accepted" && Array.isArray(applied) ? applied : null,
+  };
+  // Each reason given in the Apply modal becomes a comment, so later runs
+  // (and people) can see what was changed or left out, and why.
+  for (const c of it.decision.applied || []) {
+    const say = (label, text) => { it.comments = [...(it.comments || []), { author: currentUser.name, at, label, text }]; };
+    if (!c.on) { if (c.reason) say("Left out when applied", `${c.name}: ${c.reason}`); continue; }
+    for (const f of c.fields || []) {
+      if (!f.on && f.reason) say("Left out when applied", `${f.field} on ${c.name}: ${f.reason}`);
+      else if (f.value !== f.rec && f.reason) say("Adjusted when applied", `${f.field} on ${c.name}, ${f.rec} → ${f.value}: ${f.reason}`);
+    }
+    for (const g of c.groups || []) {
+      for (const r of g.rows) {
+        const off = r.chips.filter((x) => !x.fixed && !x.on).map((x) => x.label);
+        if (off.length && r.reason) {
+          say(r.mode === "later" ? "Saved for later" : "Left out when applied", `${off.join(", ")} (${r.label}, ${c.name}): ${r.reason}`);
+        }
+      }
+    }
+  }
   it.lifecycle = status;
   if (note) {
     it.comments = [...(it.comments || []), { author: currentUser.name, at, label: NOTE_LABEL[status], text: note }];

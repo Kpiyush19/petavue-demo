@@ -1,0 +1,123 @@
+/* Recommendations page — named classes for the pieces that carry state.
+   BEM, like the MenuBar's stylesheet: a block, its parts (__), and its
+   states (--). Colours come from the design tokens. */
+
+/* ── Decision queue row ─────────────────────────────────── */
+.rec-queue-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-grey-100);
+  border-left: 3px solid transparent;
+  transition: background-color 150ms ease;
+}
+
+.rec-queue-row:hover {
+  background: var(--color-primary-50);
+}
+
+.rec-queue-row:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
+.rec-queue-row--selected {
+  background: var(--color-primary-50);
+  border-left-color: var(--color-primary-500);
+}
+
+.rec-queue-row--decided:not(.rec-queue-row--selected) {
+  opacity: 0.7;
+}
+
+.rec-queue-row__icon {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.rec-queue-row__icon--act-now { color: #f43f5e; }
+.rec-queue-row__icon--this-week { color: #f59e0b; }
+.rec-queue-row__icon--monitor { color: #3b82f6; }
+.rec-queue-row__icon--accepted { color: #16a34a; }
+.rec-queue-row__icon--rejected { color: #fb7185; }
+.rec-queue-row__icon--on-hold { color: #f59e0b; }
+
+.rec-queue-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rec-queue-row__title {
+  font-size: 14px;
+  line-height: 1.375;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.rec-queue-row--decided .rec-queue-row__title {
+  font-weight: 400;
+}
+
+.rec-queue-row__meta {
+  font-size: 12px;
+  line-height: 1.375;
+  color: var(--text-muted);
+}
+
+/* ── Card metadata: who found it, which run, when, how wide ─ */
+.rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 12px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-grey-100);
+}
+
+.rec-meta__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 20px;
+  border-left: 1px solid var(--color-grey-100);
+}
+
+.rec-meta__item:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.rec-meta__label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+
+.rec-meta__value {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.rec-meta__run {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--color-grey-100);
+  color: var(--text-secondary);
+}
