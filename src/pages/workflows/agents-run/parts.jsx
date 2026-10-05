@@ -1,4 +1,8 @@
+import { Eye, Lightning, Warning, WarningCircle } from "@phosphor-icons/react";
+import SourceIcon from "../../../components/SourceIcon";
 import { TAGS, FILES } from "./data";
+import "../../recommendations/recommendations.css";
+import "./runReview.css";
 
 /* Pieces shared by the Agents setup (Verify & Publish) and the run review. */
 
@@ -74,100 +78,53 @@ export function tagItems(agents, i) {
 }
 
 // ── Recommendation cards ──────────────────────────────────────────────────
-function Delta({ d }) {
-  if (!d) return null;
-  return (
-    <div className="wfa-delta">
-      <b>{d.label}:</b> {d.from} → <b>{d.to}</b>
-      {d.was && <s>{d.was}</s>}
-    </div>
-  );
-}
+const URGENCY = {
+  "Act now": ["act-now", Lightning],
+  "This week": ["this-week", Warning],
+  "This month": ["monitor", Eye],
+};
 
-const PENDING = { new: ["wfa-new", "New"], changed: ["wfa-chg", "Changed"], removed: ["wfa-rem", "Will be removed"] };
-
-// A drafted change: used in an agent's preview, and in the review's Changes tab
-// where it also carries Keep / Drop.
-export function ChangeCard({ r, readonly, dropped, locked, onKeep, onDrop }) {
-  const [cls, label] = PENDING[r.pending];
+/* A drafted change in an agent's preview: the same card the review's Changes
+   tab shows, read-only. */
+export function ChangeCard({ r }) {
+  const advice = !r.d && r.pending !== "removed";
+  const [ucls, UIcon] = URGENCY[r.urg] || URGENCY["This month"];
   return (
-    <div className={`wfa-rec${dropped ? " wfa-off" : ""}`}>
-      <div className="wfa-top">
-        <span className={`wfa-chip ${cls}`}>{label}</span>
-        <span className="wfa-chip">{r.urg}</span>
-        {r.edited && <span className="wfa-chip wfa-edit">Edited in review</span>}
-        {r.by && <span className="wfa-id">by {r.by}</span>}
-      </div>
-      <div className="wfa-ttl">{r.title}</div>
-      {r.pending !== "removed" && <Delta d={r.d} />}
-      <div className="wfa-why">{r.why}</div>
-      {r.warn && <div className="wfa-note">{r.warn}</div>}
-      {r.pending === "removed" && <div className="wfa-note">This record is on hold. Its hold note is removed with it.</div>}
-      {!readonly && (
-        <div className="wfa-row">
-          <span>{dropped ? "Dropped. The board stays as it is for this one." : ""}</span>
-          <span className="wfa-seg">
-            <button type="button" className={dropped ? "" : "wfa-on"} disabled={locked} onClick={onKeep}>Keep</button>
-            <button type="button" className={dropped ? "wfa-on wfa-drop" : ""} disabled={locked} onClick={onDrop}>Drop</button>
+    <div className="run-change">
+      <header className="run-change__head">
+        {!advice && <SourceIcon name="LinkedIn Ads" size={14} />}
+        <h4 className="run-change__title">{r.title}</h4>
+        <span className="run-change__meta">
+          {advice && <span className="rec-card-tag">Advice only</span>}
+          <span className={`rec-card-status rec-card-status--${ucls}`}>
+            <UIcon size={12} />
+            {r.urg}
           </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-const IN_RUN = { new: ["wfa-new", "New in this run"], changed: ["wfa-chg", "Changed in this run"], removed: ["wfa-rem", "Will be removed"] };
-
-// A record on the board, read-only, with its notes and comments.
-export function BoardCard({ r, dropped }) {
-  const mark = r.pending && !dropped ? IN_RUN[r.pending] : null;
-  return (
-    <div className="wfa-rec">
-      <div className="wfa-top">
-        <span className="wfa-chip">{r.status}</span>
-        <span className="wfa-chip">{r.urg}</span>
-        {mark && <span className={`wfa-chip ${mark[0]}`}>{mark[1]}</span>}
-      </div>
-      <div className="wfa-ttl">{r.title}</div>
-      <Delta d={r.d} />
-      <details>
-        <summary>Reason, notes and comments ({r.hist.length})</summary>
-        <div className="wfa-why">{r.why}</div>
-        {r.hist.length > 0 && (
-          <ul>
-            {r.hist.map((h) => (
-              <li key={h}>{h}</li>
-            ))}
-          </ul>
+        </span>
+      </header>
+      <div className="run-change__body">
+        {r.d && r.pending !== "removed" && (
+          <div className="run-change__fields">
+            <div className="run-change__frow run-change__frow--head">
+              <span>Field</span>
+              <span>Current</span>
+              <span>After</span>
+            </div>
+            <div className="run-change__frow">
+              <span className="run-change__field-name">{r.d.label}</span>
+              <span>{r.d.from}</span>
+              <span className="run-change__after">{r.d.to}</span>
+            </div>
+          </div>
         )}
-      </details>
-    </div>
-  );
-}
-
-// A file's contents: a written note, or a table.
-export function FileView({ file }) {
-  if (file.md) return <div className="wfa-md" dangerouslySetInnerHTML={{ __html: file.md }} />;
-  return (
-    <div className="wfa-scroll-x">
-      <table>
-        <thead>
-          <tr>
-            {file.table.h.map((h) => (
-              <th key={h}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {file.table.r.map((row, i) => (
-            <tr key={i}>
-              {row.map((c, j) => (
-                <td key={j}>{c}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <p className="run-change__why">{r.why}</p>
+        {r.warn && (
+          <p className="run-change__note">
+            <WarningCircle size={14} aria-hidden="true" />
+            {r.warn}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

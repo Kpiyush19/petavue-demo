@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CaretRight, Info, Paperclip, At, X, Plus, Lightbulb, File as FileIcon, Trash } from "@phosphor-icons/react";
+import { CaretRight, Info, Paperclip, At, X, Plus, File as FileIcon, Trash } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
 import { ACTIONS, FILES, MODELS, RECS, SAMPLE_UPLOADS } from "./data";
 import { ChangeCard, TagIcon, promptHtml, serializePrompt, tagItems } from "./parts";
@@ -156,7 +156,6 @@ function Preview({ a }) {
         recs.map((r) => (
           <ChangeCard
             key={r.id}
-            readonly
             // The preview is this agent's own draft, before the final check lowers it.
             r={r.id === "REC-21" ? { ...r, d: { ...r.d, to: "$90" }, warn: "LinkedIn check: spend can rise by up to $40 a day." } : r}
           />
@@ -265,11 +264,7 @@ function AgentCard({ agents, index, open, onToggle, update, remove }) {
                   <div className="wfa-pgroup" key={g.g}>
                     <div className="wfa-pg-h">
                       <b>{g.g}</b>
-                      {g.planned ? (
-                        <span className="wfa-chip">Planned</span>
-                      ) : g.skill ? (
-                        <span className="wfa-pg-skill"><Lightbulb size={12} /> {g.skill}</span>
-                      ) : null}
+                      {g.planned && <span className="wfa-chip">Planned</span>}
                     </div>
                     <div className="wfa-pick">
                       {g.items.map((x) => {

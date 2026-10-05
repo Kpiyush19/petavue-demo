@@ -73,7 +73,6 @@
   .wfa-preview-b.wfa-empty { align-items: center; justify-content: center; color: var(--disabled); font-size: 13px; }
   .wfa-pgroup { border: 1px solid var(--border-soft); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
   .wfa-pg-h { display: flex; align-items: center; gap: 8px; font-size: 12px; } .wfa-pg-h b { font-weight: 600; }
-  .wfa-pg-skill { margin-left: auto; color: var(--text-2); font-size: 11px; display: inline-flex; gap: 4px; align-items: center; }
   .wfa-pick button:disabled { color: var(--disabled); background: var(--bg); cursor: not-allowed; }
   .wfa-handoff { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--accent-800); background: var(--accent-50); border: 1px solid var(--accent-100); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
   .wfa-review-row { border-top: 1px solid var(--border-soft); margin-top: 14px; padding-top: 14px; }
@@ -107,21 +106,9 @@
   .wfa-steps .wfa-ln { width: 32px; height: 1px; background: #90a6ee; } .wfa-steps .wfa-cur { color: var(--text); }
 
   /* recommendation card (preview, Changes, All) */
-  .wfa-rec { border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 10px 12px; }
-  .wfa-rec.wfa-off { background: var(--bg); opacity: .72; }
-  .wfa-rec .wfa-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
-  .wfa-rec .wfa-id { font: 500 11px var(--mono); color: var(--muted); }
-  .wfa-rec .wfa-ttl { font-size: 13px; font-weight: 600; line-height: 1.4; }
-  .wfa-rec .wfa-delta { margin-top: 6px; font-size: 12.5px; background: var(--bg); border-radius: 6px; padding: 6px 8px; }
-  .wfa-rec .wfa-delta s { color: var(--muted); margin-left: 6px; }
-  .wfa-rec .wfa-why { margin-top: 6px; font-size: 12px; color: var(--text-2); }
-  .wfa-rec .wfa-note { margin-top: 6px; font-size: 12px; border-radius: 6px; padding: 6px 8px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
-  .wfa-rec .wfa-row { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); }
   .wfa-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
   .wfa-seg button { border: 0; background: #fff; padding: 3px 10px; font-size: 12px; font-weight: 500; color: #52577a; }
   .wfa-seg button.wfa-on { background: var(--accent); color: #fff; } .wfa-seg button.wfa-on.wfa-drop { background: var(--disabled); color: var(--text); }
-  .wfa-rec details { margin-top: 6px; font-size: 12px; } .wfa-rec summary { cursor: pointer; color: var(--accent); font-weight: 500; }
-  .wfa-rec ul { margin: 6px 0 0; padding-left: 16px; color: var(--text-2); }
 
   /* ── Screen 2: Review, in the session workspace ───────────── */
   .wfa-ws { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #fff; }
