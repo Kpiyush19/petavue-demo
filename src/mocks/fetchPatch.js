@@ -4,6 +4,9 @@
 
 import { DASHBOARD_FILES, WIDGET_PREVIEWS, assembleSkillDashboard } from "./dashboardAssets";
 import { getRun } from "./skillRun";
+import { runFileContent } from "../pages/workflows/agents-run/runSession";
+import { RUN_SESSION_ID } from "../pages/workflows/agents-run/data";
+import { LCH_FILES } from "./linkedinHealth";
 
 function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -30,7 +33,7 @@ function handleFilesRequest(pathname, search) {
   const dashM = pathname.match(/\/api\/(?:workflows\/dashboards|published)\/[^/]+\/files\/(.+)$/);
   if (dashM) {
     const dpath = decodeURIComponent(dashM[1]);
-    const dfile = DASHBOARD_FILES[dpath];
+    const dfile = LCH_FILES[dpath] || DASHBOARD_FILES[dpath];
     if (dfile) return new Response(dfile.content, { status: 200, headers: { "content-type": dfile.contentType } });
     return jsonResponse({ detail: `File not found: ${dpath}` }, 404);
   }
@@ -40,6 +43,15 @@ function handleFilesRequest(pathname, search) {
   if (!m) return null;
   const sid = m[1];
   let filepath = decodeURIComponent(m[2]);
+
+  // The LinkedIn Campaign Health dashboard and its sections, in any chat.
+  if (LCH_FILES[filepath]) return new Response(LCH_FILES[filepath].content, { status: 200, headers: { "content-type": LCH_FILES[filepath].contentType } });
+
+  // Files of a workflow run under review.
+  if (sid === RUN_SESSION_ID) {
+    const f = runFileContent(filepath);
+    if (f) return new Response(f.content, { status: 200, headers: { "content-type": f.contentType } });
+  }
 
   // Skill-flow dashboard — assembled live from the widgets the user KEPT in the
   // plan (drop a widget → it's gone here too).

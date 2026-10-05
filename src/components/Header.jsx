@@ -197,7 +197,8 @@ export default function Header({
   filesOpen,
   onToggleFiles,
   artifactOpen,
-  onToggleArtifact
+  onToggleArtifact,
+  actions,
 }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -292,6 +293,8 @@ export default function Header({
       </div>
 
       <div className="ml-auto flex items-center gap-5">
+        {/* Actions that belong to this session, e.g. approving a workflow run. */}
+        {actions}
         <ProgressButton agentRunning={!!isThinking} />
         <ContextMeter
           tokens={totalTokens}

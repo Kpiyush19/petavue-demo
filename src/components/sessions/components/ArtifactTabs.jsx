@@ -1,11 +1,14 @@
 import { useRef, useEffect, useCallback } from "react";
-import { Globe, Table2, Image, FileText, File, X } from "lucide-react";
+import { Globe, Table2, Image, FileText, File, X, ListChecks, LayoutList } from "lucide-react";
 import { Button, Tooltip } from "@/ui";
 import { getFileIcon } from "../utils/fileTypes";
 
 function TabIcon({ type }) {
-  const icon = getFileIcon(type);
   const size = 11;
+  // A workflow run's own views are not files.
+  if (type === "run-changes") return <ListChecks size={size} />;
+  if (type === "run-board") return <LayoutList size={size} />;
+  const icon = getFileIcon(type);
   switch (icon) {
     case "globe":
       return <Globe size={size} />;
@@ -67,13 +70,15 @@ export default function ArtifactTabs({ tabs, activeTabId, onSelectTab, onCloseTa
 
   const tabsContent = (
     <div ref={containerRef} className="s-artifact-tabs">
-      {tabs.map((tab) => {
+      {tabs.map((tab, idx) => {
         const isActive = tab.id === activeTabId;
         return (
           <div
             key={tab.id}
             ref={(el) => { tabRefs.current[tab.id] = el; }}
-            className={`s-artifact-tab${isActive ? " s-artifact-tab--active" : ""}`}
+            className={`s-artifact-tab${isActive ? " s-artifact-tab--active" : ""}${tab.pinned ? " s-artifact-tab--pinned" : ""}${
+              tab.pinned && !tabs[idx + 1]?.pinned ? " s-artifact-tab--last-pinned" : ""
+            }`}
             onClick={() => onSelectTab(tab.id)}
           >
             <Tooltip title={tab.title} placement="top">
@@ -82,9 +87,10 @@ export default function ArtifactTabs({ tabs, activeTabId, onSelectTab, onCloseTa
                   <TabIcon type={tab.contentType} />
                 </span>
                 <span className="s-artifact-tab__title">{tab.title}</span>
+                {tab.count != null && <span className="s-artifact-tab__count">{tab.count}</span>}
               </span>
             </Tooltip>
-            {tabs.length > 1 && (
+            {tabs.length > 1 && !tab.pinned && (
               <Button
                 variant="ghost"
                 size="sm"

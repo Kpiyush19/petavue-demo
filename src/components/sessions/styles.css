@@ -218,6 +218,12 @@
   min-width: 0;
 }
 
+/* A reply that opens with a heading would otherwise start lower than the logo
+   beside it. */
+.s-msg-assistant__content .assistant-markdown > :first-child {
+  margin-top: 0;
+}
+
 .s-msg-assistant--error {
   color: var(--error);
 }
@@ -1488,6 +1494,21 @@
   font-weight: 500;
 }
 
+/* Count on a pinned tab: a small blue chip instead of "(6)" in the title. */
+.s-artifact-tab__count {
+  flex: none;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-primary-100, #e0ebfe);
+  color: var(--color-primary-800, #052dab);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .s-artifact-tab__close {
   flex-shrink: 0;
   width: 20px !important;
@@ -2213,3 +2234,174 @@
 .s-diff-dark .s-diff-view__line--added { background: rgba(166,227,161,0.13); color: #a6e3a1; }
 .s-diff-dark .s-diff-view__line--added .s-diff-view__marker { color: #a6e3a1; }
 .s-diff-dark .s-diff-view__line--added .s-diff-view__gutter { background: rgba(166,227,161,0.08); color: #7f849c; }
+
+/* ── Agent run (workflow run) ───────────────────────────────────────────
+   The agents of one run. Same list as the agent list on the setup screen: one
+   bordered box, a hairline between rows, and in each row the run order, the
+   name, the type on the right, then the caret. */
+.s-agent-run {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* One card per agent, same surface as the setup list. */
+.s-agent-turn {
+  border: 1px solid var(--border-soft, #eef0f7);
+  border-radius: 12px;
+  background: #fff;
+}
+
+/* Who is speaking: run order, name, type, and what it started from. */
+.s-agent-turn__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-soft, #eef0f7);
+}
+
+/* Run order: the same small grey circle as on the setup screen. */
+.s-agent-turn__num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eef0f7;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.s-agent-turn__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.s-agent-turn__kind {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.s-agent-turn--reasoning .s-agent-turn__kind {
+  background: #e3f6ee;
+  color: #0b6b49;
+}
+
+.s-agent-turn--recommendation .s-agent-turn__kind {
+  background: #e0ebfe;
+  color: #052dab;
+}
+
+.s-agent-turn__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+/* The reply: laid out exactly like a normal system reply (.s-msg-assistant). */
+.s-agent-turn__msg {
+  display: flex;
+  gap: 12px;
+}
+
+.s-agent-turn__logo {
+  flex: none;
+  display: flex;
+  width: 24px;
+  height: 24px;
+}
+
+.s-agent-turn__logo img {
+  width: 20px;
+  height: 20px;
+  margin: auto;
+}
+
+.s-agent-turn__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* What the agent said: the chat itself, at reading size. */
+.s-agent-turn__reply {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-primary);
+}
+
+.s-agent-turn__reply .assistant-markdown > :first-child { margin-top: 0; }
+.s-agent-turn__reply .assistant-markdown > :last-child { margin-bottom: 0; }
+
+.s-agent-turn__files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.s-agent-turn__files-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.s-agent-turn__file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.s-agent-turn__file:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+/* Pinned tabs belong to the session (a workflow run's Dashboard, Changes and
+   All recommendations). They are set apart from files opened along the way. */
+.s-artifact-tab--pinned .s-artifact-tab__title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.s-artifact-tab--pinned {
+  max-width: none;
+  padding-inline: 12px;
+}
+
+.s-artifact-tab--last-pinned {
+  margin-right: 8px;
+}
+
+.s-artifact-tab--last-pinned::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-primary);
+}

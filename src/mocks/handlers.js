@@ -11,15 +11,21 @@ import {
 import { DASHBOARD_MANIFEST, PMR_SUMMARY_MD } from "./dashboardAssets";
 import { makeFakeJwt } from "./jwt";
 import { emit } from "./pusherBus";
+import { RUN_SESSION, scriptRunReply, runFollowups, runFileTable } from "../pages/workflows/agents-run/runSession";
+import { LCH_TITLE, LCH_DASHBOARD_PATH, LCH_WIDGETS, LCH_TREE, LCH_TOOLS, LCH_REPORT, LCH_FOLLOWUPS, lchReply } from "./linkedinHealth";
 import { startRun, executeRun, discardRun, getProgress, getPlanSummary, listActiveRuns, submitClarification } from "./skillRun";
 import * as Goals from "./goals";
 import * as AgentWf from "./agentWorkflows";
 import * as Recs from "./recommendations";
 
 // ── Verify & Publish: widgets ─────────────────────────────────────────
+// A chat that built the LinkedIn Campaign Health report (every new chat from
+// Home does) verifies and publishes that dashboard, not the default one.
+const isLch = (sessionId) => db.sessions.find((x) => x.session_id === sessionId)?.report === "lch";
+
 function getWidgets(sessionId) {
   if (!db.dashboardWidgets[sessionId]) {
-    db.dashboardWidgets[sessionId] = Object.values(DASHBOARD_MANIFEST.widgets).map((w) => ({
+    db.dashboardWidgets[sessionId] = (isLch(sessionId) ? LCH_WIDGETS : Object.values(DASHBOARD_MANIFEST.widgets)).map((w) => ({
       id: w.id, file: w.file, name: w.name, verified: false, verified_at: null,
     }));
   }
@@ -430,7 +436,62 @@ function scriptPaidMediaReply(channel, phase) {
   }, at);
 }
 
+// Stream text word by word, then finish the turn.
+function streamReply(channel, text, startAt, done) {
+  const words = text.split(" ");
+  words.forEach((w, i) => {
+    setTimeout(() => emit(channel, "agent-event", { type: "text", content: (i === 0 ? "" : " ") + w }), startAt + i * 14);
+  });
+  setTimeout(done, startAt + words.length * 14 + 150);
+}
+
+// The LinkedIn Campaign Health chat. The first message, whatever it says,
+// builds the report and its dashboard in one turn: no clarifying question.
+// Later messages are answered from the same numbers.
+function scriptLchReply(sessionId, userText) {
+  const channel = `session-${sessionId}`;
+  const userTurns = (db.history[sessionId] || []).filter((m) => m.type === "user").length;
+  const built = (db.history[sessionId] || []).some((m) => m.type === "outputs");
+
+  if (!built) {
+    let at = 250;
+    LCH_TOOLS.forEach(([tool, input]) => {
+      const t0 = at;
+      setTimeout(() => emit(channel, "agent-event", { type: "tool_call", tool, input }), t0);
+      setTimeout(() => emit(channel, "agent-event", { type: "tool_result", tool, result_length: 120 }), t0 + 15);
+      at += 90;
+    });
+    streamReply(channel, LCH_REPORT, at + 250, () => {
+      const outputs = [{ path: LCH_DASHBOARD_PATH, title: LCH_TITLE }];
+      db.fileTree[sessionId] = LCH_TREE;
+      (db.history[sessionId] ||= []).push({ type: "assistant", text: LCH_REPORT, timestamp: Date.now() }, { type: "outputs", outputs });
+      emit(channel, "agent-event", { type: "done", outputs, context_tokens: 41800, turn_count: 2 });
+      setTimeout(() => emit(channel, "agent-event", { type: "suggested-questions", questions: LCH_FOLLOWUPS }), 700);
+    });
+    return;
+  }
+
+  const reply = lchReply(userText);
+  streamReply(channel, reply, 500, () => {
+    (db.history[sessionId] ||= []).push({ type: "assistant", text: reply, timestamp: Date.now() });
+    emit(channel, "agent-event", { type: "done", context_tokens: 43000, turn_count: userTurns + 1 });
+    // Follow-ups are offered once, after the report. The conversation has
+    // moved on, so none are offered again (the empty list also ends the
+    // "loading follow-ups" placeholder).
+    emit(channel, "agent-event", { type: "suggested-questions", questions: [] });
+  });
+}
+
 function simulateAgentReply(sessionId, userText) {
+  // A workflow run under review: the reviewer carries on the agents' conversation.
+  if (sessionId === RUN_SESSION.session_id) {
+    scriptRunReply(emit, userText);
+    return;
+  }
+  if (isLch(sessionId) && !REVIEW_SYNC_MARKER.test(userText || "")) {
+    scriptLchReply(sessionId, userText);
+    return;
+  }
   const isSage = String(sessionId).startsWith("sage-");
   const isReviewSync = REVIEW_SYNC_MARKER.test(userText || "");
   const channel = `session-${sessionId}`;
@@ -464,8 +525,10 @@ function simulateAgentReply(sessionId, userText) {
       emit(channel, "agent-event", { type: "done", context_tokens: 26400, turn_count: 3 });
       // Fresh follow-ups for the turn we just answered — delayed so the
       // "Related" loading skeleton has a clear moment to shimmer first.
-      const nextQs = /target-account/.test(String(sessionId)) ? TAJ_NEXT_FOLLOWUPS : /creative/.test(String(sessionId)) ? CAP_NEXT_FOLLOWUPS : NEXT_FOLLOWUP_QUESTIONS;
-      setTimeout(() => emit(channel, "agent-event", { type: "suggested-questions", questions: nextQs }), 3500);
+      // A LinkedIn Campaign Health chat gets none here: its follow-ups are
+      // offered once, after the report.
+      const nextQs = isLch(sessionId) ? [] : /target-account/.test(String(sessionId)) ? TAJ_NEXT_FOLLOWUPS : /creative/.test(String(sessionId)) ? CAP_NEXT_FOLLOWUPS : NEXT_FOLLOWUP_QUESTIONS;
+      setTimeout(() => emit(channel, "agent-event", { type: "suggested-questions", questions: nextQs }), nextQs.length ? 3500 : 0);
     }
   };
   setTimeout(tick, 250);
@@ -496,8 +559,9 @@ const handlers = [
       const sid = newId("sess");
       const isSkillRun = !!body?.skill_id;
       const session = {
-        session_id: sid, name: isSkillRun ? "Skill run" : "New Session",
+        session_id: sid, name: isSkillRun ? "Skill run" : LCH_TITLE,
         session_type: isSkillRun ? "skill_run" : "regular", status: "active",
+        report: isSkillRun ? null : "lch",
         skill_id: body?.skill_id || null,
         provider: "anthropic", dashboard_id: body?.dashboard_id || null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
@@ -546,7 +610,9 @@ const handlers = [
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/history$/, handler: ({ params }) => ({ messages: db.history[params[0]] || [] }) },
   // Grounded follow-up chips for the latest turn (shown under the last message).
   // Slight delay so the "Related" loading skeleton renders before they resolve.
-  { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/recommendations$/, handler: async ({ params }) => { await new Promise((r) => setTimeout(r, 1200)); const sid = String(params[0]); const questions = /target-account/.test(sid) ? TAJ_SAGE_STARTERS : /creative/.test(sid) ? CAP_SAGE_STARTERS : sid.startsWith("sage-") ? PMR_SAGE_STARTERS : FOLLOWUP_QUESTIONS; return { questions }; } },
+  { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/recommendations$/, handler: async ({ params }) => { await new Promise((r) => setTimeout(r, 1200)); const sid = String(params[0]); if (sid === RUN_SESSION.session_id) return { questions: runFollowups() }; if (isLch(sid)) { const h = db.history[sid] || []; const built = h.findIndex((m) => m.type === "outputs"); return { questions: built >= 0 && !h.slice(built).some((m) => m.type === "user") ? LCH_FOLLOWUPS : [] }; } const questions = /target-account/.test(sid) ? TAJ_SAGE_STARTERS : /creative/.test(sid) ? CAP_SAGE_STARTERS : sid.startsWith("sage-") ? PMR_SAGE_STARTERS : FOLLOWUP_QUESTIONS; return { questions }; } },
+  // Table rows for a file of a workflow run (the table viewer pages through these).
+  { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/files\/(.+)\/data$/, handler: ({ params }) => runFileTable(decodeURIComponent(params[1])) || { columns: [], rows: [], total_rows: 0, total_pages: 0, page: 1 } },
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/files$/, handler: ({ params }) => ({ files: db.fileTree[params[0]] || [], tree: db.fileTree[params[0]] || [] }) },
 
   // ── Verify & Publish: dashboard detection + widgets ────────────────
@@ -555,7 +621,7 @@ const handlers = [
     pattern: /\/api\/sessions\/([^/]+)\/dashboard-info$/,
     handler: ({ params }) => {
       const widgets = getWidgets(params[0]);
-      return { is_react_dashboard: true, title: DASHBOARD_MANIFEST.title, widget_count: widgets.length, widgets, code_hash: codeHashFor(params[0]) };
+      return { is_react_dashboard: true, title: isLch(params[0]) ? LCH_TITLE : DASHBOARD_MANIFEST.title, widget_count: widgets.length, widgets, code_hash: codeHashFor(params[0]) };
     },
   },
   { method: "GET", pattern: /\/api\/sessions\/([^/]+)\/published-check$/, handler: () => ({ published: false }) },
@@ -936,7 +1002,7 @@ const handlers = [
   // from /api/workflows, which is the existing step-based workflow engine.
   // Workflow rows read their pending count from the live recommendation queue,
   // so a row and the Recommendations page can never claim different numbers.
-  { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => { const recs = Recs.listRecommendations(); return { workflows: AgentWf.listWorkflows(recs), summary: AgentWf.summary(recs) }; } },
+  { method: "GET", pattern: /\/api\/agent-workflows$/, handler: () => { const recs = Recs.listRecommendations(); return { workflows: [...AgentWf.listWorkflows(recs), { id: "linkedin-campaign-health", name: "LinkedIn Campaign Health", platform: "linkedin", published: true }], summary: AgentWf.summary(recs) }; } },
   { method: "GET", pattern: /\/api\/agents$/, handler: () => ({ agents: AgentWf.listAgents(), orchestrator: AgentWf.ORCHESTRATOR }) },
   { method: "POST", pattern: /\/api\/agent-workflows\/([^/]+)\/pause$/, handler: ({ params }) => ({ workflow: AgentWf.pauseWorkflow(String(params[0])) }) },
   { method: "POST", pattern: /\/api\/agent-workflows\/([^/]+)\/activate$/, handler: ({ params }) => ({ workflow: AgentWf.activateWorkflow(String(params[0])) }) },
@@ -953,7 +1019,9 @@ const handlers = [
       const name = body?.name || "Untitled Dashboard";
       // Point the published dashboard at the matching artifact so "View
       // dashboard" opens the right one (Paid Media ROI vs the default).
-      const targetFile = /paid.?media|roas|paid.?media.?roi/i.test(name)
+      const targetFile = /linkedin|campaign health/i.test(name)
+        ? LCH_DASHBOARD_PATH
+        : /paid.?media|roas|paid.?media.?roi/i.test(name)
         ? "output/dashboard/paid_media_roi.html"
         : "output/dashboard/revenue_dashboard.html";
       if (!isUpdate) {
@@ -997,9 +1065,9 @@ const handlers = [
   {
     method: "GET",
     pattern: /\/api\/slack\/channels$/,
-    handler: () => ({ channels: [{ id: "C1", name: "dashboards" }, { id: "C2", name: "revenue" }, { id: "C3", name: "gtm-leadership" }], next_cursor: null }),
+    handler: () => ({ channels: [{ id: "C-marketing-ops", name: "marketing-ops" }, { id: "C-paid-media", name: "paid-media" }, { id: "C-demand-gen", name: "demand-gen" }, { id: "C1", name: "dashboards" }, { id: "C2", name: "revenue" }, { id: "C3", name: "gtm-leadership" }], next_cursor: null }),
   },
-  { method: "GET", pattern: /\/api\/slack\/users$/, handler: () => ({ users: [{ id: "U1", name: "Demo User" }], next_cursor: null }) },
+  { method: "GET", pattern: /\/api\/slack\/users$/, handler: () => ({ users: [{ id: "U-priya", name: "priya", real_name: "Priya Raman" }, { id: "U-arun", name: "arun", real_name: "Arun Mehta" }, { id: "U1", name: "Demo User", real_name: "Demo User" }], next_cursor: null }) },
   { method: "GET", pattern: /\/api\/slack\/configured-alerts$/, handler: () => ({ alerts: [] }) },
 ];
 

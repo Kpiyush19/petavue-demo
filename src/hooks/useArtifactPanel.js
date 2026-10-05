@@ -26,16 +26,19 @@ export function useArtifactPanel() {
   // on mount so the user lands inside the V&P modal without extra clicks.
   const [openVerifyPublishFor, setOpenVerifyPublishFor] = useState(null)
 
-  const openArtifact = useCallback(({ path, title, contentType, source = 'output' }) => {
+  // `pinned` tabs belong to the session itself (a workflow run's Dashboard,
+  // Changes and All recommendations): they sit first and cannot be closed.
+  // `activate: false` opens a tab without moving the reader to it.
+  const openArtifact = useCallback(({ path, title, contentType, source = 'output', pinned = false, activate = true, count = null }) => {
     setTabs((prev) => {
       const existing = prev.find((t) => t.path === path)
       if (existing) {
-        setActiveTabId(existing.id)
+        if (activate) setActiveTabId(existing.id)
         return prev
       }
       const id = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-      const newTab = { id, title: title || path.split('/').pop(), path, contentType, source }
-      setActiveTabId(id)
+      const newTab = { id, title: title || path.split('/').pop(), path, contentType, source, pinned, count }
+      if (activate) setActiveTabId(id)
       return [...prev, newTab]
     })
     setIsOpen(true)

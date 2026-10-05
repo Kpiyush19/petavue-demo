@@ -119,7 +119,7 @@ export function useWorkspaceTray() {
       // Auto-expand top-level dirs on first load
       if (!hasFetched) {
         const topDirs = new Set(
-          fileList.filter((f) => f.type === 'directory' && !f.path.includes('/')).map((f) => f.path)
+          fileList.filter((f) => f.type === 'directory' && !f.path.includes('/') && !f.collapsed).map((f) => f.path)
         )
         setExpandedDirs(topDirs)
         setHasFetched(true)
@@ -149,6 +149,7 @@ export function useWorkspaceTray() {
   }, [hasFetched])
 
   const toggleOpen = useCallback(() => setIsOpen((p) => !p), [])
+  const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
   const toggleCollapsed = useCallback(() => setIsCollapsed((p) => !p), [])
 
@@ -185,6 +186,7 @@ export function useWorkspaceTray() {
     skillsManifest,
     fetchFiles,
     toggleOpen,
+    open,
     close,
     toggleCollapsed,
     toggleDir,

@@ -105,7 +105,7 @@ export default function MessageBubble({
   type, text, isError, attachments, timestamp,
   messagesWrapperRef, widgetScope, onOpenWidgetChat,
   // Banner card props for post-handoff skill sessions
-  skillName, outputType, outputPath, onOpenArtifact,
+  skillName, outputType, outputPath, onOpenArtifact, isStreaming,
 }) {
   // Post-handoff banner replaces pre-handoff history. Rendered at the top
   // of the chat panel for OPEN_CHAT sessions that came from a skill run.
@@ -216,8 +216,11 @@ export default function MessageBubble({
 
   return (
     <div className="s-msg-assistant group/msg mt-2">
+      {/* While the reply is still being written, the "Thinking…" line below
+          carries the logo. The space is kept so the text does not shift when
+          the reply finishes and the logo moves up here. */}
       <div className="flex h-6 w-6">
-        <img src="/petavue-logo.svg" alt="" className="h-5 w-5 my-auto" />
+        {!isStreaming && <img src="/petavue-logo.svg" alt="" className="h-5 w-5 my-auto" />}
       </div>
       <div className="s-msg-assistant__content">
         <MarkdownRenderer content={text || ''} className={isError ? 's-msg-assistant--error' : ''} />

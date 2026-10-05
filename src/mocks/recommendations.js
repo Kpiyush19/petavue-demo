@@ -906,6 +906,36 @@ export function decide(id, status, note, choice, applied) {
   return withLiveApply(it);
 }
 
+/* Changes approved in a workflow-run review land here as open cards, so the
+   team sees them exactly where every other recommendation lives. */
+const RUN_URGENCY = { "Act now": "act-now", "This week": "this-week", "This month": "monitor" };
+export function addRunChanges(records) {
+  for (const r of [...records].reverse()) {
+    if (r.pending === "removed") continue;
+    const id = `rec-lch-${r.id.toLowerCase()}`;
+    if (ITEMS.some((x) => x.id === id)) continue;
+    const advice = !r.d;
+    ITEMS.unshift({
+      id,
+      workflowId: "linkedin-campaign-health",
+      agent: null,
+      type: "change",
+      urgency: RUN_URGENCY[r.urg] || "monitor",
+      lifecycle: "needs-decision",
+      run: { n: "01", at: "Oct 1, 6:04 AM" },
+      title: r.title,
+      shortTitle: r.title,
+      basis: r.why,
+      changeTitle: r.title,
+      changeCols: advice ? ["Advice", "Nothing to apply"] : ["Field", "Current", "After"],
+      changeRows: advice ? [[r.title, "For the team to act on."]] : [[r.d.label, r.d.from, r.d.to]],
+      appliedPrefix: advice ? null : "Applied to LinkedIn Ads",
+      decision: null,
+      comments: [],
+    });
+  }
+}
+
 /* A general comment changes no state. */
 export function addComment(id, text) {
   const it = ITEMS.find((r) => r.id === id);

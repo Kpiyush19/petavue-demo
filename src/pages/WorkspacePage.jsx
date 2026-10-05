@@ -12,12 +12,20 @@ import WorkflowCreateModal from "../components/WorkflowCreateModal";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import useSessionPanelStore from "../stores/useSessionPanelStore";
 import { MOCK_ENABLED, LANDING_SESSION_ID } from "../mocks";
+import { RunReviewActions } from "./workflows/agents-run/RunViews";
+import useRunReviewStore from "./workflows/agents-run/useRunReviewStore";
+import { CheckCircle, Prohibit } from "@phosphor-icons/react";
+import { DASHBOARD_PATH } from "./workflows/agents-run/runSession";
 
 const FILES_MIN = 200;
 const FILES_MAX = 320;
 const RESIZE_WIDTH = 8;
 const PANEL_MAX_PERCENT_TRAY_CLOSED = 0.8;
 const PANEL_MAX_PERCENT_TRAY_OPEN = 0.85;
+// Workflow run review: the side panel's minimum width, and the share of the
+// window it opens at.
+const RUN_PANEL_MIN = 550;
+const RUN_PANEL_SHARE = 0.54;
 
 export default function WorkspacePage() {
   // On /home there's no :id — fall back to the fixed landing session so the URL
@@ -229,10 +237,56 @@ export default function WorkspacePage() {
     const ratio = artifactWidth / oldAvailable;
     let newWidth = ratio * newAvailable;
     newWidth = Math.min(newAvailable * maxPercent, Math.max(newAvailable * minPercent, newWidth));
+    // A run's Changes cards are read in this panel, so it keeps its full width.
+    if (session.sessionType === "workflow_run") newWidth = Math.max(newWidth, RUN_PANEL_MIN);
     setArtifactWidth(newWidth);
 
     prevTrayOpen.current = tray.isOpen;
   }, [tray.isOpen, artifact.isOpen, filesWidth, artifactWidth, setArtifactWidth]);
+
+  // A workflow run opens with its own pinned views beside the conversation:
+  // the dashboard it published, the changes its agents drafted, and the board.
+  const isRunReview = session.sessionType === "workflow_run" && session.sessionId === id;
+  const runPending = useRunReviewStore((s) => s.recs.filter((r) => r.pending).length);
+  const runTotal = useRunReviewStore((s) => s.recs.length);
+  const runClosed = useRunReviewStore((s) => !!s.outcome);
+  const runOutcome = useRunReviewStore((s) => s.outcome);
+  const runApproved = useRunReviewStore((s) => s.approvedCount);
+  const runOpenRequest = useRunReviewStore((s) => s.openRequest);
+  const runTabsOpenedFor = useRef(null);
+  useEffect(() => {
+    if (!isRunReview || session.status === "idle") return;
+    if (runTabsOpenedFor.current === id) return;
+    runTabsOpenedFor.current = id;
+    artifact.openArtifact({ path: DASHBOARD_PATH, title: "Dashboard", contentType: "html", pinned: true, activate: false });
+    artifact.openArtifact({ path: "run://changes", title: "Changes", count: runPending, contentType: "run-changes", pinned: true });
+    artifact.openArtifact({ path: "run://board", title: "All recommendations", count: runTotal, contentType: "run-board", pinned: true, activate: false });
+    // The decision leads: the side panel takes the larger share of the window,
+    // and the conversation beside it explains how the agents got there.
+    const width = containerRef.current?.offsetWidth || 0;
+    if (width) {
+      widthBeforeRun.current = artifactWidth;
+      setArtifactWidth(Math.max(RUN_PANEL_MIN, Math.round(width * RUN_PANEL_SHARE)));
+    }
+  }, [isRunReview, session.status, id]);
+
+  // Leaving the run gives other chats their usual panel width back.
+  const widthBeforeRun = useRef(null);
+  useEffect(() => {
+    if (isRunReview || widthBeforeRun.current == null) return;
+    setArtifactWidth(widthBeforeRun.current);
+    widthBeforeRun.current = null;
+    runTabsOpenedFor.current = null;
+  }, [isRunReview]);
+
+  // The agent asks the panel to show something: the card it just edited, or a
+  // file it just wrote.
+  const lastRunOpen = useRef(0);
+  useEffect(() => {
+    if (!isRunReview || !runOpenRequest || runOpenRequest.n === lastRunOpen.current) return;
+    lastRunOpen.current = runOpenRequest.n;
+    artifact.openArtifact(runOpenRequest);
+  }, [isRunReview, runOpenRequest]);
 
   const isIdle = session.status === "idle";
   const activeFilePath = artifact.activeTab?.path || null;
@@ -256,6 +310,14 @@ export default function WorkspacePage() {
         onToggleFiles={tray.toggleOpen}
         artifactOpen={artifact.isOpen}
         onToggleArtifact={artifact.togglePanel}
+        actions={
+          isRunReview ? (
+            <RunReviewActions
+              panelOpen={artifact.isOpen}
+              onShowPanel={() => artifact.openArtifact({ path: "run://changes", title: "Changes", count: runPending, contentType: "run-changes", pinned: true })}
+            />
+          ) : null
+        }
       />
 
       <div className="session-panels" ref={containerRef}>
@@ -308,11 +370,36 @@ export default function WorkspacePage() {
               onOpenDashboard={handoffArtifact ? () => artifact.openArtifact(handoffArtifact) : undefined}
             />
 
+            {/* The decision, confirmed in the conversation itself: the same
+                green mark as the header, and why the composer is closed. */}
+            {isRunReview && runOutcome && (
+              <div className={`run-done${runOutcome === "rejected" ? " run-done--rejected" : ""}`}>
+                {runOutcome === "approved" ? (
+                  <CheckCircle size={16} weight="fill" aria-hidden="true" />
+                ) : (
+                  <Prohibit size={16} aria-hidden="true" />
+                )}
+                <p>
+                  {runOutcome === "approved" ? (
+                    <>
+                      <b>Approved.</b> {runApproved} {runApproved === 1 ? "change is" : "changes are"} now on the
+                      Recommendations page. People who can see this workflow can accept, reject or hold them.
+                    </>
+                  ) : (
+                    <>
+                      <b>Rejected.</b> Nothing was sent to the Recommendations page. The next scheduled run prepares
+                      a new draft.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
             {session.messages.length > 0 && (
               <InputArea
                 onSend={session.sendMessage}
                 onCancel={session.cancelTurn}
-                disabled={isIdle || isThinking}
+                disabled={isIdle || isThinking || (isRunReview && runClosed)}
                 isThinking={isThinking}
                 connectionStatus={connectionStatus}
                 sessionId={id}

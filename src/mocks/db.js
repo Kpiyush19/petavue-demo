@@ -235,6 +235,9 @@ export const PMR_RUN_TOOLS = [
 
 const PMR_T0 = now - 5 * 24 * 60 * 60000; // ~5 days ago
 
+import { RUN_SESSION, RUN_HISTORY, RUN_FILES } from "../pages/workflows/agents-run/runSession";
+import { LCH_TITLE, LCH_DASHBOARD_PATH, LCH_REPORT_SESSION_ID, LCH_PROMPT, LCH_TOOLS, LCH_REPORT, LCH_TREE } from "./linkedinHealth";
+
 export const db = {
   // Runtime registries (populated during the Verify & Publish flow)
   execSessions: {},      // execSessionId -> { sessionId, recipe, channel, statuses, hardening }
@@ -258,10 +261,21 @@ export const db = {
       context_tokens: 48200,
       agent_running: false,
     },
+    // The chat that built the LinkedIn Campaign Health report: where Verify &
+    // Publish (and the Agents setup) starts.
+    {
+      session_id: LCH_REPORT_SESSION_ID, name: LCH_TITLE, session_type: "regular", status: "active", provider: "anthropic",
+      dashboard_mode: "react", report: "lch", created_at: minsAgo(1500), updated_at: minsAgo(1495), last_active_at: minsAgo(1495),
+      turn_count: 1, total_tokens: 41800, context_tokens: 41800, agent_running: false,
+    },
+    // A workflow run, opened for review in the same chat workspace.
+    RUN_SESSION,
   ],
 
   // session_id -> file tree (workspace tray)
   fileTree: {
+    [RUN_SESSION.session_id]: RUN_FILES,
+    [LCH_REPORT_SESSION_ID]: LCH_TREE,
     [DASH_SESSION_ID]: [
       {
         name: "output", path: "output", type: "folder", content_type: "folder",
@@ -296,6 +310,13 @@ export const db = {
 
   // session_id -> history messages
   history: {
+    [RUN_SESSION.session_id]: RUN_HISTORY,
+    [LCH_REPORT_SESSION_ID]: [
+      { type: "user", text: LCH_PROMPT, timestamp: now - 25 * 60 * 60000 },
+      ...LCH_TOOLS.map(([tool, input_summary]) => ({ type: "tool_call", tool, input_summary })),
+      { type: "assistant", text: LCH_REPORT, timestamp: now - 25 * 60 * 60000 + 240000 },
+      { type: "outputs", outputs: [{ path: LCH_DASHBOARD_PATH, title: LCH_TITLE }] },
+    ],
     [DASH_SESSION_ID]: [
       { type: "user", text: PMR_PROMPT, timestamp: PMR_T0 },
       ...PMR_DISCOVERY_TOOLS.map(toToolCall),

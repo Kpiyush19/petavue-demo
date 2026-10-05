@@ -22,6 +22,7 @@ import MarkdownViewer from "./viewers/MarkdownViewer";
 import ImageViewer from "./viewers/ImageViewer";
 import DataTableViewer from "./viewers/DataTableViewer";
 import JsonTreeViewer from "./viewers/JsonTreeViewer";
+import { RunChangesView, RunBoardView } from "../../pages/workflows/agents-run/RunViews";
 
 // Dashboard entry file. In frontend-only mode it's named revenue_dashboard.html
 // instead of index.html.
@@ -62,6 +63,11 @@ function DownloadCard({ sessionId, path, title, onLoadComplete }) {
 function ViewerContent({ tab, sessionId, htmlIframeRef, onLoadComplete }) {
   const { contentType, path, title } = tab;
   switch (contentType) {
+    // A workflow run's draft and its board: views, not files.
+    case "run-changes":
+      return <RunChangesView onLoadComplete={onLoadComplete} />;
+    case "run-board":
+      return <RunBoardView onLoadComplete={onLoadComplete} />;
     case "html":
       return <HtmlViewer ref={htmlIframeRef} sessionId={sessionId} path={path} onLoadComplete={onLoadComplete} />;
     case "csv":
@@ -209,6 +215,7 @@ export default function ArtifactPanel({
   // The dashboard actions menu shows for any dashboard HTML artifact (the React
   // dashboard entry OR a published dashboard like Paid Media ROI).
   const isDashboardHtml =
+    !activeTab?.pinned &&
     activeTab?.contentType === "html" &&
     activeTab?.path?.startsWith("output/dashboard/") &&
     activeTab?.path?.endsWith(".html");

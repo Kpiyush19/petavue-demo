@@ -93,7 +93,13 @@ export default function MenuBarNav() {
     : [
         {
           label: "Today",
-          items: [{ id: "q2-revenue-dashboard", title: "Paid Media ROI", time: "now", clickable: true }],
+          items: [
+            // One example, start to finish: the chat that built the report, then
+            // the workflow run waiting for review (same chat workspace).
+            { id: "linkedin-campaign-health", title: "LinkedIn Campaign Health", time: "now", clickable: true },
+            { id: "run-linkedin-campaign-health", title: "LinkedIn Campaign Health · Oct 1 run", time: "6h", clickable: true },
+            { id: "q2-revenue-dashboard", title: "Paid Media ROI", time: "1d", clickable: true },
+          ],
         },
         {
           label: "Yesterday",

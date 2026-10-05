@@ -1,0 +1,594 @@
+/* Review of a workflow run, inside the chat workspace: the review bar, the
+   Changes and All recommendations tabs, and the confirm dialog. */
+
+/* ── The decision, in the chat header ───────────────────────────────── */
+.run-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.run-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.run-outcome--approved { color: #15803d; }
+
+/* The decision, confirmed at the foot of the conversation. */
+.run-done {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 4px 24px 12px;
+  padding: 10px 14px;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  background: #ebfff3;
+}
+
+.run-done svg {
+  flex: none;
+  margin-top: 2px;
+  color: #16a34a;
+}
+
+.run-done p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--text-primary);
+}
+
+.run-done b {
+  font-weight: 600;
+  color: #0b6b49;
+}
+
+.run-done--rejected {
+  border-color: var(--color-grey-100);
+  background: var(--color-grey-50);
+}
+
+.run-done--rejected svg {
+  color: var(--text-muted);
+}
+
+.run-done--rejected b {
+  color: var(--text-primary);
+}
+
+/* ── Side panel views ───────────────────────────────────────────────── */
+.run-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 100%;
+  padding: 18px 20px 28px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.run-view__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run-view__group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.run-view__count {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--color-grey-100);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-view__foot {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── A drafted change ───────────────────────────────────────────────── */
+/* The card follows the Recommendations page's apply card: a grey header
+   strip with the tick, source and kind, then the Field · Current · After
+   rows, then why. */
+.run-change {
+  background: #fff;
+  border: 1px solid var(--color-grey-100);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+.run-change--left .run-change__title {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-grey-300);
+  color: var(--text-muted);
+}
+
+/* An agent just changed this card because the reviewer asked. */
+.run-change--flash {
+  border-color: var(--color-primary-500, #3661ed);
+  box-shadow: 0 0 0 3px rgba(54, 97, 237, 0.15);
+}
+
+.run-change__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 10px 14px;
+  background: var(--color-grey-50);
+  border-bottom: 1px solid var(--color-grey-100);
+}
+
+.run-change__title {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.run-change__meta {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run-change__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 14px 12px;
+}
+
+/* Field · Current · After, as on the Recommendations apply card. */
+.run-change__frow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-change__frow--head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #757a97;
+  margin-bottom: 4px;
+}
+
+.run-change__field-name {
+  font-weight: 500;
+}
+
+.run-change__after {
+  font-weight: 600;
+}
+
+.run-change__why {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.run-change__trail {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.run-change__trail svg { flex: none; margin-top: 3px; color: var(--color-grey-400, #8e93af); }
+.run-change__trail b { font-weight: 600; color: var(--text-primary); }
+
+.run-change__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: 12px;
+  line-height: 18px;
+  color: #92400e;
+}
+
+.run-change__note svg { flex: none; margin-top: 2px; }
+
+.run-change__left-tag {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Tick box: same look as the one in the Apply modal. */
+.run-tick {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  flex: none;
+  border: 1px solid var(--color-grey-300);
+  border-radius: 4px;
+  background: #fff;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.run-tick--on {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-500);
+}
+
+.run-tick:disabled { cursor: default; opacity: 0.6; }
+.run-tick:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; }
+
+/* ── A record on the board ──────────────────────────────────────────── */
+.run-record__status {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-grey-100);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.run-record__status--accepted { background: #ebfff3; color: #067a35; }
+.run-record__status--rejected { background: #fff2f2; color: #c22525; }
+.run-record__status--on-hold { background: #fffbeb; color: #92400e; }
+.run-record__status--draft { background: var(--color-primary-100, #e0ebfe); color: var(--color-primary-800, #052dab); }
+
+.run-record__mark {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.run-record__mark--new { color: #067a35; }
+.run-record__mark--changed { color: #052dab; }
+.run-record__mark--removed { color: #c22525; }
+
+/* The status segments over the board, as on the Recommendations page. */
+.run-seg {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-grey-50);
+  border: 1px solid var(--color-grey-100);
+  border-radius: 8px;
+}
+
+.run-seg__tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.run-seg__tab:hover {
+  color: var(--text-primary);
+}
+
+.run-seg__tab--on {
+  background: #fff;
+  border-color: var(--color-grey-200);
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+}
+
+.run-seg__tab span {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* ── The board: one list per status, a hairline between records ───────── */
+.run-board {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-grey-100);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.run-board__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.run-board__row + .run-board__row {
+  border-top: 1px solid var(--color-grey-100);
+}
+
+.run-board__top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.run-board__title {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.run-board__change {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-board__change svg {
+  color: var(--color-grey-400, #8e93af);
+}
+
+.run-board__change b {
+  font-weight: 600;
+}
+
+.run-board__change-label {
+  color: var(--text-secondary);
+}
+
+.run-board__change-label::after {
+  content: " ·";
+}
+
+.run-board__why {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+/* The team's decisions and notes, as they stand on the page. */
+.run-board__notes {
+  margin: 2px 0 0;
+  padding: 0 0 0 2px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.run-board__notes li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-muted);
+}
+
+.run-board__notes li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-grey-300, #d4d9ea);
+}
+
+.run-record__more ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--text-secondary);
+  line-height: 18px;
+}
+
+/* ── Confirm dialog ─────────────────────────────────────────────────── */
+.run-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 96px 16px;
+  background: rgba(31, 33, 46, 0.45);
+}
+
+.run-dialog {
+  width: 520px;
+  max-width: 100%;
+  padding: 20px 22px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 25px 50px -12px rgba(31, 33, 46, 0.35);
+}
+
+.run-dialog__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.run-dialog__text {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+/* What this approval does, one row per change, the verb as a label column. */
+.run-dialog__rows {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-grey-100);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.run-dialog__rows li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.run-dialog__rows li + li {
+  border-top: 1px solid var(--color-grey-100);
+}
+
+.run-dialog__verb {
+  flex: none;
+  width: 54px;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.run-dialog__verb--new { color: #067a35; }
+.run-dialog__verb--changed { color: #052dab; }
+.run-dialog__verb--removed { color: #c22525; }
+
+.run-dialog__item {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.run-dialog__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ── Tabs on the Workflows list ─────────────────────────────────────────
+   The product's tab pattern: plain labels, a blue line under the active one.
+   The count uses the same chip as the Data Hub toolbar. */
+.wf-filters {
+  display: flex;
+  align-self: stretch;
+  gap: 24px;
+  padding: 0 32px;
+}
+
+.wf-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.wf-filter:hover { color: var(--text-primary); }
+.wf-filter:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: -2px; }
+
+.wf-filter--on {
+  color: var(--text-primary);
+  border-bottom-color: var(--color-primary-500);
+}
+
+.wf-filter__count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background-color: var(--color-grey-200);
+  color: var(--text-secondary);
+  font-size: var(--font-size-metadata, 10px);
+  font-weight: 400;
+  line-height: var(--line-height-metadata, 16px);
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-filter--on .wf-filter__count {
+  background-color: var(--color-primary-500);
+  color: #fff;
+}
+
+.wf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.wf-empty__title { margin: 0; font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.wf-empty__text { margin: 0; font-size: 12px; color: var(--text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .run-change, .run-record, .run-tick, .wf-filter { transition: none; }
+}

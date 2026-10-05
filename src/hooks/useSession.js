@@ -463,8 +463,14 @@ export function useSession() {
             newMessages.push({
               id: nextId(),
               type: 'refresh_divider',
+              text: msg.text,
               timestamp: msg.timestamp || 0,
             })
+            break
+          // A workflow run: marks where one agent's turn starts. The chat
+          // groups everything up to the next marker under that agent.
+          case 'agent_turn':
+            newMessages.push({ ...msg, id: nextId(), type: 'agent_turn' })
             break
           case 'advisor_call':
             newMessages.push({

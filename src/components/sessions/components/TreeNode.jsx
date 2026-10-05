@@ -46,11 +46,15 @@ export default function TreeNode({
           <span className="shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
             <FolderIconSvg dirName={node.name} />
           </span>
-          <Tooltip title={node.name} placement="top" displayTooltipOnOverflow>
-            <span className="text-[12px] text-[var(--text-primary)] font-semibold truncate flex-1 min-w-0 tracking-tight">
-              {node.name}
-            </span>
-          </Tooltip>
+          <span className="flex flex-col flex-1 min-w-0">
+            <Tooltip title={node.name} placement="top" displayTooltipOnOverflow>
+              <span className="text-[12px] text-[var(--text-primary)] font-semibold truncate tracking-tight">
+                {node.name}
+              </span>
+            </Tooltip>
+            {/* What a folder is for, when the name alone does not say. */}
+            {node.hint && <span className="text-[10px] leading-[14px] text-[var(--text-muted)] truncate">{node.hint}</span>}
+          </span>
           {fileCount > 0 && (
             <span className="shrink-0 text-[10px] text-[var(--text-muted)] bg-[var(--bg-hover)] rounded-full px-1.5 py-px font-mono">
               {fileCount}

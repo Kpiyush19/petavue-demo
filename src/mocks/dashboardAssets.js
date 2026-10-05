@@ -406,7 +406,7 @@ const pmrPaths = PMR_PATHS.map((p) => {
 // Shared styles + per-section bodies, so the FULL dashboard and each individual
 // widget (previewed one-by-one in the Verify & Publish modal) render the exact
 // same real markup — nothing is a placeholder.
-const PMR_CSS = `
+export const PMR_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
   :root{--ink:#232532;--muted:#757A97;--muted2:#8E93AF;--line:#EEF0F7;--line2:#E3E7F2;--primary:#3661ED;--purple:#6E56CF;--purple-bg:#F5F3FF;--purple-line:#D9CFF5;--green:#08BD50;--green-bg:#EBFFF3;--red:#F93D3D;--red-bg:#FFF2F2;}
   *{box-sizing:border-box;}

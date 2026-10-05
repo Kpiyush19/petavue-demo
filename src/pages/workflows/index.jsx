@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   MagnifyingGlass, CaretRight, Plus, ListChecks, Question, CircleDashed,
   PauseCircle, XCircle, CalendarBlank, CircleNotch, ClipboardText,
+  ChartBar, HourglassMedium,
 } from "@phosphor-icons/react";
 import { Button, Tooltip } from "@/ui";
 import { toast } from "sonner";
@@ -13,6 +14,9 @@ import { platformOf, AGENTS, deckFamilyOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import SourceIcon from "../../components/SourceIcon";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
+import { REVIEW_PATH, WORKFLOW_NAME, makeAgents } from "./agents-run/data";
+import useRunReviewStore from "./agents-run/useRunReviewStore";
+import "./agents-run/runReview.css";
 
 // The headers are doing real work: read left to right and they answer the three
 // questions a prospect has in the first ten seconds — what is it automating,
@@ -165,6 +169,67 @@ function Row({ wf, onOpen, onReview, onDeploy, deploying }) {
   );
 }
 
+/* The workflow published from the LinkedIn Campaign Health report. It is a
+   workflow like the six above it, so it sits in the same list as one more row.
+   What differs is its status: its agents draft recommendations that wait for
+   the person who built it, so the row says "Needs review" until they decide. */
+const PUBLISHED = {
+  name: WORKFLOW_NAME,
+  channel: "LinkedIn Ads",
+  agents: makeAgents().map((a) => a.name),
+  deliverable:
+    "The workflow refreshes the LinkedIn Campaign Health dashboard every morning and drafts budget, bid and audience changes for you to approve.",
+};
+
+function PublishedRow({ waiting, onOpen }) {
+  return (
+    <div
+      onClick={onOpen}
+      className="grid items-center w-full px-3 min-h-[58px] py-2.5 shrink-0 bg-white border border-[var(--color-grey-100)] rounded-lg hover:bg-[var(--color-primary-50)] hover:shadow-[0_4px_12px_-2px_rgba(16,24,40,0.10)] transition-all cursor-pointer"
+      style={{ gridTemplateColumns: COLS }}
+    >
+      <span className="flex items-center min-w-0 px-2">
+        <span className="text-[12px] text-[var(--text-primary)] leading-snug">{PUBLISHED.name}</span>
+      </span>
+
+      <span className="flex items-center gap-1.5 min-w-0 px-2">
+        <SourceIcon name={PUBLISHED.channel} size={14} />
+        <span className="text-[12px] text-[#757A97]">{PUBLISHED.channel}</span>
+      </span>
+
+      <span className="px-2">
+        <Tooltip title={PUBLISHED.agents.join("  \u00b7  ")} placement="top">
+          <span className="text-[12px] text-[#757A97] tabular-nums">{PUBLISHED.agents.length} agents</span>
+        </Tooltip>
+      </span>
+
+      <span className="px-2 min-w-0 text-[12px] text-[var(--text-primary)] leading-snug">{PUBLISHED.deliverable}</span>
+
+      <span className="px-2 flex items-center min-w-0">
+        {waiting ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            className="inline-flex items-center gap-1.5 min-w-0 bg-transparent border-none p-0 cursor-pointer hover:underline decoration-current underline-offset-2 text-amber-600 font-medium"
+          >
+            <HourglassMedium size={14} className="shrink-0" />
+            <span className="text-[12px] leading-snug">Needs review</span>
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <CalendarBlank size={14} className="shrink-0 text-[var(--text-secondary)]" />
+            <span className="text-[12px] leading-snug text-[var(--text-secondary)]">Live · Next run Oct 2, 6:00 AM</span>
+          </span>
+        )}
+      </span>
+
+      <span className="flex justify-center text-[var(--text-muted)]">
+        <CaretRight size={15} />
+      </span>
+    </div>
+  );
+}
+
 /* ── The assessment, one quiet row under the list.
    It exists for the customer who doesn't know which workflow to pick, but it
    must not compete with the six workflows above it — so no tint, no shouting
@@ -175,6 +240,30 @@ const ASSESSMENT = {
     "Don\u2019t know which workflows to deploy? Petavue assesses campaign delivery, budget allocation, audience quality, and conversion tracking across Google Ads, LinkedIn Ads, and Meta Ads, joined to HubSpot and GA4, and recommends a deployment order for the six workflows.",
   route: "/workflows/paid-media-assessment",
 };
+
+/* A second quiet row: the way into building a workflow of your own. It opens
+   the chat that built the LinkedIn Campaign Health report, with its dashboard
+   beside it, which is where Verify & Publish (and the Agents setup) starts. */
+const REPORT = {
+  name: "Publish a workflow from a report",
+  line:
+    "Open the LinkedIn Campaign Health report in chat. From its dashboard, choose Verify & Publish to add agents and set a schedule.",
+  route: "/chat/linkedin-campaign-health",
+  artifact: { path: "output/dashboard/linkedin_campaign_health.html", title: "LinkedIn Campaign Health", contentType: "html" },
+};
+
+function ReportPanel({ onOpen }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5 bg-white border border-[var(--color-grey-100)] rounded-lg">
+      <ChartBar size={16} className="shrink-0 text-[var(--text-muted)]" />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{REPORT.name}</span>
+        <span className="text-[12px] text-[#757A97] leading-snug">{REPORT.line}</span>
+      </span>
+      <Button variant="secondary" size="md" label="Open the report" onClick={onOpen} />
+    </div>
+  );
+}
 
 function AssessmentPanel({ onOpen }) {
   return (
@@ -192,6 +281,9 @@ function AssessmentPanel({ onOpen }) {
 export default function WorkflowsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  // "all" shows the six workflows; "review" only the runs waiting for you.
+  const [view, setView] = useState("all");
+  const waiting = useRunReviewStore((s) => (s.outcome ? 0 : 1));
   // ids mid-deploy: the row shows Deploying between the press and Running
   const [deployingIds, setDeployingIds] = useState(() => new Set());
 
@@ -214,7 +306,9 @@ export default function WorkflowsPage() {
     },
     onSuccess: () => toast.success("Deployed. The first run is starting now."),
   });
-  const workflows = data?.workflows || [];
+  // The published LinkedIn workflow has its own row above; the API entry
+  // exists for the Recommendations page lookups.
+  const workflows = (data?.workflows || []).filter((w) => !w.published);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -222,6 +316,12 @@ export default function WorkflowsPage() {
       (w) => !q || `${w.name} ${w.automates} ${w.deliverable}`.toLowerCase().includes(q),
     );
   }, [workflows, search]);
+
+  // The published LinkedIn workflow is searched like the others.
+  const publishedMatches = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return !q || `${PUBLISHED.name} ${PUBLISHED.channel} ${PUBLISHED.deliverable}`.toLowerCase().includes(q);
+  }, [search]);
 
   // The assessment sits under the list, except while a search is narrowing it.
   const showAssessment = !search.trim();
@@ -250,11 +350,15 @@ export default function WorkflowsPage() {
               right. Deployed vs available is a status, not a view, so there
               are no tabs: one list, six workflows. */}
           <div className="flex items-center justify-between h-14 shrink-0 w-full border-b border-[var(--color-grey-100)] bg-white">
-            <div className="px-8 flex gap-2.5 items-center">
-              <span className="font-medium text-[14px]">All workflows</span>
-              <span className="text-xs text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded-md tabular-nums">
-                {filtered.length}
-              </span>
+            {/* Two views of the same list: everything, or only what is waiting
+                for the person who built it. */}
+            <div className="wf-filters" role="tablist" aria-label="Filter workflows">
+              <button type="button" role="tab" aria-selected={view === "all"} className={cn("wf-filter", view === "all" && "wf-filter--on")} onClick={() => setView("all")}>
+                All workflows <span className="wf-filter__count">{filtered.length + (publishedMatches ? 1 : 0)}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={view === "review"} className={cn("wf-filter", view === "review" && "wf-filter--on")} onClick={() => setView("review")}>
+                Needs review <span className="wf-filter__count">{waiting}</span>
+              </button>
             </div>
             <div className="flex gap-3 items-center pr-4">
               <div className="flex flex-1 items-center w-80 border border-grey-200 rounded-lg bg-white focus-within:border-primary-500 hover:border-primary-300 py-2 px-3 transition-colors">
@@ -282,9 +386,19 @@ export default function WorkflowsPage() {
             <div className="w-full flex-1 min-h-0 overflow-y-auto">
               <div className="flex flex-col w-full px-4 py-4">
 
+                {/* A run whose agents drafted recommendations waits here until
+                    its creator has reviewed it. Nothing reaches the
+                    Recommendations page before that. */}
+                {view === "review" && waiting === 0 && (
+                  <div className="wf-empty">
+                    <p className="wf-empty__title">Nothing is waiting for your review</p>
+                    <p className="wf-empty__text">A run shows up here when its agents have drafted recommendations for you to approve.</p>
+                  </div>
+                )}
+
                 {/* Floating header — no ground of its own, like the Data Hub's
                     table header. The rows below are separate cards. */}
-                <div className="flex flex-col gap-2">
+                <div className={cn("flex flex-col gap-2", view === "review" && waiting === 0 && "hidden")}>
                   <div
                     className="grid w-full items-center px-3 py-2"
                     style={{ gridTemplateColumns: COLS }}
@@ -308,7 +422,7 @@ export default function WorkflowsPage() {
                         </div>
                       ))}
                     </div>
-                  ) : filtered.length === 0 ? (
+                  ) : filtered.length === 0 && !publishedMatches ? (
                     <div className="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center">
                       <span className="grid place-items-center w-11 h-11 rounded-full bg-grey-50 border border-[var(--color-grey-100)]">
                         <MagnifyingGlass size={20} className="text-[var(--text-muted)]" />
@@ -324,25 +438,32 @@ export default function WorkflowsPage() {
                       <Button variant="secondary" size="sm" label="Clear search" onClick={() => setSearch("")} />
                     </div>
                   ) : (
-                    filtered
-                      .slice()
-                      .sort((a, b) => (a.n || 0) - (b.n || 0))
-                      .map((wf) => (
-                        <Row
-                          key={wf.id}
-                          wf={wf}
-                          deploying={deployingIds.has(wf.id)}
-                          onOpen={() => navigate(`/workflows/${wf.id}`)}
-                          onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
-                          onDeploy={() => deploy.mutate(wf.id)}
-                        />
-                      ))
+                    <>
+                      {publishedMatches && (view === "all" || waiting > 0) && (
+                        <PublishedRow waiting={waiting > 0} onOpen={() => navigate(REVIEW_PATH)} />
+                      )}
+                      {view === "all" &&
+                        filtered
+                          .slice()
+                          .sort((a, b) => (a.n || 0) - (b.n || 0))
+                          .map((wf) => (
+                            <Row
+                              key={wf.id}
+                              wf={wf}
+                              deploying={deployingIds.has(wf.id)}
+                              onOpen={() => navigate(`/workflows/${wf.id}`)}
+                              onReview={() => navigate(`/recommendations?workflow=${wf.id}`)}
+                              onDeploy={() => deploy.mutate(wf.id)}
+                            />
+                          ))}
+                    </>
                   )}
                 </div>
 
-                {showAssessment && (
-                  <div className="mt-5">
+                {showAssessment && view === "all" && (
+                  <div className="mt-5 flex flex-col gap-2">
                     <AssessmentPanel onOpen={() => navigate(ASSESSMENT.route)} />
+                    <ReportPanel onOpen={() => navigate(REPORT.route, { state: { openArtifact: REPORT.artifact } })} />
                   </div>
                 )}
 

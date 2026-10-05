@@ -12,6 +12,7 @@ import WelcomeState from "./components/WelcomeState";
 import Timestamp from "./components/Timestamp";
 import ChatSkeleton from "./components/ChatSkeleton";
 import SuggestedQuestions from "./components/SuggestedQuestions";
+import AgentRun from "./components/AgentTurnBlock";
 
 // Post-publish welcome follow-ups (shown when a dashboard's chat opens empty).
 const WELCOME_FOLLOWUPS = [
@@ -112,6 +113,33 @@ function groupMessages(messages) {
     }
     out.push(msg);
     i++;
+  }
+  return groupAgentTurns(out);
+}
+
+// In a workflow run each agent adds one turn. Everything an agent did (its
+// tools, its write-up, the files it wrote) is gathered under its marker, up to
+// the next agent or the point where a person joins the conversation.
+const TURN_ENDS = new Set(["agent_turn", "user", "refresh_divider", "system", "compaction_marker"]);
+function groupAgentTurns(items) {
+  if (!items.some((m) => m.type === "agent_turn")) return items;
+  const out = [];
+  let i = 0;
+  while (i < items.length) {
+    const msg = items[i];
+    if (msg.type !== "agent_turn") {
+      out.push(msg);
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < items.length && !TURN_ENDS.has(items[j].type)) j++;
+    // Consecutive agents belong to one run and are drawn as one timeline.
+    const block = { id: `agent-${msg.id}`, turn: msg, items: items.slice(i + 1, j) };
+    const prev = out[out.length - 1];
+    if (prev?.type === "agent_run") prev.blocks.push(block);
+    else out.push({ type: "agent_run", id: `run-${msg.id}`, blocks: [block] });
+    i = j;
   }
   return out;
 }
@@ -383,6 +411,17 @@ export default function ChatArea({
                   </motion.div>
                 );
               }
+              case "agent_run":
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <AgentRun blocks={msg.blocks} onOpenArtifact={onOpenArtifact} />
+                  </motion.div>
+                );
               case "tool_calls_container":
                 return (
                   <motion.div
