@@ -100,7 +100,8 @@ const SEC_METHOD = `
 
 const doc = (inner) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${LCH_TITLE}</title>
-<style>${PMR_CSS}</style>
+<style>${PMR_CSS}
+  .wrap{padding:20px;}</style>
 </head><body><div class="wrap">${inner}</div></body></html>`;
 
 export const LINKEDIN_HEALTH_HTML = doc(SEC_HEADER + SEC_CAMPAIGNS + SEC_PACING + SEC_SIZES + SEC_METHOD);

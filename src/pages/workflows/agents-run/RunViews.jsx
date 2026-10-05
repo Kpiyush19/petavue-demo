@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ArrowBendDownRight, Check, CheckCircle, Eye, Lightning, ListChecks, PencilSimple, Warning, WarningCircle } from "@phosphor-icons/react";
-import { Button } from "@/ui";
+import { Button, Dialog } from "@/ui";
 import SourceIcon from "../../../components/SourceIcon";
 import useRunReviewStore from "./useRunReviewStore";
 import "../../recommendations/recommendations.css";
@@ -155,7 +155,9 @@ export function RunChangesView({ onLoadComplete }) {
         return (
           <section key={p} className="run-view__group">
             <h2 className="run-view__group-title">
-              {label} <span className="run-view__count">{items.length}</span>
+              {label}
+              <span className="run-view__count">{items.length}</span>
+              <span className="run-view__rule" aria-hidden="true" />
             </h2>
             {items.map((r) => (
               <ChangeCard key={r.id} r={r} left={!!left[r.id]} locked={!!outcome} flash={flashId === r.id} onToggle={() => toggle(r.id)} />
@@ -169,7 +171,6 @@ export function RunChangesView({ onLoadComplete }) {
   );
 }
 
-const STATUS_CLS = { Open: "open", Accepted: "accepted", Rejected: "rejected", "On hold": "on-hold", Draft: "draft" };
 const BOARD_GROUPS = [
   ["Draft", "Drafted in this run"],
   ["Open", "Open"],
@@ -216,8 +217,9 @@ export function RunBoardView({ onLoadComplete }) {
           <section key={status} className="run-view__group">
             {filter === "all" && (
               <h2 className="run-view__group-title">
-                <span className={`run-record__status run-record__status--${STATUS_CLS[status]}`}>{label}</span>
+                {label}
                 <span className="run-view__count">{items.length}</span>
+                <span className="run-view__rule" aria-hidden="true" />
               </h2>
             )}
             <ul className="run-board">
@@ -232,18 +234,43 @@ export function RunBoardView({ onLoadComplete }) {
                       {mark && <span className={`run-record__mark run-record__mark--${KIND[r.pending].cls}`}>{mark}</span>}
                       <Urgency label={r.urg} />
                     </div>
-                    {r.d && (
-                      <p className="run-board__change">
-                        <span className="run-board__change-label">{r.d.label}</span>
-                        {r.d.from} <ArrowRight size={11} weight="bold" aria-hidden="true" /> <b>{r.d.to}</b>
-                      </p>
-                    )}
+
                     <p className="run-board__why">{r.why}</p>
+
+                    {/* The value at stake, framed so it reads as data: the
+                        field on the left, current to proposed on the right. */}
+                    <div className="run-board__change">
+                      <span className="run-board__field">{r.d ? r.d.label : r.pending === "removed" ? "Removal" : "Advice only"}</span>
+                      <span className="run-board__values">
+                        {r.d ? (
+                          <>
+                            <span className="run-board__from">{r.d.from}</span>
+                            <ArrowRight size={11} weight="bold" aria-hidden="true" />
+                            <b>{r.d.to}</b>
+                          </>
+                        ) : (
+                          <span className="run-board__from">{r.pending === "removed" ? "Takes this recommendation off the page" : "Nothing to apply"}</span>
+                        )}
+                      </span>
+                    </div>
+
                     {r.hist.length > 0 && (
                       <ul className="run-board__notes">
-                        {r.hist.map((h) => (
-                          <li key={h}>{h}</li>
-                        ))}
+                        {r.hist.map((h) => {
+                          const at = h.indexOf(": ");
+                          return (
+                            <li key={h}>
+                              {at > 0 ? (
+                                <>
+                                  <b>{h.slice(0, at)}</b>
+                                  {h.slice(at + 1)}
+                                </>
+                              ) : (
+                                <b>{h}</b>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </li>
@@ -260,31 +287,43 @@ export function RunBoardView({ onLoadComplete }) {
 // ── The decision ──────────────────────────────────────────────────────────
 function ConfirmDialog({ kind, items, onCancel, onConfirm }) {
   const approve = kind === "approve";
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
     <div className="run-dialog__scrim" onClick={onCancel}>
-      <div className="run-dialog" role="dialog" aria-modal="true" aria-labelledby="run-dialog-title" onClick={(e) => e.stopPropagation()}>
-        <h3 id="run-dialog-title" className="run-dialog__title">{approve ? `Approve ${plural(items.length, "change")}?` : "Reject this run?"}</h3>
-        {approve && (
-          <ul className="run-dialog__rows">
-            {items.map((r) => (
-              <li key={r.id}>
-                <span className={`run-dialog__verb run-dialog__verb--${r.pending}`}>
-                  {{ new: "Add", changed: "Update", removed: "Remove" }[r.pending]}
-                </span>
-                <span className="run-dialog__item">{r.title}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="run-dialog__text">
-          {approve
-            ? "They go to the Recommendations page for everyone who can see this workflow. Nothing changes on LinkedIn until someone applies a recommendation."
-            : "None of this run's recommendations are published. The Recommendations page stays as it is, and the next scheduled run prepares a new draft."}
-        </p>
-        <div className="run-dialog__foot">
-          <Button variant="ghost" size="md" label="Cancel" onClick={onCancel} />
-          <Button variant={approve ? "primary" : "red"} size="md" label={approve ? "Approve" : "Reject run"} onClick={onConfirm} />
-        </div>
+      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <Dialog
+          size="md"
+          title={approve ? `Approve ${plural(items.length, "change")}?` : "Reject this run?"}
+          cancelLabel="Cancel"
+          confirmLabel={approve ? "Approve" : "Reject run"}
+          onClose={onCancel}
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+          className="run-dialog"
+        >
+          {approve && (
+            <ul className="run-dialog__rows">
+              {items.map((r) => (
+                <li key={r.id}>
+                  <span className={`run-dialog__verb run-dialog__verb--${r.pending}`}>
+                    {{ new: "Add", changed: "Update", removed: "Remove" }[r.pending]}
+                  </span>
+                  <span className="run-dialog__item">{r.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="run-dialog__text">
+            {approve
+              ? "They go to the Recommendations page for everyone who can see this workflow. Nothing changes on LinkedIn until someone applies a recommendation."
+              : "None of this run's recommendations are published. The Recommendations page stays as it is, and the next scheduled run prepares a new draft."}
+          </p>
+        </Dialog>
       </div>
     </div>
   );

@@ -1419,6 +1419,24 @@
   gap: 4px;
 }
 
+/* In the panel header the tab row fills the header's height, so the active
+   tab's underline sits directly on the header's bottom line. */
+.s-artifact-panel__tabs-inline {
+  align-self: stretch;
+  display: flex;
+}
+
+.s-artifact-panel__tabs-inline .s-artifact-tabs {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  align-items: stretch;
+}
+
+.s-artifact-panel__tabs-inline .s-artifact-tab {
+  margin-bottom: 0;
+}
+
 .s-artifact-tabs {
   display: flex;
   align-items: center;

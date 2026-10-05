@@ -88,15 +88,21 @@
   margin: 0;
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--text-secondary);
 }
 
-.run-view__count {
-  padding: 0 6px;
-  border-radius: 6px;
+.run-view__rule {
+  flex: 1;
+  height: 1px;
   background: var(--color-grey-100);
-  color: var(--text-secondary);
+}
+
+.run-view__count {
   font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -166,10 +172,17 @@
 }
 
 /* Field · Current · After, as on the Recommendations apply card. */
+.run-change__fields {
+  border: 1px solid var(--color-grey-100);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .run-change__frow {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
   gap: 12px;
+  padding: 8px 12px;
   font-size: 12px;
   line-height: 18px;
   color: var(--text-primary);
@@ -177,16 +190,26 @@
 }
 
 .run-change__frow--head {
+  padding-block: 6px;
+  background: var(--color-grey-50);
+  border-bottom: 1px solid var(--color-grey-100);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: #757a97;
-  margin-bottom: 4px;
 }
 
 .run-change__field-name {
   font-weight: 500;
+}
+
+.run-change__frow > :nth-child(2) {
+  color: var(--text-secondary);
+}
+
+.run-change__frow--head > :nth-child(2) {
+  color: inherit;
 }
 
 .run-change__after {
@@ -259,19 +282,6 @@
 .run-tick:focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 2px; }
 
 /* ── A record on the board ──────────────────────────────────────────── */
-.run-record__status {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--color-grey-100);
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.run-record__status--accepted { background: #ebfff3; color: #067a35; }
-.run-record__status--rejected { background: #fff2f2; color: #c22525; }
-.run-record__status--on-hold { background: #fffbeb; color: #92400e; }
-.run-record__status--draft { background: var(--color-primary-100, #e0ebfe); color: var(--color-primary-800, #052dab); }
 
 .run-record__mark {
   font-size: 11px;
@@ -329,7 +339,10 @@
   color: var(--text-muted);
 }
 
-/* ── The board: one list per status, a hairline between records ───────── */
+/* ── The board: one list per status ──────────────────────────────────── */
+/* Each record reads in two columns: what is recommended and why on the left,
+   the value it would change down the right edge. */
+
 .run-board {
   margin: 0;
   padding: 0;
@@ -337,13 +350,15 @@
   border: 1px solid var(--color-grey-100);
   border-radius: 10px;
   background: #fff;
+  overflow: hidden;
 }
 
 .run-board__row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--color-grey-50, #f8f9fc);
 }
 
 .run-board__row + .run-board__row {
@@ -352,119 +367,129 @@
 
 .run-board__top {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.run-board__top > :not(.run-board__title) {
+  flex: none;
+  margin-top: 2px;
 }
 
 .run-board__title {
   flex: 1;
-  min-width: 200px;
+  min-width: 0;
   margin: 0;
-  font-size: 13px;
-  line-height: 19px;
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.run-board__change {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
+.run-board__why {
+  margin: -4px 0 0;
   font-size: 12px;
   line-height: 18px;
+  color: var(--text-secondary);
+}
+
+/* Field | current → proposed, in one framed line. */
+.run-board__change {
+  align-self: flex-start;
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+  border: 1px solid var(--color-grey-100);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.run-board__field {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-right: 1px solid var(--color-grey-100);
+  background: var(--color-grey-50);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #757a97;
+}
+
+.run-board__values {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 6px 12px;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
-.run-board__change svg {
+.run-board__values svg {
+  flex: none;
   color: var(--color-grey-400, #8e93af);
 }
 
-.run-board__change b {
+.run-board__values b {
   font-weight: 600;
 }
 
-.run-board__change-label {
+.run-board__from {
   color: var(--text-secondary);
 }
 
-.run-board__change-label::after {
-  content: " ·";
-}
-
-.run-board__why {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--text-secondary);
-}
-
-/* The team's decisions and notes, as they stand on the page. */
+/* The team's decisions and comments: a quiet thread under the record. */
 .run-board__notes {
-  margin: 2px 0 0;
-  padding: 0 0 0 2px;
+  margin: 0;
+  padding: 0 0 0 10px;
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.run-board__notes li {
-  position: relative;
-  padding-left: 12px;
+  border-left: 2px solid var(--color-grey-200, #e3e6f0);
   font-size: 12px;
   line-height: 18px;
-  color: var(--text-muted);
-}
-
-.run-board__notes li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--color-grey-300, #d4d9ea);
-}
-
-.run-record__more ul {
-  margin: 6px 0 0;
-  padding-left: 16px;
   color: var(--text-secondary);
-  line-height: 18px;
+}
+
+.run-board__notes b {
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 /* ── Confirm dialog ─────────────────────────────────────────────────── */
 .run-dialog__scrim {
   position: fixed;
   inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 96px 16px;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
   background: rgba(31, 33, 46, 0.45);
 }
 
+/* The product Dialog supplies the frame; these fit it to this content. */
 .run-dialog {
-  width: 520px;
-  max-width: 100%;
-  padding: 20px 22px;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 25px 50px -12px rgba(31, 33, 46, 0.35);
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
 }
 
-.run-dialog__title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
+.run-dialog .dialog__body {
+  overflow-y: auto;
 }
+
+.run-dialog__rows { align-self: stretch; }
+.run-dialog .dialog__body { gap: 14px; }
+.run-dialog__rows:first-child { margin-top: 0; }
+.run-dialog__rows + .run-dialog__text { margin-top: 0; }
+.run-dialog__text:first-child { margin-top: 0; }
 
 .run-dialog__text {
   margin: 10px 0 0;
@@ -513,13 +538,6 @@
   font-size: 12px;
   line-height: 18px;
   color: var(--text-primary);
-}
-
-.run-dialog__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
 }
 
 /* ── Tabs on the Workflows list ─────────────────────────────────────────
