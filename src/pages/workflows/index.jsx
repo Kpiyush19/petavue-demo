@@ -14,7 +14,7 @@ import { platformOf, AGENTS, deckFamilyOf } from "../../mocks/agentWorkflows";
 import { agentIcon } from "../../components/AgentMark";
 import SourceIcon from "../../components/SourceIcon";
 import WorkflowGlyph from "../../components/WorkflowGlyph";
-import { REVIEW_PATH, WORKFLOW_NAME, makeAgents } from "./agents-run/data";
+import { NEXT_RUN, REVIEW_PATH, WORKFLOW_NAME, WORKFLOW_PATH, makeAgents } from "./agents-run/data";
 import useRunReviewStore from "./agents-run/useRunReviewStore";
 import "./agents-run/runReview.css";
 
@@ -169,19 +169,19 @@ function Row({ wf, onOpen, onReview, onDeploy, deploying }) {
   );
 }
 
-/* The workflow published from the LinkedIn Campaign Health report. It is a
+/* The workflow published from the Paid Media ROI report. It is a
    workflow like the six above it, so it sits in the same list as one more row.
    What differs is its status: its agents draft recommendations that wait for
    the person who built it, so the row says "Needs review" until they decide. */
 const PUBLISHED = {
   name: WORKFLOW_NAME,
-  channel: "LinkedIn Ads",
+  channels: ["Google Ads", "LinkedIn Ads", "Meta Ads"],
   agents: makeAgents().map((a) => a.name),
   deliverable:
-    "The workflow refreshes the LinkedIn Campaign Health dashboard every morning and drafts budget, bid and audience changes for you to approve.",
+    "The workflow refreshes the Paid Media ROI dashboard every Monday and drafts budget, bid and sales hand-off changes for you to review.",
 };
 
-function PublishedRow({ waiting, onOpen }) {
+function PublishedRow({ waiting, onOpen, onReview }) {
   return (
     <div
       onClick={onOpen}
@@ -193,8 +193,9 @@ function PublishedRow({ waiting, onOpen }) {
       </span>
 
       <span className="flex items-center gap-1.5 min-w-0 px-2">
-        <SourceIcon name={PUBLISHED.channel} size={14} />
-        <span className="text-[12px] text-[#757A97]">{PUBLISHED.channel}</span>
+        {PUBLISHED.channels.map((ch) => (
+          <SourceIcon key={ch} name={ch} size={14} named />
+        ))}
       </span>
 
       <span className="px-2">
@@ -209,7 +210,7 @@ function PublishedRow({ waiting, onOpen }) {
         {waiting ? (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onOpen(); }}
+            onClick={(e) => { e.stopPropagation(); onReview(); }}
             className="inline-flex items-center gap-1.5 min-w-0 bg-transparent border-none p-0 cursor-pointer hover:underline decoration-current underline-offset-2 text-amber-600 font-medium"
           >
             <HourglassMedium size={14} className="shrink-0" />
@@ -218,7 +219,7 @@ function PublishedRow({ waiting, onOpen }) {
         ) : (
           <span className="inline-flex items-center gap-1.5 min-w-0">
             <CalendarBlank size={14} className="shrink-0 text-[var(--text-secondary)]" />
-            <span className="text-[12px] leading-snug text-[var(--text-secondary)]">Live · Next run Oct 2, 6:00 AM</span>
+            <span className="text-[12px] leading-snug text-[var(--text-secondary)]">Live · Next run {NEXT_RUN}</span>
           </span>
         )}
       </span>
@@ -242,14 +243,14 @@ const ASSESSMENT = {
 };
 
 /* A second quiet row: the way into building a workflow of your own. It opens
-   the chat that built the LinkedIn Campaign Health report, with its dashboard
-   beside it, which is where Verify & Publish (and the Agents setup) starts. */
+   the chat that built the Paid Media ROI report, with its dashboard beside
+   it, which is where Verify & Publish starts. */
 const REPORT = {
   name: "Publish a workflow from a report",
   line:
-    "Open the LinkedIn Campaign Health report in chat. From its dashboard, choose Verify & Publish to add agents and set a schedule.",
-  route: "/chat/linkedin-campaign-health",
-  artifact: { path: "output/dashboard/linkedin_campaign_health.html", title: "LinkedIn Campaign Health", contentType: "html" },
+    "Open the Paid Media ROI report in chat. From its dashboard, choose Verify & Publish to run it on a schedule.",
+  route: "/chat/paid-media-roi",
+  artifact: { path: "output/dashboard/paid_media_roi.html", title: "Paid Media ROI", contentType: "html" },
 };
 
 function ReportPanel({ onOpen }) {
@@ -320,7 +321,7 @@ export default function WorkflowsPage() {
   // The published LinkedIn workflow is searched like the others.
   const publishedMatches = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return !q || `${PUBLISHED.name} ${PUBLISHED.channel} ${PUBLISHED.deliverable}`.toLowerCase().includes(q);
+    return !q || `${PUBLISHED.name} ${PUBLISHED.channels.join(" ")} ${PUBLISHED.deliverable}`.toLowerCase().includes(q);
   }, [search]);
 
   // The assessment sits under the list, except while a search is narrowing it.
@@ -440,7 +441,7 @@ export default function WorkflowsPage() {
                   ) : (
                     <>
                       {publishedMatches && (view === "all" || waiting > 0) && (
-                        <PublishedRow waiting={waiting > 0} onOpen={() => navigate(REVIEW_PATH)} />
+                        <PublishedRow waiting={waiting > 0} onOpen={() => navigate(WORKFLOW_PATH)} onReview={() => navigate(REVIEW_PATH)} />
                       )}
                       {view === "all" &&
                         filtered

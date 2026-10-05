@@ -118,6 +118,7 @@ const AgentWorkflowDetailPage = lazyWithRetry(() => import("./pages/workflows/Wo
 // The one deployable entry in the library. Declared before ":id" so the
 // dynamic route does not swallow it.
 const AssessmentPage = lazyWithRetry(() => import("./pages/workflows/Assessment"));
+const WorkflowConfigPage = lazyWithRetry(() => import("./pages/workflows/agents-run/WorkflowConfigPage"));
 
 const AgentsPage = lazyWithRetry(() => import("./pages/agents"));
 const AgentDetailPage = lazyWithRetry(() => import("./pages/agents/AgentDetail"));
@@ -553,7 +554,17 @@ export const router = createBrowserRouter([
                   {
                     // A run is reviewed in the chat session its agents ran in.
                     path: "review/:runId",
-                    element: <Navigate to="/chat/run-linkedin-campaign-health" replace />
+                    element: <Navigate to="/chat/run-paid-media-roi" replace />
+                  },
+                  {
+                    // The workflow published from the Paid Media ROI report:
+                    // its configuration, and the draft waiting for review.
+                    path: "paid-media-roi",
+                    element: (
+                      <SuspenseWrapper>
+                        <WorkflowConfigPage />
+                      </SuspenseWrapper>
+                    )
                   },
                   {
                     path: ":id",

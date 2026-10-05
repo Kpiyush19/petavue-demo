@@ -7,7 +7,7 @@ import useRunReviewStore from "./useRunReviewStore";
    workspace asks a backend for: the session, its history, its files, and the
    replies when the reviewer carries on the conversation. */
 
-const RUN_T0 = new Date("2026-10-01T06:00:00").getTime();
+const RUN_T0 = new Date("2026-10-05T06:00:00").getTime();
 const min = (n) => RUN_T0 + n * 60000;
 
 export const RUN_SESSION = {
@@ -30,91 +30,79 @@ const tools = (list) => list.map(([tool, input_summary]) => ({ type: "tool_call"
 const wrote = (...paths) => ({ type: "outputs", outputs: paths.map((path) => ({ path, title: path.split("/").pop() })) });
 
 export const RUN_HISTORY = [
-  { type: "refresh_divider", text: "Measurement agent done · dashboard published, HubSpot updated · agents started", timestamp: RUN_T0 },
+  { type: "refresh_divider", text: "Measurement agent done · dashboard published · agents started", timestamp: RUN_T0 },
 
-  { type: "agent_turn", n: 1, duration: "1m 12s", name: "Performance analysis", kind: "reasoning", model: "Standard",
-    outcome: "Worked out spend, leads and cost per lead for 6 campaigns" },
+  { type: "agent_turn", n: 1, duration: "1m 12s", name: "Channel ROI analysis", kind: "reasoning", model: "Standard",
+    outcome: "Worked out spend, closed-won revenue and true ROAS for 3 channels" },
   ...tools([
-    ["query_athena", "Daily spend and leads per campaign, last 14 days"],
-    ["query_athena", "Daily budget caps and the time each cap was reached"],
-    ["execute_code", "Cost per lead per campaign over 7 and 14 days"],
-    ["execute_code", "Campaigns capped on 5 or more of the last 7 days"],
-    ["execute_code", "Totals against the $60 cost-per-lead target"],
+    ["query_athena", "Spend per channel and campaign, last 90 days"],
+    ["query_athena", "Closed-won opportunities with a paid lead source"],
+    ["execute_code", "True ROAS per channel, from CRM revenue"],
+    ["execute_code", "Campaigns that moved 15% or more week over week"],
+    ["execute_code", "Blended ROAS across Google, LinkedIn and Meta"],
     ["write_file", "agent_memo/analysis.md"],
-    ["write_file", "agent_memo/campaign_metrics.csv"],
+    ["write_file", "agent_memo/channel_roas.csv"],
   ]),
   { type: "assistant", timestamp: min(1), text:
-    "Spend was **$6,420** for **96 leads**, $67 per lead against a $60 target.\n\n- **Q4 Demand Gen – CFOs** is the most efficient campaign at $41 per lead, and it hits its daily cap most days.\n- **Retargeting – Pricing page visitors** is at $212 per lead with 2 leads in 14 days.\n- **ABM – Tier 1 accounts** has 33 leads at $60 per lead." },
-  wrote("agent_memo/analysis.md", "agent_memo/campaign_metrics.csv"),
+    "Spend was **$163.1K** for **$606.8K** closed-won, a true ROAS of 3.72×.\n\n- **Google** is the strongest channel at 4.81×, on $77.4K of spend.\n- **LinkedIn** is at 3.44×, with $210.0K closed-won on $61.0K.\n- **Meta** barely covers its spend at 0.98×.\n- **G_Search_NonBrand_Automation** fell 50% week over week." },
+  wrote("agent_memo/analysis.md", "agent_memo/channel_roas.csv"),
 
   { type: "agent_turn", n: 2, duration: "2m 05s", name: "Verify the numbers", kind: "reasoning", model: "Pro", startsWith: "agent 1",
-    outcome: "Recomputed everything from the raw data",
-    corrections: [
-      { verb: "Corrected", whom: "Performance analysis", what: "ABM – Tier 1 accounts", from: "33 leads · $60 per lead", to: "31 leads · $64 per lead",
-        why: "Step 4 counted two leads twice after a re-import on Sep 28. It fixed that one step and re-ran only the 3 steps that depend on it." },
-    ] },
+    outcome: "Recomputed everything from the raw data" },
   ...tools([
     ["read_file", "agent_memo/analysis.md (tagged)"],
-    ["read_file", "agent_memo/campaign_metrics.csv (tagged)"],
+    ["read_file", "agent_memo/channel_roas.csv (tagged)"],
     ["list_files", "agent_steps"],
-    ["query_athena", "Lead rows per campaign from the raw daily data"],
-    ["list_files", "my_workflows/linkedin-campaign-health · last 4 runs"],
-    ["edit_file", "agent_steps/04_leads_by_campaign/code.py"],
-    ["replay_downstream", "04_leads_by_campaign · 3 steps re-run"],
+    ["query_athena", "Opportunity rows per channel from the raw CRM data"],
+    ["list_files", "my_workflows/paid-media-roi · last 4 runs"],
+    ["edit_file", "agent_steps/04_closed_won_by_channel/code.py"],
+    ["replay_downstream", "04_closed_won_by_channel · 3 steps re-run"],
     ["write_file", "agent_memo/corrections.md"],
   ]),
   { type: "assistant", timestamp: min(2), text:
-    "I recomputed the analysis above from the raw data and compared it with the last 4 runs.\n\n**One correction.** Step 4 counted two ABM – Tier 1 leads twice after a re-import on Sep 28. I fixed that step and replayed the 3 steps that depend on it, so nothing else was redone. ABM – Tier 1 now has **31 leads at $64**, not 33 at $60. Totals are 94 leads and $68 per lead.\n\nThe other five campaigns match to the dollar." },
-  wrote("agent_memo/corrections.md", "agent_steps/04_leads_by_campaign/code.py"),
+    "I recomputed the analysis above from the raw data and compared it with the last 4 runs.\n\n**One correction.** Step 4 counted one LinkedIn deal twice after two Salesforce opportunities were merged on Sep 28. I fixed that step and replayed the 3 steps that depend on it, so nothing else was redone. LinkedIn now has **$191.7K closed-won at 3.14×**, not $210.0K at 3.44×. The blended figure is $588.5K and 3.61×.\n\nGoogle and Meta match to the dollar." },
+  wrote("agent_memo/corrections.md", "agent_steps/04_closed_won_by_channel/code.py"),
 
-  { type: "agent_turn", n: 3, duration: "1m 40s", name: "Budget and bids", kind: "recommendation", model: "Standard", startsWith: "agents 1–2",
+  { type: "agent_turn", n: 3, duration: "1m 40s", name: "Budget moves", kind: "recommendation", model: "Standard", startsWith: "agents 1–2",
     outcome: "Drafted 5 changes to budgets, bids and status" },
   ...tools([
-    ["read_file", "agent_memo/campaign_metrics.csv (tagged)"],
+    ["read_file", "agent_memo/channel_roas.csv (tagged)"],
     ["read_file", "uploads/paid_media_playbook.pdf (tagged)"],
-    ["read_file", "context/skills/linkedin-ads/SKILL.md"],
+    ["read_file", "context/skills/google-ads/SKILL.md"],
     ["read_file", "recommendations/recommendations.json"],
-    ["recommendation", "create · Raise daily budget on Q4 Demand Gen – CFOs"],
-    ["recommendation", "create · Raise daily budget on Brand – Finance leaders"],
-    ["recommendation", "create · Pause Retargeting – Pricing page visitors"],
-    ["recommendation", "update · Lower bid on ABM – Tier 1 accounts"],
-    ["recommendation", "create · Brief the agency on a new offer"],
+    ["recommendation", "create · Pause G_Search_NonBrand_Automation"],
+    ["recommendation", "create · Raise daily budget on G_Display_Prospecting"],
+    ["recommendation", "create · Pause Meta_Retarget_WebVisitors"],
+    ["recommendation", "update · Lower bid on LI_ABM_Tier1"],
+    ["recommendation", "create · Take the Meta Ads portfolio to the CMO"],
   ]),
   { type: "assistant", timestamp: min(3), text:
-    "Using the corrected numbers, I drafted 5 changes:\n\n1. Raise the CFO campaign's daily budget from $50 to $90.\n2. Raise the Brand campaign's daily budget to $70.\n3. Pause the Pricing page retargeting campaign.\n4. Lower the ABM Tier 1 bid to $15.50. This updates the bid recommendation already on the page.\n5. Following your playbook, an advice-only note to brief the agency on a new offer before the paused campaign restarts." },
-  wrote("agent_memo/reasoning.md", "agent_memo/capped_campaigns.csv"),
+    "Using the corrected numbers, I drafted 5 changes:\n\n1. Pause G_Search_NonBrand_Automation. Its platform ROAS fell 50% week over week.\n2. Raise the G_Display_Prospecting daily budget from $60 to $350, to take the spend coming off the weaker campaigns.\n3. Pause Meta_Retarget_WebVisitors.\n4. Lower the LI_ABM_Tier1 bid to $15.50. This updates the bid recommendation already on the page.\n5. Following your playbook, an advice-only note to take the Meta Ads portfolio to the CMO before cutting it." },
+  wrote("agent_memo/reasoning.md", "agent_memo/campaign_moves.csv"),
 
-  { type: "agent_turn", n: 4, duration: "58s", name: "Audience and targeting", kind: "recommendation", model: "Standard", startsWith: "agents 1–3",
-    outcome: "Drafted 1 targeting change" },
+  { type: "agent_turn", n: 4, duration: "58s", name: "ICP hand-off", kind: "recommendation", model: "Standard", startsWith: "agents 1–3",
+    outcome: "Drafted 1 hand-off to sales" },
   ...tools([
-    ["query_athena", "Spend and qualified leads by company size, 30 days"],
-    ["write_file", "agent_memo/spend_by_company_size.csv"],
-    ["recommendation", "create · Exclude company size 1–10 from ABM – Tier 2"],
+    ["query_athena", "ICP accounts with paid-engaged contacts and no open opportunity"],
+    ["write_file", "agent_memo/icp_handoff.csv"],
+    ["recommendation", "create · Send 11 ICP accounts to the SDR queue"],
   ]),
   { type: "assistant", timestamp: min(3.5), text:
-    "Budget and bids are covered above, so I looked only at audiences. Companies with 1–10 employees take **22% of ABM Tier 2 spend** and produced no qualified leads in 30 days. I drafted one targeting change to exclude them." },
-  wrote("agent_memo/spend_by_company_size.csv"),
+    "Budgets and bids are covered above, so I looked only at accounts. **12 ICP accounts** are engaging with your ads and have no open opportunity. 11 of them already have an active SQL, so I drafted one change to send those 11 to the SDR queue. The twelfth needs a review first." },
+  wrote("agent_memo/icp_handoff.csv"),
 
   { type: "agent_turn", n: 5, duration: "41s", name: "Final check", kind: "recommendation", model: "Pro", startsWith: "agents 1–4",
-    outcome: "Checked 6 drafts against the guidance and past decisions",
-    corrections: [
-      { verb: "Lowered", whom: "Budget and bids", what: "Daily budget on Q4 Demand Gen – CFOs", from: "$90", to: "$80",
-        why: "The LinkedIn Ads guidance allows a raise of at most 60% in one step." },
-      { verb: "Removed", whom: "Budget and bids", what: "Budget raise on Brand – Finance leaders",
-        why: "Priya rejected the same advice on Sep 23: “Do not touch brand campaign budgets this quarter.”" },
-      { verb: "Proposed removing", what: "Extend end date of Webinar – October group",
-        why: "The webinar has finished." },
-    ] },
+    outcome: "Checked 6 drafts against the guidance and past decisions" },
   ...tools([
-    ["read_file", "context/skills/linkedin-ads/SKILL.md"],
+    ["read_file", "context/skills/google-ads/SKILL.md"],
     ["read_file", "recommendations/draft.json"],
-    ["recommendation", "update · daily budget $90 → $80"],
-    ["recommendation", "delete · Raise daily budget on Brand – Finance leaders"],
-    ["recommendation", "propose removal · Webinar – October group"],
+    ["recommendation", "update · daily budget $350 → $120"],
+    ["recommendation", "delete · Pause Meta_Retarget_WebVisitors"],
+    ["recommendation", "propose removal · LI_Webinar_October"],
     ["write_file", "agent_memo/check.md"],
   ]),
   { type: "assistant", timestamp: min(4), text:
-    "I checked the six drafts against the LinkedIn guidance, this month's budget, and what your team decided before.\n\n- **Lowered** the CFO campaign's daily budget from $90 to $80. The LinkedIn Ads guidance allows a raise of at most 60% in one step.\n- **Removed** the Brand budget raise. Priya rejected the same advice on Sep 23: “Do not touch brand campaign budgets this quarter.”\n- **Proposed removing** “Extend end date of Webinar – October group”. The webinar has finished.\n\nThe draft now has **6 changes**: four new, one update to an existing recommendation, and one removal." },
+    "I checked the six drafts against the ad platform guidance, this month's budget, and what your team decided before.\n\n- **Lowered** the G_Display_Prospecting daily budget from $350 to $120. The Google Ads guidance allows at most doubling a daily budget in one step.\n- **Removed** the pause of Meta_Retarget_WebVisitors. Priya rejected the same advice on Sep 23: “Keep retargeting live through the Q4 launch.”\n- **Proposed removing** “Extend end date of LI_Webinar_October”. The webinar has finished.\n\nThe draft now has **6 changes**: four new, one update to an existing recommendation, and one removal." },
   wrote("agent_memo/check.md", "agent_memo/lineage.md"),
 
   { type: "refresh_divider", text: "You opened this run for review · the conversation above carries on", timestamp: 0 },
@@ -127,20 +115,20 @@ const dir = (path, hint, collapsed = true) => ({ name: path.split("/").pop(), pa
 const typeOf = (path) => (path.endsWith(".csv") ? "csv" : path.endsWith(".html") ? "html" : path.endsWith(".json") ? "json" : "markdown");
 const file = (path) => ({ name: path.split("/").pop(), path, type: "file", content_type: typeOf(path) });
 
-export const DASHBOARD_PATH = "output/dashboard/linkedin_campaign_health.html";
+export const DASHBOARD_PATH = "output/dashboard/paid_media_roi.html";
 
 // A flat list, as the workspace tray expects. What the agents wrote comes first.
 export const RUN_FILES = [
   dir("agent_memo", "What the agents wrote", false),
-  ...["analysis.md", "campaign_metrics.csv", "corrections.md", "reasoning.md", "capped_campaigns.csv", "spend_by_company_size.csv", "check.md", "lineage.md"].map((n) => file(`agent_memo/${n}`)),
+  ...["analysis.md", "channel_roas.csv", "corrections.md", "reasoning.md", "campaign_moves.csv", "icp_handoff.csv", "check.md", "lineage.md"].map((n) => file(`agent_memo/${n}`)),
   dir("agent_steps", "What each agent ran"),
-  dir("agent_steps/04_leads_by_campaign"),
-  file("agent_steps/04_leads_by_campaign/code.py"),
+  dir("agent_steps/04_closed_won_by_channel"),
+  file("agent_steps/04_closed_won_by_channel/code.py"),
   dir("output"),
   dir("output/dashboard"),
   file(DASHBOARD_PATH),
   dir("data"),
-  file("data/campaign_daily.csv"),
+  file("data/ad_spend_daily.csv"),
   dir("uploads", "Saved with the workflow"),
   file("uploads/paid_media_playbook.pdf"),
   dir("my_workflows", "Earlier runs, other workflows"),
@@ -150,16 +138,16 @@ export const RUN_FILES = [
 // Which entry of FILES backs each path.
 const PATH_KEY = {
   "agent_memo/analysis.md": "summary",
-  "agent_memo/campaign_metrics.csv": "metrics",
+  "agent_memo/channel_roas.csv": "metrics",
   "agent_memo/corrections.md": "corrections",
   "agent_memo/reasoning.md": "analysis",
-  "agent_memo/capped_campaigns.csv": "capped",
-  "agent_memo/spend_by_company_size.csv": "sizes",
+  "agent_memo/campaign_moves.csv": "capped",
+  "agent_memo/icp_handoff.csv": "sizes",
   "agent_memo/check.md": "check",
   "agent_memo/lineage.md": "lineage",
-  "agent_memo/pricing_page_leads.csv": "leads",
-  "agent_steps/04_leads_by_campaign/code.py": "stepcode",
-  "data/campaign_daily.csv": "daily",
+  "agent_memo/nonbrand_search_terms.csv": "leads",
+  "agent_steps/04_closed_won_by_channel/code.py": "stepcode",
+  "data/ad_spend_daily.csv": "daily",
   "uploads/paid_media_playbook.pdf": "playbook",
   "my_workflows/workflows_index.md": "index",
 };
@@ -187,7 +175,7 @@ export function runFileContent(path) {
 }
 
 // Rows for the table viewer. Built from the table itself, because values such
-// as "$1,980" would not survive a comma split.
+// as "$2,285" would not survive a comma split.
 export function runFileTable(path) {
   const f = FILES[PATH_KEY[path]];
   if (!f?.table) return null;
@@ -196,9 +184,9 @@ export function runFileTable(path) {
 
 // ── Carrying on the conversation ──────────────────────────────────────────
 const ASKS = {
-  why: "Why $80 on the CFO campaign?",
-  set70: "Make it $70",
-  leads: "Show me the leads behind the Pricing page campaign",
+  why: "Why $120 on Display Prospecting?",
+  set100: "Make it $100",
+  terms: "Show me the searches behind the Non-Brand campaign",
   drop: "Keep the webinar recommendation, events team still needs it",
 };
 const asked = {};
@@ -212,44 +200,44 @@ export const runFollowups = () =>
 
 function matchAsk(text) {
   const t = (text || "").toLowerCase();
-  if (/\b70\b/.test(t)) return "set70";
-  if (/lead|pricing/.test(t)) return "leads";
-  if (/removal|rec-09|webinar|events/.test(t)) return "drop";
-  if (/why|80|cfo/.test(t)) return "why";
+  if (/\$?\b100\b/.test(t)) return "set100";
+  if (/search|non-?brand|terms|keyword/.test(t)) return "terms";
+  if (/removal|webinar|events/.test(t)) return "drop";
+  if (/why|120|display/.test(t)) return "why";
   return null;
 }
 
 // What the agent does and says for each ask. `effect` runs when it has finished.
 const REPLIES = {
   why: {
-    tools: [["read_file", "agent_memo/capped_campaigns.csv"], ["read_file", "context/skills/linkedin-ads/SKILL.md"]],
-    text: "The campaign reached its $50 cap by about 2 pm on 6 of the last 7 days while running at $41 per lead, well under the $60 target. So it can take more budget.\n\nBudget and bids first proposed **$90**. The final check lowered it to **$80**, because the LinkedIn Ads guidance allows a raise of at most 60% in one step, and 60% on top of $50 is $80.\n\nThe days and cap times are in `capped_campaigns.csv`.",
-    outputs: ["agent_memo/capped_campaigns.csv"],
+    tools: [["read_file", "agent_memo/campaign_moves.csv"], ["read_file", "context/skills/google-ads/SKILL.md"]],
+    text: "Google is your best channel at 4.81× true ROAS, and this campaign's platform ROAS rose 36% week over week on only $437 of spend. So it can take more budget.\n\nBudget moves first proposed **$350** a day, enough to absorb the spend coming off the weaker campaigns. The final check lowered it to **$120**, because the Google Ads guidance allows at most doubling a daily budget in one step, and double $60 is $120.\n\nThe campaigns that moved are in `campaign_moves.csv`.",
+    outputs: ["agent_memo/campaign_moves.csv"],
   },
-  set70: {
-    tools: [["recommendation", "update · daily budget $80 → $70"]],
-    text: "Done. The draft now proposes a daily budget of **$70** for the CFO campaign, a 40% raise. LinkedIn's check says spend can rise by up to $20 a day.\n\nThe card in **Changes** is updated and marked as edited in review.",
+  set100: {
+    tools: [["recommendation", "update · daily budget $120 → $100"]],
+    text: "Done. The draft now proposes a daily budget of **$100** for G_Display_Prospecting, a 67% raise. Google's check says spend can rise by up to $40 a day.\n\nThe card in **Changes** is updated and marked as edited in review.",
     effect: () => {
       const s = useRunReviewStore.getState();
-      s.editValue("REC-21", "$70", "LinkedIn check: spend can rise by up to $20 a day.");
+      s.editValue("REC-21", "$100", "Google Ads check: spend can rise by up to $40 a day.");
       s.requestOpen({ path: "run://changes" });
     },
   },
-  leads: {
-    tools: [["query_athena", "Leads from Retargeting – Pricing page visitors, last 14 days"], ["write_file", "agent_memo/pricing_page_leads.csv"]],
-    text: "I queried the lead table for that campaign over the last 14 days and saved the result as `pricing_page_leads.csv`.\n\nThere are **2 leads**. One was disqualified as a student, and one is still open. That supports pausing the campaign.",
-    outputs: ["agent_memo/pricing_page_leads.csv"],
+  terms: {
+    tools: [["query_athena", "Search terms on G_Search_NonBrand_Automation, last 7 days"], ["write_file", "agent_memo/nonbrand_search_terms.csv"]],
+    text: "I queried the search terms for that campaign over the last 7 days and saved the result as `nonbrand_search_terms.csv`.\n\nTwo free-tool searches took **$1,152 of the $2,285** spent and produced no pipeline. The one term that did, “attribution software pricing”, accounts for all $11.0K. That supports pausing the campaign.",
+    outputs: ["agent_memo/nonbrand_search_terms.csv"],
     before: () => {
-      if (!RUN_FILES.some((f) => f.path === "agent_memo/pricing_page_leads.csv")) {
+      if (!RUN_FILES.some((f) => f.path === "agent_memo/nonbrand_search_terms.csv")) {
         const at = RUN_FILES.findIndex((f) => f.path === "agent_memo/lineage.md");
-        RUN_FILES.splice(at + 1, 0, file("agent_memo/pricing_page_leads.csv"));
+        RUN_FILES.splice(at + 1, 0, file("agent_memo/nonbrand_search_terms.csv"));
       }
     },
     effect: () =>
-      useRunReviewStore.getState().requestOpen({ path: "agent_memo/pricing_page_leads.csv", title: "pricing_page_leads.csv", contentType: "csv" }),
+      useRunReviewStore.getState().requestOpen({ path: "agent_memo/nonbrand_search_terms.csv", title: "nonbrand_search_terms.csv", contentType: "csv" }),
   },
   drop: {
-    tools: [["recommendation", "keep · Webinar – October group stays on the board"]],
+    tools: [["recommendation", "keep · LI_Webinar_October stays on the board"]],
     text: "Understood. I've dropped that removal. The webinar recommendation stays on hold on the board with Arun's note. The draft now has one change fewer.",
     effect: () => {
       const s = useRunReviewStore.getState();
@@ -261,7 +249,7 @@ const REPLIES = {
 
 const FALLBACK = {
   tools: [],
-  text: "I can explain any number in this run, change a drafted value, or pull more evidence. For example, ask why a budget is what it is, tell me to change it, or ask to see the leads behind a campaign. `lineage.md` lists what each agent read and wrote.",
+  text: "I can explain any number in this run, change a drafted value, or pull more evidence. For example, ask why a budget is what it is, tell me to change it, or ask to see the searches behind a campaign. `lineage.md` lists what each agent read and wrote.",
 };
 
 // Streams the reply the way the live agent does: tool calls, then the text

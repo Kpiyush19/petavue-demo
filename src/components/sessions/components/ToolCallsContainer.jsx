@@ -197,22 +197,43 @@ export default function ToolCallsContainer({ calls, isStreaming }) {
 
   return (
     <div ref={wrapperRef} className="s-timeline-wrapper">
-      <div ref={containerRef} className="s-timeline-container">
-        <div className="flex flex-col gap-2">
-          {toolGroups.map((group, idx) =>
-            group.calls.length === 1 ? (
-              <ToolCard key={group.calls[0].id} {...group.calls[0]} onExpand={handleToolExpand} />
-            ) : (
-              <ToolCallGroup
-                key={`${group.tool}-${idx}`}
-                tool={group.tool}
-                calls={group.calls}
-                onExpand={handleToolExpand}
-              />
-            )
-          )}
-        </div>
-      </div>
+      <button
+        type="button"
+        className={`s-timeline__header${allDone && !isStreaming ? " s-timeline__header--done" : ""}`}
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <div className="s-timeline__header-text">{renderNarrativeHeader()}</div>
+        <ChevronDown size={14} className={`s-timeline__chevron${expanded ? " s-timeline__chevron--open" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            <div ref={containerRef} className="s-timeline-container">
+              <div className="flex flex-col gap-2">
+                {toolGroups.map((group, idx) =>
+                  group.calls.length === 1 ? (
+                    <ToolCard key={group.calls[0].id} {...group.calls[0]} onExpand={handleToolExpand} />
+                  ) : (
+                    <ToolCallGroup
+                      key={`${group.tool}-${idx}`}
+                      tool={group.tool}
+                      calls={group.calls}
+                      onExpand={handleToolExpand}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

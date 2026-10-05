@@ -382,7 +382,7 @@ export default function WorkspacePage() {
                 <p>
                   {runOutcome === "approved" ? (
                     <>
-                      <b>Approved.</b> {runApproved} {runApproved === 1 ? "change is" : "changes are"} now on the
+                      <b>Published.</b> {runApproved} {runApproved === 1 ? "change is" : "changes are"} now on the
                       Recommendations page. People who can see this workflow can accept, reject or hold them.
                     </>
                   ) : (

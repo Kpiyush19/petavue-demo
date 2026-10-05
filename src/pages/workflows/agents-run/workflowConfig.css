@@ -1,0 +1,363 @@
+/* The published workflow's page: the draft waiting for review, then the
+   workflow's configuration as three sections in run order. */
+
+.wf-config {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Settings on the left, the workflow's facts in a rail on the right. */
+.wf-config__columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.wf-config__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wf-config__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803d;
+}
+
+.wf-config__live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+/* ── The rail ───────────────────────────────────────────────────────── */
+.wf-config__rail {
+  flex: none;
+  width: 300px;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-grey-100);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wf-config__rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wf-config__rail-group + .wf-config__rail-group {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-grey-100);
+}
+
+.wf-config__rail-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #757a97;
+}
+
+.wf-config__rail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.wf-config__rail-key {
+  flex: none;
+  color: #757a97;
+}
+
+.wf-config__rail-value {
+  text-align: right;
+  color: var(--text-primary);
+}
+
+.wf-config__status--waiting { color: #b45309; font-weight: 500; }
+.wf-config__status--approved { color: #15803d; font-weight: 500; }
+.wf-config__status--rejected { color: var(--text-secondary); }
+
+.wf-config__rail-list,
+.wf-config__runs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.wf-config__rail-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-config__rail-list svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.wf-config__runs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wf-config__runs li > :first-child {
+  color: #757a97;
+  font-variant-numeric: tabular-nums;
+}
+
+.wf-config__runs-open {
+  color: #b45309;
+  font-weight: 500;
+}
+
+/* ── The latest run's recommendations ───────────────────────────────── */
+.wf-config__draft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-primary-100, #e0ebfe);
+  border-radius: 12px;
+  background: var(--color-primary-50, #f5f8ff);
+}
+
+.wf-config__draft-icon {
+  flex: none;
+  color: var(--color-primary-500, #3661ed);
+}
+
+.wf-config__draft-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-config__draft-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wf-config__draft-desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.wf-config__draft--done {
+  border-color: #a7f3d0;
+  background: #ebfff3;
+}
+
+.wf-config__draft--done .wf-config__draft-icon {
+  color: #16a34a;
+}
+
+.wf-config__draft--quiet {
+  border-color: var(--color-grey-100);
+  background: var(--color-grey-50);
+}
+
+.wf-config__draft--quiet .wf-config__draft-icon {
+  color: var(--text-muted);
+}
+
+/* ── Configuration ──────────────────────────────────────────────────── */
+
+.wf-config__heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wf-config__sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.wf-config__section {
+  border: 1px solid var(--color-grey-100);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wf-config__section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.wf-config__section-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--color-grey-50);
+  color: var(--text-muted);
+}
+
+.wf-config__section-icon--on {
+  background: var(--color-primary-50, #f5f8ff);
+  color: var(--color-primary-500, #3661ed);
+}
+
+.wf-config__section-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-config__section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wf-config__section-desc {
+  margin: 1px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.wf-config__section-body {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--color-grey-100);
+}
+
+.wf-config__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wf-config__row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wf-config__row-meta {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.wf-config__label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Who sees the recommendations first: two radio cards. */
+.wf-config__choices {
+  display: flex;
+  gap: 12px;
+}
+
+.wf-config__choice {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-grey-200, #e3e6f0);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.wf-config__choice:hover {
+  border-color: var(--color-primary-300, #9db5f7);
+}
+
+.wf-config__choice:focus-visible {
+  outline: 2px solid var(--color-primary-500, #3661ed);
+  outline-offset: 2px;
+}
+
+.wf-config__choice--on {
+  border-color: var(--color-primary-500, #3661ed);
+  background: var(--color-primary-50, #f5f8ff);
+}
+
+.wf-config__choice-icon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.wf-config__choice--on .wf-config__choice-icon {
+  color: var(--color-primary-500, #3661ed);
+}
+
+.wf-config__choice-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wf-config__choice-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wf-config__choice-desc {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.wf-config__choice-dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-grey-300, #d4d9ea);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.wf-config__choice--on .wf-config__choice-dot {
+  border: 5px solid var(--color-primary-500, #3661ed);
+}

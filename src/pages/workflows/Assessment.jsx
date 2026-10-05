@@ -42,7 +42,8 @@ export default function AssessmentPage() {
   const [checked, setChecked] = useState(0);
 
   const { data } = useQuery({ queryKey: ["agent-workflows"], queryFn: () => apiGet("/api/agent-workflows") });
-  const workflows = data?.workflows || [];
+  // The assessment covers the six deployable workflows, not ones a customer published.
+  const workflows = (data?.workflows || []).filter((w) => !w.published);
 
   // The recommended deployment order is derived from what the workflows are
   // actually waiting on, not written by hand — so it can never contradict the

@@ -69,7 +69,7 @@ export function serializePrompt(el) {
 // What agent i may tag: definitions, this run's folders, files earlier agents
 // wrote, its own attached documents, then the wider folders.
 export function tagItems(agents, i) {
-  const keys = ["kd-cpl", "kd-ql", "f-data", "f-output"];
+  const keys = ["kd-roas", "kd-won", "f-data", "f-output"];
   if (i > 0) keys.push("f-memo");
   agents.slice(0, i).forEach((a) => (a.out || []).forEach((k) => keys.push(k)));
   (agents[i].files || []).forEach((n) => keys.push("up-" + n));
@@ -92,7 +92,7 @@ export function ChangeCard({ r }) {
   return (
     <div className="run-change">
       <header className="run-change__head">
-        {!advice && <SourceIcon name="LinkedIn Ads" size={14} />}
+        {r.sys && <SourceIcon name={r.sys} size={14} named />}
         <h4 className="run-change__title">{r.title}</h4>
         <span className="run-change__meta">
           {advice && <span className="rec-card-tag">Advice only</span>}

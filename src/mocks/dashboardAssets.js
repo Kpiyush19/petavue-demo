@@ -37,44 +37,45 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Q2 Revenue Dashboard</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f7f8fa; color: #1a2233; padding: 24px; }
+  body { font-family: 'Poppins', system-ui, -apple-system, sans-serif; background: #F6F7FB; color: #20243A; padding: 24px; -webkit-font-smoothing: antialiased; }
   .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
   .head h1 { font-size: 20px; font-weight: 600; }
-  .head .sub { font-size: 12px; color: #6b7280; }
+  .head .sub { font-size: 12px; color: #757A97; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
-  .kpi { background: #fff; border: 1px solid #eceef1; border-radius: 12px; padding: 16px; }
-  .kpi .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #8b93a1; margin-bottom: 8px; }
+  .kpi { background: #fff; border: 1px solid #DFE3F0; border-radius: 12px; padding: 16px; }
+  .kpi .label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #757A97; margin-bottom: 8px; }
   .kpi .val { font-size: 24px; font-weight: 600; }
   .kpi .delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
-  .delta.up { color: #16a34a; } .delta.down { color: #dc2626; } .delta.flat { color: #6b7280; }
+  .delta.up { color: #0A9B4B; } .delta.down { color: #E5484D; } .delta.flat { color: #757A97; }
   .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px; }
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-  .card { background: #fff; border: 1px solid #eceef1; border-radius: 12px; padding: 18px; }
+  .card { background: #fff; border: 1px solid #DFE3F0; border-radius: 12px; padding: 18px; }
   .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-  .card .cap { font-size: 12px; color: #8b93a1; margin-bottom: 14px; }
+  .card .cap { font-size: 12px; color: #757A97; margin-bottom: 14px; }
   .bars { display: flex; align-items: flex-end; gap: 12px; height: 180px; padding-top: 10px; }
   .bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
-  .bar .col { width: 100%; max-width: 46px; background: linear-gradient(180deg, #6366f1, #818cf8); border-radius: 6px 6px 0 0; }
-  .bar .m { font-size: 10px; color: #6b7280; }
+  .bar .col { width: 100%; max-width: 46px; background: linear-gradient(180deg, #3661ED, #7D9BF4); border-radius: 6px 6px 0 0; }
+  .bar .m { font-size: 10px; color: #757A97; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; color: #8b93a1; font-weight: 600; padding: 8px 6px; border-bottom: 1px solid #eceef1; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; }
+  th { text-align: left; color: #757A97; font-weight: 600; padding: 8px 6px; border-bottom: 1px solid #eceef1; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; }
   td { padding: 9px 6px; border-bottom: 1px solid #f1f2f4; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .pill { font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
-  .pill.win { background: #dcfce7; color: #166534; } .pill.risk { background: #fef3c7; color: #92400e; } .pill.neu { background: #e0e7ff; color: #3730a3; }
+  .pill.win { background: #dcfce7; color: #166534; } .pill.risk { background: #fef3c7; color: #92400e; } .pill.neu { background: #EDF2FE; color: #2B4FD0; }
   .hbars { display: flex; flex-direction: column; gap: 13px; padding-top: 4px; }
   .hrow { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-  .hrow .lbl { width: 92px; color: #6b7280; flex-shrink: 0; }
+  .hrow .lbl { width: 92px; color: #757A97; flex-shrink: 0; }
   .hrow .track { flex: 1; height: 10px; background: #f1f2f4; border-radius: 999px; overflow: hidden; }
-  .hrow .fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 999px; }
+  .hrow .fill { height: 100%; background: linear-gradient(90deg, #3661ED, #7D9BF4); border-radius: 999px; }
   .hrow .v { width: 56px; text-align: right; font-variant-numeric: tabular-nums; color: #1a2233; font-weight: 600; }
   .donut-wrap { display: flex; align-items: center; gap: 20px; padding-top: 6px; }
-  .donut { width: 124px; height: 124px; border-radius: 50%; flex-shrink: 0; background: conic-gradient(#4f46e5 0 52%, #818cf8 52% 83%, #c7d2fe 83% 100%); position: relative; }
+  .donut { width: 124px; height: 124px; border-radius: 50%; flex-shrink: 0; background: conic-gradient(#2B4FD0 0 52%, #7D9BF4 52% 83%, #C9D7FB 83% 100%); position: relative; }
   .donut::after { content: ""; position: absolute; inset: 24px; background: #fff; border-radius: 50%; }
   .donut .ctr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
-  .donut .ctr .b { font-size: 18px; font-weight: 600; } .donut .ctr .s { font-size: 10px; color: #8b93a1; text-transform: uppercase; letter-spacing: .04em; }
+  .donut .ctr .b { font-size: 18px; font-weight: 600; } .donut .ctr .s { font-size: 10px; color: #757A97; text-transform: uppercase; letter-spacing: .04em; }
   .legend { display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
   .legend .li { display: flex; align-items: center; gap: 8px; }
   .legend .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
@@ -82,9 +83,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
   .spark { width: 100%; height: 150px; display: block; }
   .gauges { display: flex; flex-direction: column; gap: 16px; padding-top: 4px; }
   .gauge .gtop { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
-  .gauge .gtop .gl { color: #6b7280; } .gauge .gtop .gv { font-weight: 600; }
+  .gauge .gtop .gl { color: #757A97; } .gauge .gtop .gv { font-weight: 600; }
   .gauge .gtrack { height: 8px; background: #f1f2f4; border-radius: 999px; overflow: hidden; }
-  .gauge .gfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #4f46e5, #818cf8); }
+  .gauge .gfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2B4FD0, #7D9BF4); }
   .gauge .gfill.ok { background: linear-gradient(90deg, #16a34a, #4ade80); }
   .gauge .gfill.warn { background: linear-gradient(90deg, #d97706, #fbbf24); }
 </style>
@@ -161,9 +162,9 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <div class="donut-wrap">
           <div class="donut"><div class="ctr"><div class="b">$4.82M</div><div class="s">Total</div></div></div>
           <div class="legend">
-            <div class="li"><span class="dot" style="background:#4f46e5"></span><span class="ln">Enterprise</span><span class="lv">52%</span></div>
-            <div class="li"><span class="dot" style="background:#818cf8"></span><span class="ln">Mid-Market</span><span class="lv">31%</span></div>
-            <div class="li"><span class="dot" style="background:#c7d2fe"></span><span class="ln">SMB</span><span class="lv">17%</span></div>
+            <div class="li"><span class="dot" style="background:#2B4FD0"></span><span class="ln">Enterprise</span><span class="lv">52%</span></div>
+            <div class="li"><span class="dot" style="background:#7D9BF4"></span><span class="ln">Mid-Market</span><span class="lv">31%</span></div>
+            <div class="li"><span class="dot" style="background:#C9D7FB"></span><span class="ln">SMB</span><span class="lv">17%</span></div>
           </div>
         </div>
       </div>
@@ -171,10 +172,10 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
         <h3>Win Rate Trend</h3>
         <div class="cap">Closed-won %, trailing 6 months</div>
         <svg class="spark" viewBox="0 0 300 150" preserveAspectRatio="none">
-          <defs><linearGradient id="wr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366f1" stop-opacity="0.22"/><stop offset="1" stop-color="#6366f1" stop-opacity="0"/></linearGradient></defs>
+          <defs><linearGradient id="wr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3661ED" stop-opacity="0.22"/><stop offset="1" stop-color="#3661ED" stop-opacity="0"/></linearGradient></defs>
           <path d="M0,104 L60,86 L120,96 L180,64 L240,72 L300,48 L300,150 L0,150 Z" fill="url(#wr)"/>
-          <polyline points="0,104 60,86 120,96 180,64 240,72 300,48" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-          <circle cx="300" cy="48" r="3.5" fill="#6366f1"/>
+          <polyline points="0,104 60,86 120,96 180,64 240,72 300,48" fill="none" stroke="#3661ED" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="300" cy="48" r="3.5" fill="#3661ED"/>
         </svg>
       </div>
     </div>
@@ -220,20 +221,20 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 const WIDGET_SHELL = (inner) => `<!DOCTYPE html><html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #f7f8fa; color: #1a2233; padding: 16px; }
-  .card { background: #fff; border: 1px solid #eceef1; border-radius: 12px; padding: 16px; }
+  .card { background: #fff; border: 1px solid #DFE3F0; border-radius: 12px; padding: 16px; }
   .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
   .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .kpi { background: #fff; border: 1px solid #eceef1; border-radius: 12px; padding: 14px; }
-  .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: #8b93a1; margin-bottom: 6px; }
+  .kpi { background: #fff; border: 1px solid #DFE3F0; border-radius: 12px; padding: 14px; }
+  .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: #757A97; margin-bottom: 6px; }
   .kpi .val { font-size: 20px; font-weight: 600; }
   .kpi .delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
-  .delta.up { color: #16a34a; } .delta.down { color: #dc2626; }
+  .delta.up { color: #0A9B4B; } .delta.down { color: #E5484D; }
   .bars { display: flex; align-items: flex-end; gap: 12px; height: 180px; padding-top: 10px; }
   .bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
-  .bar .col { width: 100%; max-width: 40px; background: linear-gradient(180deg, #6366f1, #818cf8); border-radius: 6px 6px 0 0; }
-  .bar .m { font-size: 10px; color: #6b7280; }
+  .bar .col { width: 100%; max-width: 40px; background: linear-gradient(180deg, #3661ED, #7D9BF4); border-radius: 6px 6px 0 0; }
+  .bar .m { font-size: 10px; color: #757A97; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; color: #8b93a1; font-weight: 600; padding: 8px 6px; border-bottom: 1px solid #eceef1; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; }
+  th { text-align: left; color: #757A97; font-weight: 600; padding: 8px 6px; border-bottom: 1px solid #eceef1; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; }
   td { padding: 9px 6px; border-bottom: 1px solid #f1f2f4; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .pill { font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
@@ -303,23 +304,25 @@ const PMR_KPIS = [
   { label: "Closed-Won Attributed", value: "$588.5K", sub: "9 deals from paid", hl: false },
 ];
 
+// Bar widths share one scale across channels (max = Google's 4.81× → 100%),
+// so the rows compare platform-claimed vs CRM-grounded ROAS at a glance.
 const PMR_CHANNELS = [
-  { name: "Google", campaigns: "6 campaigns", accent: "#08BD50", roasColor: "#08BD50", roas: "4.81×", claim: "0.65×", delta: "+4.16×", dir: "up", spend: "$77.4K", won: "$372.6K · 4", pipe: "$1.04M · 22 deals · 13.5× on spend" },
-  { name: "LinkedIn", campaigns: "5 campaigns", accent: "#1B3A8B", roasColor: "#3661ED", roas: "3.14×", claim: "1.28×", delta: "+1.87×", dir: "up", spend: "$61.0K", won: "$191.7K · 2", pipe: "$870.9K · 13 deals · 14.3× on spend" },
-  { name: "Meta", campaigns: "4 campaigns", accent: "#3661ED", roasColor: "#3661ED", roas: "0.98×", claim: "1.18×", delta: "−0.20×", dir: "down", spend: "$24.7K", won: "$24.3K · 3", pipe: "$805.5K · 18 deals · 32.6× on spend" },
+  { name: "Google Ads", color: "#0A9B4B", camps: "6 campaigns", claim: "0.65×", pw: 14, roas: "4.81×", tw: 100, delta: "+4.16×", dir: "up", spend: "$77.4K", won: "$372.6K · 4 deals", pipe: "$1.04M · 22 deals" },
+  { name: "LinkedIn Ads", color: "#3661ED", camps: "5 campaigns", claim: "1.28×", pw: 27, roas: "3.14×", tw: 65, delta: "+1.87×", dir: "up", spend: "$61.0K", won: "$191.7K · 2 deals", pipe: "$870.9K · 13 deals" },
+  { name: "Meta Ads", color: "#E5484D", camps: "4 campaigns", claim: "1.18×", pw: 25, roas: "0.98×", tw: 20, delta: "−0.20×", dir: "down", spend: "$24.7K", won: "$24.3K · 3 deals", pipe: "$805.5K · 18 deals" },
 ];
 
 const PMR_MOVES = [
-  { n: 1, color: "#F93D3D", bg: "#FFF2F2", tag: "Pause & rotate", camp: "G_Search_NonBrand_Automation", line: "<b>Google — Non-Brand / Search</b> · sharp ROAS decline WoW — investigate audience or creative", stats: "7d spend $2,285 · platform ROAS 0.31× · WoW −50%", rLabel: "Waste Avoided · 7d", rValue: "$1.1K", rColor: "#F93D3D" },
-  { n: 2, color: "#08BD50", bg: "#EBFFF3", tag: "Shift spend", camp: "G_Display_Prospecting", line: "<b>Google — Display</b> · highest CRM-grounded ROAS channel (4.8×)", stats: "Move $2K/wk from underperforming Meta channel · projected +$9,623 pipeline", rLabel: "Projected · 30d", rValue: "+$41.4K", rColor: "#08BD50" },
-  { n: 3, color: "#E0A422", bg: "#FEF3D5", tag: "Flag for review", camp: "All Meta Ads campaigns", line: "<b>Meta Ads portfolio</b> · CRM ROAS (0.98×) barely covers spend — closed-won revenue does not justify current investment", stats: "$24,722 spent · $24,273 closed-won · portfolio-wide 7d spend $2,371", rLabel: "Spend at Risk · 7d", rValue: "$2.4K", rColor: "#B7791F" },
+  { n: 1, k: "red", tag: "Pause & rotate", camp: "G_Search_NonBrand_Automation", line: "<b>Google — Non-Brand / Search</b> · sharp ROAS decline WoW — investigate audience or creative", stats: "7d spend $2,285 · platform ROAS 0.31× · WoW −50%", rLabel: "Waste Avoided · 7d", rValue: "$1.1K" },
+  { n: 2, k: "green", tag: "Shift spend", camp: "G_Display_Prospecting", line: "<b>Google — Display</b> · highest CRM-grounded ROAS channel (4.8×)", stats: "Move $2K/wk from underperforming Meta channel · projected +$9,623 pipeline", rLabel: "Projected · 30d", rValue: "+$41.4K" },
+  { n: 3, k: "amber", tag: "Flag for review", camp: "All Meta Ads campaigns", line: "<b>Meta Ads portfolio</b> · CRM ROAS (0.98×) barely covers spend — closed-won revenue does not justify current investment", stats: "$24,722 spent · $24,273 closed-won · portfolio-wide 7d spend $2,371", rLabel: "Spend at Risk · 7d", rValue: "$2.4K" },
 ];
 
 const PMR_MOVED = [
-  { dot: "#08BD50", chan: "Google · Non-Brand / Search", camp: "G_Search_NonBrand_Automation", spend: "$2.3K", from: "0.31×", to: "4.81×", wow: "−50%", dir: "down", pipe: "$11.0K" },
-  { dot: "#3661ED", chan: "Meta · Other", camp: "Meta_Summer_Promo_V3", spend: "$700", from: "0.72×", to: "0.98×", wow: "−85%", dir: "down", pipe: "$687" },
-  { dot: "#3661ED", chan: "Meta · Retargeting", camp: "Meta_Retarget_WebVisitors", spend: "$667", from: "1.01×", to: "0.98×", wow: "+39%", dir: "up", pipe: "$655" },
-  { dot: "#08BD50", chan: "Google · Display", camp: "G_Display_Prospecting", spend: "$437", from: "1.00×", to: "4.81×", wow: "+36%", dir: "up", pipe: "$2.1K" },
+  { dot: "#0A9B4B", chan: "Google · Non-Brand / Search", camp: "G_Search_NonBrand_Automation", spend: "$2.3K", from: "0.31×", to: "4.81×", wow: "−50%", dir: "down", pipe: "$11.0K" },
+  { dot: "#E5484D", chan: "Meta · Other", camp: "Meta_Summer_Promo_V3", spend: "$700", from: "0.72×", to: "0.98×", wow: "−85%", dir: "down", pipe: "$687" },
+  { dot: "#E5484D", chan: "Meta · Retargeting", camp: "Meta_Retarget_WebVisitors", spend: "$667", from: "1.01×", to: "0.98×", wow: "+39%", dir: "up", pipe: "$655" },
+  { dot: "#0A9B4B", chan: "Google · Display", camp: "G_Display_Prospecting", spend: "$437", from: "1.00×", to: "4.81×", wow: "+36%", dir: "up", pipe: "$2.1K" },
 ];
 
 const PMR_ACCOUNTS = [
@@ -351,32 +354,42 @@ const pmrKpis = PMR_KPIS.map((k) => `
   </div>`).join("");
 
 const pmrChannels = PMR_CHANNELS.map((c) => `
-  <div class="chan" style="border-left:4px solid ${c.accent}">
-    <div class="chan-top"><span class="chan-name">${c.name}</span><span class="chan-camps">${c.campaigns}</span></div>
-    <div class="chan-claim">Platform claims <s>${c.claim}</s></div>
-    <div class="chan-roas-row"><span class="chan-roas" style="color:${c.roasColor}">${c.roas}</span><span class="delta delta-${c.dir}">${c.dir === "up" ? "↑" : "↓"} ${c.delta}</span></div>
-    <div class="chan-sw"><div><div class="mini-lbl">Spend</div><div class="mini-val">${c.spend}</div></div><div><div class="mini-lbl">Won</div><div class="mini-val">${c.won}</div></div></div>
-    <div class="chan-pipe"><div class="mini-lbl">Open Pipeline</div><div class="mini-val">${c.pipe}</div></div>
+  <div class="chan">
+    <div class="chan-top">
+      <div>
+        <div class="chan-name"><span class="cdot" style="background:${c.color}"></span>${c.name}</div>
+        <div class="chan-camps">${c.camps}</div>
+      </div>
+      <div class="chan-roas-wrap"><span class="chan-roas" style="color:${c.color}">${c.roas}</span><span class="delta delta-${c.dir}">${c.dir === "up" ? "↑" : "↓"} ${c.delta} vs platform</span></div>
+    </div>
+    <div class="chan-bars">
+      <div class="rbar"><span class="rbar-lbl">Platform</span><div class="rbar-track"><div class="rbar-fill rbar-fill--ghost" style="width:${c.pw}%"></div></div><span class="rbar-val rbar-val--ghost">${c.claim}</span></div>
+      <div class="rbar"><span class="rbar-lbl">Petavue</span><div class="rbar-track"><div class="rbar-fill" style="width:${c.tw}%;background:${c.color}"></div></div><span class="rbar-val" style="color:${c.color}">${c.roas}</span></div>
+    </div>
+    <div class="chan-foot">
+      <div><div class="mini-lbl">Spend · 90d</div><div class="mini-val">${c.spend}</div></div>
+      <div><div class="mini-lbl">Closed-won</div><div class="mini-val">${c.won}</div></div>
+      <div><div class="mini-lbl">Open pipeline</div><div class="mini-val">${c.pipe}</div></div>
+    </div>
   </div>`).join("");
 
 const pmrMoves = PMR_MOVES.map((m) => `
-  <div class="move">
-    <div class="move-num" style="color:${m.color};border-color:${m.color};background:${m.bg}">${m.n}</div>
+  <div class="move move--${m.k}">
+    <div class="move-num">${m.n}</div>
     <div class="move-body">
-      <div class="move-head"><span class="tag" style="background:${m.bg};color:${m.color}">${m.tag}</span><span class="move-camp">${m.camp}</span></div>
+      <div class="move-head"><span class="move-camp">${m.camp}</span><span class="tag">${m.tag}</span></div>
       <div class="move-line">${m.line}</div>
       <div class="move-stats">${m.stats}</div>
     </div>
-    <div class="move-right"><div class="mini-lbl">${m.rLabel}</div><div class="move-val" style="color:${m.rColor}">${m.rValue}</div></div>
+    <div class="move-right"><div class="mini-lbl">${m.rLabel}</div><div class="move-val">${m.rValue}</div></div>
   </div>`).join("");
 
 const pmrMoved = PMR_MOVED.map((r) => `
   <tr>
-    <td><span class="cdot" style="background:${r.dot}"></span>${r.chan}</td>
-    <td>${r.camp}</td>
+    <td class="camp"><span class="cdot" style="background:${r.dot}"></span>${r.camp}<div class="camp-sub">${r.chan}</div></td>
     <td class="num">${r.spend}</td>
-    <td class="num"><s>${r.from}</s> <span class="arrow">→</span> <b style="color:var(--primary)">${r.to}</b></td>
-    <td class="num wow-${r.dir}">${r.dir === "up" ? "↗" : "↘"} ${r.wow}</td>
+    <td class="num"><s>${r.from}</s> <span class="arrow">→</span> <b>${r.to}</b></td>
+    <td class="num"><span class="wow wow-${r.dir}">${r.dir === "up" ? "↗" : "↘"} ${r.wow}</span></td>
     <td class="num">${r.pipe}</td>
   </tr>`).join("");
 
@@ -386,8 +399,8 @@ const pmrAccounts = PMR_ACCOUNTS.map((a) => `
     <div class="acct-meta">${a.meta}</div>
     <div class="acct-sig"><span class="sig sig-li">in ${a.li}</span><span class="sig sig-ml">✉ ${a.em}</span>${a.sql ? `<span class="sig sig-sql">${a.sql}</span>` : ""}</div>
     <div class="acct-foot">
-      <div><div class="mini-lbl">Est. Potential</div><div class="acct-pot">$55K</div></div>
-      ${a.cta === "assign" ? '<span class="acct-cta">→ Assign to SDR — active SQL</span>' : '<span class="acct-cta acct-cta--review">⌕ Review</span>'}
+      <div><div class="mini-lbl">Est. potential</div><div class="acct-pot">$55K</div></div>
+      ${a.cta === "assign" ? '<span class="acct-cta">Assign to SDR →</span>' : '<span class="acct-cta acct-cta--review">Review</span>'}
     </div>
   </div>`).join("");
 
@@ -399,7 +412,7 @@ const pmrPaths = PMR_PATHS.map((p) => {
       <div class="path-head"><span class="rankpill">${p.rank}</span><span class="path-meta">${p.meta}</span></div>
       <div class="path-chips">${chips}</div>
     </div>
-    <div class="path-val">${p.value}</div>
+    <div class="path-right"><div class="mini-lbl">Closed-won</div><div class="path-val">${p.value}</div></div>
   </div>`;
 }).join("");
 
@@ -408,115 +421,178 @@ const pmrPaths = PMR_PATHS.map((p) => {
 // same real markup — nothing is a placeholder.
 export const PMR_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-  :root{--ink:#232532;--muted:#757A97;--muted2:#8E93AF;--line:#EEF0F7;--line2:#E3E7F2;--primary:#3661ED;--purple:#6E56CF;--purple-bg:#F5F3FF;--purple-line:#D9CFF5;--green:#08BD50;--green-bg:#EBFFF3;--red:#F93D3D;--red-bg:#FFF2F2;}
+  :root{
+    --ink:#20243A;--muted:#757A97;--muted2:#9298B4;
+    --line:#E9EBF4;--line2:#DFE3F0;--bg:#F6F7FB;
+    --primary:#3661ED;--primary-bg:#EDF2FE;--primary-line:#C9D7FB;
+    --green:#0A9B4B;--green-bg:#E9F8F0;
+    --red:#E5484D;--red-bg:#FEF1F1;
+    --amber:#B45309;--amber-bg:#FDF2DF;
+  }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Poppins',system-ui,-apple-system,sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:none;margin:0;padding:28px 26px 72px;}
-  .mini-lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);font-weight:600;}
-  .mini-val{font-size:13px;font-weight:600;color:var(--ink);margin-top:3px;}
+  body{margin:0;font-family:'Poppins',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 20px 56px;}
+  .num,.kpi-val,.chan-roas,.rbar-val,.move-val,.path-val,.blended-roas,.mini-val{font-variant-numeric:tabular-nums;}
+  .mini-lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted2);font-weight:600;}
+  .mini-val{font-size:13px;font-weight:600;color:var(--ink);margin-top:2px;}
   s{color:var(--muted);}
-  .hero{background:linear-gradient(180deg,#F6F5FC,#FBFBFE);border:1px solid var(--line2);border-radius:20px;padding:26px 26px 22px;margin-bottom:20px;}
+
+  /* ── Hero: the dark band carrying the thesis ── */
+  .hero{position:relative;overflow:hidden;border-radius:20px;padding:26px 28px 24px;margin-bottom:16px;color:#fff;
+    background:radial-gradient(900px 360px at 88% -40%,rgba(54,97,237,.55),transparent 65%),
+      radial-gradient(700px 320px at -10% 130%,rgba(54,97,237,.28),transparent 60%),
+      linear-gradient(180deg,#181E3C,#10152E);}
+  .hero::after{content:"";position:absolute;inset:0;border-radius:inherit;border:1px solid rgba(255,255,255,.09);pointer-events:none;}
   .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
-  .hero h1{font-size:28px;font-weight:600;margin:0;}
+  .hero h1{font-size:26px;font-weight:600;margin:0;letter-spacing:-.01em;}
   .hero-pills{display:flex;gap:8px;flex-wrap:wrap;}
-  .pill{background:#ECE8FA;color:var(--purple);font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;white-space:nowrap;}
-  .hero-sub{color:var(--muted);font-size:14px;margin:6px 0 20px;max-width:760px;}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.85);font-size:11.5px;font-weight:500;padding:5px 11px;border-radius:999px;white-space:nowrap;}
+  .pill svg{opacity:.7;}
+  .hero-sub{color:rgba(255,255,255,.66);font-size:13.5px;line-height:1.55;margin:8px 0 22px;max-width:640px;}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-  .kpi{background:#fff;border:1px solid var(--line2);border-radius:14px;padding:16px 18px;}
-  .kpi--hl{background:var(--purple-bg);border:1.5px solid var(--purple-line);}
-  .kpi-lbl{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;}
-  .kpi-val{font-size:28px;font-weight:600;margin:8px 0 4px;}
-  .kpi--hl .kpi-val{color:var(--purple);}
-  .kpi-sub{font-size:12px;color:var(--muted);}
-  .section{border-radius:18px;padding:26px 26px 24px;margin-bottom:20px;}
-  .section--solid{border:1.5px solid var(--primary);}
-  .section--dashed{border:1.5px dashed #C7CCDE;}
-  .eyebrow{display:inline-block;background:#EEEAFB;color:var(--purple);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:7px;margin-bottom:12px;}
-  .section h2{font-size:21px;font-weight:600;margin:0 0 6px;}
-  .section-sub{color:var(--muted);font-size:14px;margin:0 0 20px;max-width:840px;}
+  .kpi{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;}
+  .kpi--hl{background:linear-gradient(145deg,rgba(54,97,237,.5),rgba(54,97,237,.16));border-color:rgba(130,160,255,.5);}
+  .kpi-lbl{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.5);font-weight:600;}
+  .kpi--hl .kpi-lbl{color:#B9CBFF;}
+  .kpi-val{font-size:26px;font-weight:600;margin:7px 0 3px;line-height:1.1;}
+  .kpi-sub{font-size:11.5px;color:rgba(255,255,255,.55);}
+  .kpi-sub s{color:rgba(255,255,255,.45);}
+
+  /* ── Section shells ── */
+  .section{background:#fff;border:1px solid var(--line2);border-radius:18px;padding:22px 24px;margin-bottom:16px;box-shadow:0 1px 2px rgba(23,28,58,.04);}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .sec-num{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 6px;border-radius:6px;background:var(--primary-bg);color:var(--primary);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .sec-kicker{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+  .sec-head::after{content:"";flex:1;height:1px;background:var(--line);}
+  .section h2{font-size:18px;font-weight:600;margin:0 0 5px;letter-spacing:-.005em;}
+  .section-sub{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 18px;max-width:840px;}
   .section-sub b{color:var(--ink);}
   .hl-green{color:var(--green);font-weight:600;}
-  .chan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-  .chan{background:#FBFBFD;border:1px solid var(--line2);border-radius:14px;padding:16px 18px;}
-  .chan-top{display:flex;justify-content:space-between;align-items:baseline;}
-  .chan-name{font-size:16px;font-weight:600;}
-  .chan-camps{font-size:12px;color:var(--muted);}
-  .chan-claim{font-size:12.5px;color:var(--muted);margin:12px 0 6px;}
-  .chan-roas-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .chan-roas{font-size:34px;font-weight:700;line-height:1;}
-  .delta{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;}
+  .cdot{display:inline-block;flex:none;width:9px;height:9px;border-radius:3px;}
+
+  /* ── 02 · Channel rows with paired ROAS bars (shared scale) ── */
+  .chan-list{display:flex;flex-direction:column;gap:12px;}
+  .chan{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#FCFCFE;}
+  .chan-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .chan-name{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600;}
+  .chan-camps{font-size:12px;color:var(--muted);margin-top:2px;}
+  .chan-roas-wrap{display:flex;align-items:center;gap:10px;}
+  .chan-roas{font-size:26px;font-weight:700;line-height:1;}
+  .delta{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;}
   .delta-up{color:var(--green);background:var(--green-bg);}
   .delta-down{color:var(--red);background:var(--red-bg);}
-  .chan-sw{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:12px;border-top:1px solid var(--line);}
-  .chan-pipe{margin-top:12px;}
-  .blended{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--purple-bg);border-radius:12px;padding:14px 18px;margin-top:14px;flex-wrap:wrap;}
-  .blended-lbl{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--purple);text-transform:uppercase;}
-  .blended-stats{font-size:13px;color:#5b4bb0;margin-top:3px;}
-  .blended-right{display:flex;align-items:center;gap:12px;}
-  .blended-right s{font-size:15px;}
-  .blended-roas{font-size:28px;font-weight:700;color:var(--purple);}
-  .callout{border-left:3px solid var(--primary);background:#FAFBFF;border-radius:0 10px 10px 0;padding:14px 16px;font-size:13.5px;color:#3a3f52;margin-top:16px;line-height:1.55;}
-  .move{display:flex;align-items:flex-start;gap:14px;background:#FAFAFC;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;}
-  .move-num{flex-shrink:0;width:34px;height:34px;border:2px solid;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;}
+  .chan-bars{display:flex;flex-direction:column;gap:7px;margin:14px 0 12px;}
+  .rbar{display:grid;grid-template-columns:62px 1fr 48px;align-items:center;gap:10px;}
+  .rbar-lbl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);}
+  .rbar-track{height:10px;border-radius:5px;background:#EFF1F8;overflow:hidden;}
+  .rbar-fill{height:100%;border-radius:5px;min-width:6px;}
+  .rbar-fill--ghost{background:#C5CBDF;}
+  .rbar-val{font-size:12px;font-weight:600;text-align:right;}
+  .rbar-val--ghost{color:var(--muted);font-weight:500;}
+  .chan-foot{display:flex;gap:32px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--line);}
+  .blended{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--primary-bg);border:1px solid var(--primary-line);border-radius:12px;padding:13px 18px;margin-top:14px;flex-wrap:wrap;}
+  .blended-lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--primary);text-transform:uppercase;}
+  .blended-stats{font-size:12.5px;color:#4B5374;margin-top:3px;}
+  .blended-right{display:flex;align-items:baseline;gap:12px;}
+  .blended-right s{font-size:14px;}
+  .blended-roas{font-size:26px;font-weight:700;color:var(--primary);}
+  .callout{border-left:3px solid var(--primary);background:#F7F9FF;border-radius:0 10px 10px 0;padding:13px 16px;font-size:13px;color:#3A3F52;margin-top:14px;line-height:1.6;}
+
+  /* ── 03 · This week's moves ── */
+  .move{display:flex;align-items:flex-start;gap:14px;border:1px solid var(--line);border-radius:14px;padding:15px 18px;margin-bottom:10px;background:#FCFCFE;}
+  .move-num{flex:none;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
   .move-body{flex:1;min-width:0;}
-  .move-head{display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap;}
-  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;}
-  .move-camp{font-size:14px;font-weight:600;}
-  .move-line{font-size:13.5px;color:#3a3f52;margin-bottom:4px;}
+  .move-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap;}
+  .tag{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;}
+  .move-camp{font-size:13.5px;font-weight:600;}
+  .move-line{font-size:12.5px;color:#4B5374;margin-bottom:4px;line-height:1.5;}
   .move-line b{color:var(--ink);}
-  .move-stats{font-size:12px;color:var(--muted);}
-  .move-right{flex-shrink:0;text-align:right;}
-  .move-val{font-size:22px;font-weight:700;margin-top:3px;}
-  .tbl{width:100%;border-collapse:collapse;font-size:13.5px;}
-  .tbl th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 12px 10px;border-bottom:1px solid var(--line2);}
+  .move-stats{font-size:11.5px;color:var(--muted);}
+  .move-right{flex:none;text-align:right;}
+  .move-val{font-size:20px;font-weight:700;margin-top:3px;}
+  .move--red .move-num,.move--red .tag{background:var(--red-bg);color:var(--red);}
+  .move--red .move-val{color:var(--red);}
+  .move--green .move-num,.move--green .tag{background:var(--green-bg);color:var(--green);}
+  .move--green .move-val{color:var(--green);}
+  .move--amber .move-num,.move--amber .tag{background:var(--amber-bg);color:var(--amber);}
+  .move--amber .move-val{color:var(--amber);}
+
+  /* ── 04 · Movers table ── */
+  .tbl-scroll{overflow-x:auto;}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px;}
+  .tbl th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);font-weight:600;padding:0 10px 9px;border-bottom:1px solid var(--line2);}
   .tbl th.num,.tbl td.num{text-align:right;}
-  .tbl td{padding:12px;border-bottom:1px solid var(--line);}
-  .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle;}
-  .arrow{color:#B7BCD0;}
-  .wow-up{color:var(--green);font-weight:600;}
-  .wow-down{color:var(--red);font-weight:600;}
-  .tbl-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 12px 0;font-size:13px;color:var(--muted);}
-  .tbl-foot b{color:var(--ink);}
-  .icp-wrap{border-left:3px solid var(--red);background:#FCFBFC;border-radius:0 12px 12px 0;padding:16px;}
+  .tbl td{padding:11px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  .tbl td.num{white-space:nowrap;}
+  .tbl td.camp{font-weight:500;white-space:nowrap;}
+  .camp-sub{font-size:11px;font-weight:400;color:var(--muted);margin:2px 0 0 17px;white-space:nowrap;}
+  .tbl td b{color:var(--primary);font-weight:600;}
+  .tbl .cdot{margin-right:8px;vertical-align:-1px;}
+  .arrow{color:#B7BCD0;margin:0 2px;}
+  .wow{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;}
+  .wow-up{color:var(--green);background:var(--green-bg);}
+  .wow-down{color:var(--red);background:var(--red-bg);}
+  .tbl-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--green-bg);font-size:12.5px;color:#2F6E4B;flex-wrap:wrap;}
+  .tbl-foot b{color:#1E5B3A;}
+
+  /* ── 05 · ICP hand-off queue ── */
   .icp-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-  .icp-pill{background:var(--red-bg);color:var(--red);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:7px;}
-  .icp-count{font-size:13px;color:var(--muted);}
-  .acct-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-  .acct{background:#fff;border:1px solid var(--line2);border-radius:12px;padding:14px;}
-  .acct-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
-  .acct-name{font-size:13.5px;font-weight:600;line-height:1.25;}
-  .acct-buyers{font-size:12px;font-weight:600;color:var(--red);white-space:nowrap;}
-  .acct-meta{font-size:11.5px;color:var(--muted);margin:6px 0 10px;}
-  .acct-sig{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-  .sig{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;}
-  .sig-li{background:#E7EEFC;color:#1B3A8B;}
+  .icp-pill{background:var(--primary-bg);color:var(--primary);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px;}
+  .icp-count{font-size:12.5px;color:var(--muted);}
+  .acct-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:12px;}
+  .acct{display:flex;flex-direction:column;background:#FCFCFE;border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .acct-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .acct-name{font-size:13px;font-weight:600;line-height:1.3;}
+  .acct-buyers{flex:none;font-size:11px;font-weight:600;color:var(--primary);background:var(--primary-bg);padding:2px 8px;border-radius:999px;white-space:nowrap;}
+  .acct-meta{font-size:11.5px;color:var(--muted);margin:5px 0 10px;}
+  .acct-sig{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+  .sig{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:6px;}
+  .sig-li{background:#E8EEFC;color:#1B3A8B;}
   .sig-ml{background:#F0F1F6;color:#52577A;}
   .sig-sql{background:var(--green-bg);color:var(--green);}
-  .acct-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:10px;}
-  .acct-pot{font-size:15px;font-weight:600;margin-top:2px;}
-  .acct-cta{font-size:11.5px;font-weight:600;color:var(--green);}
+  .acct-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:auto;}
+  .acct-pot{font-size:14px;font-weight:600;margin-top:2px;}
+  .acct-cta{font-size:11px;font-weight:600;color:var(--green);white-space:nowrap;}
   .acct-cta--review{color:var(--muted);}
-  .path{display:flex;justify-content:space-between;align-items:center;gap:16px;background:#FAFAFC;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;flex-wrap:wrap;}
-  .path-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-  .rankpill{background:#EEEAFB;color:var(--purple);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:6px;}
-  .path-meta{font-size:12.5px;color:var(--muted);}
-  .path-chips{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
-  .chip{display:inline-flex;align-items:center;padding:6px 13px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid;background:#fff;}
-  .chip-g{color:var(--green);border-color:#9BE7BC;}
-  .chip-m{color:var(--primary);border-color:#B8C9F6;}
-  .chip-l{color:#1B3A8B;border-color:#9DB2E8;}
-  .chip-o{color:var(--purple);border-color:#C9BEF0;}
-  .chip-e{color:#D9880A;border-color:#F3D9A0;}
-  .chip-w{color:var(--green);border-color:#9BE7BC;background:#F1FBF5;}
-  .chip-arrow{color:#C2C7D8;margin:0 2px;font-size:15px;}
-  .path-val{font-size:22px;font-weight:700;color:var(--green);}
-  .method{background:#FAFAFC;border:1px solid var(--line2);border-radius:16px;padding:22px 24px;}
-  .method-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
-  .method ul{margin:0;padding:0;list-style:none;}
-  .method li{font-size:13px;color:#3a3f52;padding:5px 0 5px 18px;position:relative;line-height:1.5;}
-  .method li:before{content:'·';position:absolute;left:4px;color:var(--muted2);font-weight:700;}
-  .method-foot{display:flex;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);flex-wrap:wrap;}
-  @media (max-width:820px){.kpis,.chan-grid{grid-template-columns:1fr 1fr;}.acct-grid{grid-template-columns:1fr 1fr;}}
+
+  /* ── 06 · The plays that close ── */
+  .path{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid var(--line);border-radius:14px;background:#FCFCFE;padding:15px 18px;margin-bottom:10px;flex-wrap:wrap;}
+  .path-left{flex:1;min-width:260px;}
+  .path-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .rankpill{background:var(--primary-bg);color:var(--primary);font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:999px;}
+  .path-meta{font-size:12px;color:var(--muted);}
+  .path-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line2);background:#fff;color:var(--ink);}
+  .chip::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--chip-dot,#B7BCD0);}
+  .chip-g{--chip-dot:#0A9B4B;}
+  .chip-m{--chip-dot:#E5484D;}
+  .chip-l{--chip-dot:#3661ED;}
+  .chip-o{--chip-dot:#9298B4;}
+  .chip-e{--chip-dot:#D9880A;}
+  .chip-w{background:var(--green-bg);border-color:#BCE8CD;color:#1E5B3A;}
+  .chip-w::before{background:var(--green);border-radius:50%;}
+  .chip-arrow{color:#C2C7D8;margin:0 1px;font-size:14px;}
+  .path-right{flex:none;text-align:right;}
+  .path-val{font-size:20px;font-weight:700;color:var(--green);margin-top:2px;}
+
+  /* ── 07 · Methodology ── */
+  .method{background:#FBFBFD;border:1px solid var(--line2);border-radius:16px;padding:20px 24px;}
+  .method-title{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+  .method ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 28px;}
+  .method li{font-size:12.5px;color:#4B5374;padding:4px 0 4px 16px;position:relative;line-height:1.55;}
+  .method li:before{content:'';position:absolute;left:2px;top:12px;width:5px;height:5px;border-radius:50%;background:#C5CBDF;}
+  .method-foot{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);flex-wrap:wrap;}
+
+  @media (max-width:880px){
+    .kpis{grid-template-columns:1fr 1fr;}
+    .method ul{grid-template-columns:1fr;}
+  }
+  @media (max-width:560px){
+    .hero h1{font-size:22px;}
+    .kpi-val{font-size:22px;}
+    .chan-top{flex-direction:column;align-items:stretch;}
+    .chan-roas-wrap{justify-content:flex-start;}
+  }
 `;
 
 const pmrDoc = (inner) => `<!doctype html>
@@ -529,8 +605,8 @@ const PMR_SEC_HEADER = `
       <div class="hero-top">
         <h1>Paid Media ROI</h1>
         <div class="hero-pills">
-          <span class="pill">◎ Attribution: opp.leadsource (U-shaped)</span>
-          <span class="pill">🗓 90d · anchored 2026-04-13</span>
+          <span class="pill">${ic("crosshair", 13)} Attribution: opp.leadsource (U-shaped)</span>
+          <span class="pill">${ic("clock", 13)} 90d · anchored 2026-04-13</span>
         </div>
       </div>
       <p class="hero-sub">The real ROAS across LinkedIn, Google, and Meta — graded against closed-won revenue, not platform pixels.</p>
@@ -538,11 +614,11 @@ const PMR_SEC_HEADER = `
     </div>`;
 
 const PMR_SEC_CHANNEL = `
-    <div class="section section--solid">
-      <span class="eyebrow">02 · The ROAS Truth</span>
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">02</span><span class="sec-kicker">The ROAS truth</span></div>
       <h2>Every platform marks its own homework. Here's what the CRM says.</h2>
       <p class="section-sub">Per-channel ROAS: what the platform reports vs. closed-won revenue attributed via opportunity.leadsource.</p>
-      <div class="chan-grid">${pmrChannels}</div>
+      <div class="chan-list">${pmrChannels}</div>
       <div class="blended">
         <div><div class="blended-lbl">Blended · all paid channels</div><div class="blended-stats">$163.1K spend · $588.5K closed-won · 9 deals</div></div>
         <div class="blended-right"><s>0.96×</s><span class="blended-roas">3.61×</span></div>
@@ -551,39 +627,39 @@ const PMR_SEC_CHANNEL = `
     </div>`;
 
 const PMR_SEC_ACTIONS = `
-    <div class="section section--solid">
-      <span class="eyebrow">03 · This Week's Moves</span>
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">03</span><span class="sec-kicker">This week's moves</span></div>
       <h2>Three moves for this week</h2>
       <p class="section-sub">Ranked by dollars at risk &amp; upside. Projected impact: <span class="hl-green">+$41.4K pipeline / 30d</span>, $1.1K savings avoided this week.</p>
       ${pmrMoves}
     </div>`;
 
 const PMR_SEC_MOVERS = `
-    <div class="section section--dashed">
-      <span class="eyebrow">04 · What Moved This Week</span>
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">04</span><span class="sec-kicker">What moved this week</span></div>
       <h2>4 campaigns moved ≥15% WoW</h2>
       <p class="section-sub">Sorted by dollars at risk. Everything else is folded into the stable row below.</p>
-      <table class="tbl">
-        <thead><tr><th>Channel</th><th>Campaign</th><th class="num">Spend · 7d</th><th class="num">Platform → True ROAS</th><th class="num">WoW Δ</th><th class="num">Pipeline · 7d (est)</th></tr></thead>
-        <tbody>${pmrMoved}</tbody>
-      </table>
+      <div class="tbl-scroll">
+        <table class="tbl">
+          <thead><tr><th>Campaign</th><th class="num">Spend · 7d</th><th class="num">Platform → True ROAS</th><th class="num">WoW Δ</th><th class="num">Pipeline · 7d (est)</th></tr></thead>
+          <tbody>${pmrMoved}</tbody>
+        </table>
+      </div>
       <div class="tbl-foot"><span>✓ <b>11 stable campaigns</b> · $9.5K/wk · avg 1.11× platform ROAS</span><span>No action needed</span></div>
     </div>`;
 
 const PMR_SEC_ICP = `
-    <div class="section section--solid">
-      <span class="eyebrow">05 · ICP Hand-off Queue</span>
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">05</span><span class="sec-kicker">ICP hand-off queue</span></div>
       <h2>In-market, no open pipeline · 12 ICP accounts engaging with your ads</h2>
       <p class="section-sub">ICP accounts (target_account = True) with paid-engaged contacts, filtered to exclude accounts with open opps or recent wins. Ranked by engagement intensity. Total potential: <b>$666K</b>.</p>
-      <div class="icp-wrap">
-        <div class="icp-head"><span class="icp-pill">Strongly Engaged</span><span class="icp-count">12 accounts</span></div>
-        <div class="acct-grid">${pmrAccounts}</div>
-      </div>
+      <div class="icp-head"><span class="icp-pill">Strongly Engaged</span><span class="icp-count">12 accounts</span></div>
+      <div class="acct-grid">${pmrAccounts}</div>
     </div>`;
 
 const PMR_SEC_JOURNEYS = `
-    <div class="section section--dashed">
-      <span class="eyebrow">06 · The Plays That Close</span>
+    <div class="section">
+      <div class="sec-head"><span class="sec-num">06</span><span class="sec-kicker">The plays that close</span></div>
       <h2>The 3 paths your closed-won deals actually ran</h2>
       <p class="section-sub">Reconstructed from contact lead sources on won accounts (last 90d). Every path terminates at Closed Won.</p>
       ${pmrPaths}
@@ -728,17 +804,17 @@ export const PMR_WIDGET_FILES = {
 // so dropping a widget in the plan removes it from the built dashboard.
 const SKILL_DASH_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-  :root{--ink:#1F2430;--muted:#6B7280;--line:#EAECEF;--teal:#0D787F;--teal-bg:#E6F4F5;--blue:#3661ED;--green:#08BD50;--red:#F93D3D;--amber:#E0A422;}
+  :root{--ink:#20243A;--muted:#757A97;--line:#E9EBF4;--primary:#3661ED;--primary-bg:#EDF2FE;--green:#0A9B4B;--green-bg:#E9F8F0;--red:#E5484D;--red-bg:#FEF1F1;--amber:#B45309;}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:#F6F8FA;-webkit-font-smoothing:antialiased;}
+  body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:#F6F7FB;-webkit-font-smoothing:antialiased;}
   .sd-wrap{max-width:1120px;margin:0 auto;padding:12px;}
   .sd-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
   .sd-head h1{font-size:24px;font-weight:600;margin:0;}
   .sd-head p{margin:4px 0 0;font-size:13px;color:var(--muted);}
-  .sd-pill{background:var(--teal-bg);color:var(--teal);font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;}
-  .sd-inner{padding:10px;border:1px solid #d4d9ea;border-radius:8px;}
+  .sd-pill{background:var(--primary-bg);color:var(--primary);font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;white-space:nowrap;}
+  .sd-inner{padding:10px;border:1px solid #DFE3F0;border-radius:8px;}
   .sd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
-  .sd-card{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .sd-card{background:#fff;border:1px solid #DFE3F0;border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
   .sd-card--wide{grid-column:1 / -1;}
   .sd-card h3{font-size:14px;font-weight:600;margin:0 0 2px;}
   .sd-card .sub{font-size:11.5px;color:var(--muted);margin:0 0 14px;}
@@ -760,9 +836,9 @@ const SKILL_DASH_CSS = `
   .sd-list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
   .sd-list-item:last-child{border-bottom:none;}
   .sd-tag{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:6px;}
-  .sd-tag.up{color:var(--green);background:#EBFFF3;}.sd-tag.down{color:var(--red);background:#FFF2F2;}.sd-tag.flat{color:var(--muted);background:#F0F2F5;}
+  .sd-tag.up{color:var(--green);background:var(--green-bg);}.sd-tag.down{color:var(--red);background:var(--red-bg);}.sd-tag.flat{color:var(--muted);background:#F0F2F5;}
   .sd-spark{display:flex;align-items:flex-end;gap:5px;height:56px;margin-top:4px;}
-  .sd-spark span{flex:1;background:var(--teal);border-radius:4px 4px 0 0;opacity:.85;}
+  .sd-spark span{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.85;}
   @media (max-width:760px){.sd-grid{grid-template-columns:1fr;}.sd-kpis{grid-template-columns:1fr 1fr;}}
 `;
 
@@ -784,25 +860,25 @@ const SKILL_DASH_WIDGETS = [
     id: "spend_by_channel", name: "Spend by channel", kind: "bars",
     desc: "How the 90-day budget is split across paid channels.",
     body: `<section class="sd-card"><h3>Spend by channel</h3><p class="sub">$163.1K total</p>
-      <div class="sd-bar-row"><span class="name">Google</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:47%;background:#0D787F"></div></div><span class="amt">$77.4K</span></div>
-      <div class="sd-bar-row"><span class="name">LinkedIn</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:37%;background:#1B3A8B"></div></div><span class="amt">$61.0K</span></div>
-      <div class="sd-bar-row"><span class="name">Meta</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:15%;background:#3661ED"></div></div><span class="amt">$24.7K</span></div></section>`,
+      <div class="sd-bar-row"><span class="name">Google</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:47%;background:#0A9B4B"></div></div><span class="amt">$77.4K</span></div>
+      <div class="sd-bar-row"><span class="name">LinkedIn</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:37%;background:#3661ED"></div></div><span class="amt">$61.0K</span></div>
+      <div class="sd-bar-row"><span class="name">Meta</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:15%;background:#E5484D"></div></div><span class="amt">$24.7K</span></div></section>`,
   },
   {
     id: "roas_trend", name: "ROAS trend", kind: "line",
     desc: "CRM-grounded ROAS week over week across the window.",
     body: `<section class="sd-card"><h3>ROAS trend</h3><p class="sub">True ROAS, last 12 weeks</p>
       <div class="sd-spark">${[38,42,40,47,51,49,55,52,58,60,57,61].map((h) => `<span style="height:${h}%"></span>`).join("")}</div>
-      <div class="sd-bar-row" style="margin-top:12px"><span class="name">This week</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:72%;background:#08BD50"></div></div><span class="amt">3.61×</span></div></section>`,
+      <div class="sd-bar-row" style="margin-top:12px"><span class="name">This week</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:72%;background:#0A9B4B"></div></div><span class="amt">3.61×</span></div></section>`,
   },
   {
     id: "channel_table", name: "Channel performance", kind: "table",
     desc: "Per-channel spend, conversions, CPA and true ROAS in one table.",
     body: `<section class="sd-card sd-card--wide"><h3>Channel performance</h3><p class="sub">Platform-reported vs CRM-grounded</p>
       <div class="sd-scroll"><table class="sd-tbl"><thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">Conv.</th><th class="num">CPA</th><th class="num">Platform ROAS</th><th class="num">True ROAS</th></tr></thead><tbody>
-      <tr><td><span class="sd-dot" style="background:#0D787F"></span>Google</td><td class="num">$77.4K</td><td class="num">512</td><td class="num">$151</td><td class="num">0.65×</td><td class="num"><b>4.81×</b></td></tr>
-      <tr><td><span class="sd-dot" style="background:#1B3A8B"></span>LinkedIn</td><td class="num">$61.0K</td><td class="num">208</td><td class="num">$293</td><td class="num">1.28×</td><td class="num"><b>3.14×</b></td></tr>
-      <tr><td><span class="sd-dot" style="background:#3661ED"></span>Meta</td><td class="num">$24.7K</td><td class="num">176</td><td class="num">$140</td><td class="num">1.18×</td><td class="num"><b>0.98×</b></td></tr>
+      <tr><td><span class="sd-dot" style="background:#0A9B4B"></span>Google</td><td class="num">$77.4K</td><td class="num">512</td><td class="num">$151</td><td class="num">0.65×</td><td class="num"><b>4.81×</b></td></tr>
+      <tr><td><span class="sd-dot" style="background:#3661ED"></span>LinkedIn</td><td class="num">$61.0K</td><td class="num">208</td><td class="num">$293</td><td class="num">1.28×</td><td class="num"><b>3.14×</b></td></tr>
+      <tr><td><span class="sd-dot" style="background:#E5484D"></span>Meta</td><td class="num">$24.7K</td><td class="num">176</td><td class="num">$140</td><td class="num">1.18×</td><td class="num"><b>0.98×</b></td></tr>
       </tbody></table></div></section>`,
   },
   {
@@ -818,18 +894,18 @@ const SKILL_DASH_WIDGETS = [
     id: "audience_perf", name: "Audience performance", kind: "bars",
     desc: "ROAS by audience segment, so you know who to scale into.",
     body: `<section class="sd-card"><h3>Audience performance</h3><p class="sub">True ROAS by segment</p>
-      <div class="sd-bar-row"><span class="name">ICP · Enterprise</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:90%;background:#08BD50"></div></div><span class="amt">4.5×</span></div>
-      <div class="sd-bar-row"><span class="name">ICP · Mid-Market</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:66%;background:#0D787F"></div></div><span class="amt">3.3×</span></div>
-      <div class="sd-bar-row"><span class="name">Retargeting</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:40%;background:#3661ED"></div></div><span class="amt">2.0×</span></div>
-      <div class="sd-bar-row"><span class="name">Broad / Prospect</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:19%;background:#F93D3D"></div></div><span class="amt">0.9×</span></div></section>`,
+      <div class="sd-bar-row"><span class="name">ICP · Enterprise</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:90%;background:#0A9B4B"></div></div><span class="amt">4.5×</span></div>
+      <div class="sd-bar-row"><span class="name">ICP · Mid-Market</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:66%;background:#3661ED"></div></div><span class="amt">3.3×</span></div>
+      <div class="sd-bar-row"><span class="name">Retargeting</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:40%;background:#9298B4"></div></div><span class="amt">2.0×</span></div>
+      <div class="sd-bar-row"><span class="name">Broad / Prospect</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:19%;background:#E5484D"></div></div><span class="amt">0.9×</span></div></section>`,
   },
   {
     id: "budget_pacing", name: "Budget pacing", kind: "list",
     desc: "Spend vs budget per channel with end-of-period projection.",
     body: `<section class="sd-card"><h3>Budget pacing</h3><p class="sub">Month to date vs plan</p>
-      <div class="sd-bar-row"><span class="name">Google</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:78%;background:#0D787F"></div></div><span class="amt">78%</span></div>
-      <div class="sd-bar-row"><span class="name">LinkedIn</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:64%;background:#1B3A8B"></div></div><span class="amt">64%</span></div>
-      <div class="sd-bar-row"><span class="name">Meta</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:103%;background:#F93D3D"></div></div><span class="amt">103%</span></div>
+      <div class="sd-bar-row"><span class="name">Google</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:78%;background:#0A9B4B"></div></div><span class="amt">78%</span></div>
+      <div class="sd-bar-row"><span class="name">LinkedIn</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:64%;background:#3661ED"></div></div><span class="amt">64%</span></div>
+      <div class="sd-bar-row"><span class="name">Meta</span><div class="sd-bar-track"><div class="sd-bar-fill" style="width:103%;background:#E5484D"></div></div><span class="amt">103%</span></div>
       <p class="sub" style="margin:10px 0 0">Meta is pacing 3% over plan — the one to trim.</p></section>`,
   },
 ];
@@ -841,7 +917,7 @@ const skillDashDoc = (bodies) => `<!doctype html>
   <div class="sd-inner">
     <div class="sd-head">
       <div><h1>Paid Media Performance</h1><p>Operational view across Google, LinkedIn &amp; Meta — CRM-grounded, refreshed daily.</p></div>
-      <span class="sd-pill">◷ 90d · updated today</span>
+      <span class="sd-pill">${ic("clock", 12)} 90d · updated today</span>
     </div>
     <div class="sd-grid">${bodies}</div>
   </div>
@@ -877,7 +953,7 @@ DASHBOARD_MANIFEST.widgets = Object.fromEntries(
 // ─────────────────────────────────────────────────────────────────────────
 const CAP_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-  :root{--fb:#7B61FF;--gg:#08BD50;--li:#2F6BFF;--ink:#1a1f36;--muted:#6b7280;--line:#e9ebf2;--bg:#f4f6fb;--card:#fff;--warn:#E0A422;--down:#E5484D;--up:#12b76a;--radius:14px;}
+  :root{--fb:#E5484D;--gg:#0A9B4B;--li:#3661ED;--ink:#20243A;--muted:#757A97;--line:#E9EBF4;--bg:#F6F7FB;--card:#fff;--warn:#B45309;--down:#E5484D;--up:#0A9B4B;--radius:14px;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:13px;}
   .wrap{max-width:none;margin:0;padding:24px 26px 72px;display:flex;flex-direction:column;gap:22px;}
@@ -891,7 +967,7 @@ const CAP_CSS = `
   s{color:var(--muted);}
 
   /* hero */
-  .hero{border-radius:18px;padding:26px 30px;color:#fff;background:linear-gradient(120deg,#3a2c86 0%,#241a68 60%,#1c1550 100%);position:relative;overflow:hidden;}
+  .hero{border-radius:18px;padding:26px 30px;color:#fff;background:radial-gradient(900px 360px at 88% -40%,rgba(54,97,237,.55),transparent 65%),radial-gradient(700px 320px at -10% 130%,rgba(54,97,237,.28),transparent 60%),linear-gradient(180deg,#181E3C,#10152E);border:1px solid rgba(255,255,255,.09);position:relative;overflow:hidden;}
   .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
   .hero h1{margin:0;font-size:26px;font-weight:700;display:flex;align-items:center;gap:10px;}
   .hero-win{margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.72);}
@@ -908,7 +984,7 @@ const CAP_CSS = `
   .km-head .m{font-size:12px;color:var(--muted);}
   .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
-  .kpi.warn{border:1px solid rgba(224,164,34,.5);background:#fffdf6;}
+  .kpi.warn{border:1px solid rgba(180,83,9,.4);background:#FDF9F0;}
   .kpi-lbl{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
   .kpi-val{font-size:28px;font-weight:700;margin:6px 0 4px;letter-spacing:-.02em;}
   .kpi-d{font-size:12.5px;font-weight:600;}
@@ -954,8 +1030,8 @@ const CAP_CSS = `
   /* video info cards */
   .vids{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
   .vcard{border-radius:12px;padding:13px 15px;font-size:12px;line-height:1.5;}
-  .vcard.fb{background:#f4f1ff;border:1px solid #e3dcff;}
-  .vcard.li{background:#eef3ff;border:1px solid #d9e5ff;}
+  .vcard.fb{background:#FEF1F1;border:1px solid #F8D6D8;}
+  .vcard.li{background:#EDF2FE;border:1px solid #C9D7FB;}
   .vcard .h{font-weight:700;margin-bottom:6px;}
   .vcard.fb .h{color:var(--fb);}.vcard.li .h{color:var(--li);}
   .vcard .note{color:var(--muted);font-style:italic;margin-top:6px;}
@@ -963,12 +1039,12 @@ const CAP_CSS = `
   /* campaigns */
   .cbar{display:inline-block;width:70px;height:5px;border-radius:4px;background:#eef0f6;overflow:hidden;vertical-align:middle;margin-right:10px;}
   .cbar span{display:block;height:100%;background:var(--fb);border-radius:4px;}
-  .banner-ok{display:flex;align-items:center;gap:8px;background:#eafaf1;border:1px solid #bfe9cf;color:#137a43;border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:10px;}
+  .banner-ok{display:flex;align-items:center;gap:8px;background:#E9F8F0;border:1px solid #BCE8CD;color:#1E5B3A;border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:10px;}
   .banner-flag{font-size:11.5px;color:var(--muted);margin-bottom:12px;}
 
   /* metric defs */
   .defs{display:flex;flex-wrap:wrap;gap:10px;}
-  .def{background:#f3f1fb;border:1px solid #e6e2f6;border-radius:10px;padding:9px 14px;font-family:'SFMono-Regular',ui-monospace,Menlo,monospace;font-size:12px;color:#4b3fa6;}
+  .def{background:#EDF2FE;border:1px solid #C9D7FB;border-radius:10px;padding:9px 14px;font-family:'SFMono-Regular',ui-monospace,Menlo,monospace;font-size:12px;color:#2B4FD0;}
   .def b{color:var(--ink);font-weight:600;}
 
   /* caveats */
@@ -1069,11 +1145,11 @@ const CAP_CAVEATS = [
   ["cursor", "var(--fb)", "Click definitions differ by platform", "Facebook: inline link clicks (not all clicks). Google: all clicks on the ad. LinkedIn: clicks on the ad unit (Message Ads excluded from rate metrics). These are not equivalent — do not compare CTR or CPC directly across platforms."],
   ["funnel", "var(--gg)", "Primary Conversions — platform-specific definitions", "Facebook: leads (on-site lead form submissions + off-site pixel registrations). Google: conversions tracked via Google Ads tag (0 reported in L30d — verify tracking status). LinkedIn: conversion events (one-click lead form opens + external website conversions)."],
   ["users", "var(--li)", "Reach — availability and definition vary", "Facebook: platform-reported unique reach for the period. Google: not available in the current data scope. LinkedIn: approximate member reach (available at campaign level but excluded from cross-platform reach comparisons). Use N/A rather than forcing comparison."],
-  ["envelope", "#E0498E", "LinkedIn Message Ads — zero-impression billing", "1,080 creative-day rows (= 910 campaign-day rows — same rows at different grain) had spend > 0 with impressions = 0. These are Message Ads billed per send, not per impression. Total affected spend: $66,120. CPM and CTR are set to null for these rows; all other metrics use full spend."],
+  ["envelope", "var(--li)", "LinkedIn Message Ads — zero-impression billing", "1,080 creative-day rows (= 910 campaign-day rows — same rows at different grain) had spend > 0 with impressions = 0. These are Message Ads billed per send, not per impression. Total affected spend: $66,120. CPM and CTR are set to null for these rows; all other metrics use full spend."],
   ["warning", "var(--warn)", "Google conversion tracking — status unknown", "Google shows 8,704 conversions ($5.1M value) historically, but zero in the current 30-day window. This is treated as a tracking-status issue, not a performance result. Verify that conversion tags are firing correctly before drawing conclusions."],
   ["clock", "var(--fb)", "Attribution windows differ", "Facebook: 7-day click, 1-day view (default). Google: 30-day click window (search), varies by channel. LinkedIn: 30-day click, 7-day view. Conversions reported under different lookback windows are not directly comparable across platforms."],
-  ["video", "#0FA5A5", "Video view definitions are not equivalent", "Facebook: a video view is ≥ 3 seconds. LinkedIn: video_starts are counted on autoplay (intent not confirmed); video_views are engaged views. Completion rates are measured differently. Do not compare video engagement rates across platforms."],
-  ["database", "#4b5563", "Data grain and completeness", "Facebook: campaign × date. Google: campaign × ad-group × date × device × network. LinkedIn: creative × date. Google has no ad-level creative table in scope — creative analysis is not available for Google. All windows aligned to the most recent common date across platforms."],
+  ["video", "#52577A", "Video view definitions are not equivalent", "Facebook: a video view is ≥ 3 seconds. LinkedIn: video_starts are counted on autoplay (intent not confirmed); video_views are engaged views. Completion rates are measured differently. Do not compare video engagement rates across platforms."],
+  ["database", "#52577A", "Data grain and completeness", "Facebook: campaign × date. Google: campaign × ad-group × date × device × network. LinkedIn: creative × date. Google has no ad-level creative table in scope — creative analysis is not available for Google. All windows aligned to the most recent common date across platforms."],
 ];
 const capCaveats = CAP_CAVEATS.map(([icn, cl, h, b]) => `<div class="cav"><div class="h" style="color:${cl}">${ic(icn, 15)} ${h}</div><div class="b">${b}</div></div>`).join("");
 
@@ -1232,7 +1308,7 @@ export const CREATIVE_AD_PERF_HTML = `<!doctype html>
 // ─────────────────────────────────────────────────────────────────────────
 const TAJ_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-  :root{--pc:#7C5CFC;--mql:#5B6EF0;--sql:#3B82F6;--ao:#F59E0B;--cl:#EF5350;--cw:#22C55E;--g:#34A853;--li:#2F6BFF;--me:#4267B2;--ink:#151a2e;--muted:#6b7280;--line:#e9ebf2;--bg:#f4f6fb;--radius:14px;}
+  :root{--pc:#A8BDF8;--mql:#7D9BF4;--sql:#3661ED;--ao:#E0A422;--cl:#E5484D;--cw:#0A9B4B;--g:#0A9B4B;--li:#3661ED;--me:#E5484D;--ink:#20243A;--muted:#757A97;--line:#E9EBF4;--bg:#F6F7FB;--radius:14px;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Poppins',system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;font-size:13px;}
   .wrap{max-width:none;margin:0;padding:22px 26px 72px;display:flex;flex-direction:column;gap:20px;}
@@ -1244,7 +1320,7 @@ const TAJ_CSS = `
   .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#eef1f8;color:var(--muted);}
 
   /* hero */
-  .hero{border-radius:16px;padding:24px 28px;color:#fff;background:linear-gradient(120deg,#6d4be0 0%,#5b47d6 45%,#4536b8 100%);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hero{border-radius:16px;padding:24px 28px;color:#fff;background:radial-gradient(900px 360px at 88% -40%,rgba(54,97,237,.55),transparent 65%),radial-gradient(700px 320px at -10% 130%,rgba(54,97,237,.28),transparent 60%),linear-gradient(180deg,#181E3C,#10152E);border:1px solid rgba(255,255,255,.09);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
   .hero .eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:6px;}
   .hero h1{margin:6px 0 6px;font-size:26px;font-weight:700;}
   .hero .sub{font-size:13px;color:rgba(255,255,255,.8);}
@@ -1255,9 +1331,9 @@ const TAJ_CSS = `
   /* kpis */
   .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 16px;}
-  .kpi.warn{border-color:rgba(245,158,11,.4);background:#fffdf6;}
-  .kpi .ic{width:30px;height:30px;border-radius:8px;background:#f1f0fb;color:var(--pc);display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:10px;}
-  .kpi.warn .ic{background:#fdf3e0;color:var(--ao);}
+  .kpi.warn{border-color:rgba(180,83,9,.35);background:#FDF9F0;}
+  .kpi .ic{width:30px;height:30px;border-radius:8px;background:#EDF2FE;color:var(--sql);display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:10px;}
+  .kpi.warn .ic{background:#FDF2DF;color:#B45309;}
   .kpi .v{font-size:26px;font-weight:700;letter-spacing:-.02em;}
   .kpi .l{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:3px 0 4px;}
   .kpi .s{font-size:11.5px;color:var(--muted);line-height:1.4;}
@@ -1273,10 +1349,10 @@ const TAJ_CSS = `
   .fconv b{color:var(--ink);}
 
   /* stalled */
-  .stall-card{border:1px solid rgba(239,83,80,.35);border-radius:var(--radius);}
+  .stall-card{border:1px solid rgba(229,72,77,.35);border-radius:var(--radius);}
   .stall-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 6px;}
-  .stall-head .t{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:#c0392b;}
-  .stall-head .b{font-size:11px;font-weight:600;color:#c0392b;background:#fdecea;padding:3px 10px;border-radius:20px;}
+  .stall-head .t{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:var(--cl);}
+  .stall-head .b{font-size:11px;font-weight:600;color:var(--cl);background:#FEF1F1;padding:3px 10px;border-radius:20px;}
   .stall-list{padding:4px 12px 12px;display:flex;flex-direction:column;gap:8px;}
   .stall{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;}
   .stall-n{font-size:13.5px;font-weight:600;}
@@ -1293,11 +1369,11 @@ const TAJ_CSS = `
   /* on-path */
   .op-tabs{display:inline-flex;gap:4px;background:#f4f5f9;border-radius:8px;padding:3px;margin-bottom:12px;}
   .op-tab{font-size:11.5px;font-weight:600;padding:5px 11px;border-radius:6px;color:var(--muted);}
-  .op-tab.on{background:#fff;color:var(--pc);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .op-tab.on{background:#fff;color:var(--sql);box-shadow:0 1px 2px rgba(0,0,0,.06);}
   .op{border-top:1px solid var(--line);padding:12px 2px;}
   .op-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
   .op-nm{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;}
-  .op-won{font-size:10px;font-weight:700;color:var(--cw);background:#e8f9ef;padding:2px 7px;border-radius:5px;}
+  .op-won{font-size:10px;font-weight:700;color:var(--cw);background:#E9F8F0;padding:2px 7px;border-radius:5px;}
   .op-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
   .op-score{font-size:12px;font-weight:700;}
   .op-sub{font-size:11px;color:var(--muted);}
@@ -1325,12 +1401,12 @@ const TAJ_CSS = `
   .search{flex:1;min-width:240px;height:34px;border:1px solid var(--line);border-radius:8px;background:#fbfbfe;display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--muted);font-size:12.5px;}
   .stabs{display:flex;gap:5px;flex-wrap:wrap;}
   .stab{font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;background:#f2f3f8;color:var(--muted);}
-  .stab.on{background:var(--pc);color:#fff;}
+  .stab.on{background:var(--sql);color:#fff;}
   table.t{width:100%;border-collapse:collapse;font-size:12.5px;}
   table.t th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:9px 10px;border-bottom:1px solid var(--line);}
   table.t td{padding:11px 10px;border-bottom:1px solid var(--line);}
   table.t tr:nth-child(even) td{background:#fafbfe;}
-  .stpill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#e8f9ef;color:#178a4e;}
+  .stpill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#E9F8F0;color:#0A9B4B;}
   .won{color:var(--cw);font-weight:600;}
   .tfoot{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted);margin-top:12px;}
   @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr);}.two{grid-template-columns:1fr;}}

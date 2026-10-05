@@ -6,11 +6,10 @@ import Pusher from 'pusher-js'
 import {
   CaretLeft, CaretRight, Play,
   CircleNotch, CheckCircle, XCircle, Spinner, ArrowsClockwise, PencilSimple, Sparkle,
-  Plus, ListChecks, Warning, X, Eye, Hash, Info, UsersThree, Cpu,
+  Plus, ListChecks, Warning, X, Eye, Hash,
 } from '@phosphor-icons/react'
 import { PUSHER_KEY, PUSHER_CLUSTER } from '../../../config'
 import { apiPost, apiGet, apiDelete, getApiBase, getAuthToken, getCurrentUser } from '../../../api'
-import { Toggle, Tooltip } from '@/ui'
 import { Button as PvButton } from '@/ui'
 import RecipeGroupCard from '../../RecipeGroupCard'
 import RecipeStepCell from '../../RecipeStepCell'
@@ -20,8 +19,7 @@ import MarkdownRenderer from '../../../utils/MarkdownRenderer'
 import SlackChannelPicker from '../../shared/SlackChannelPicker'
 import WidgetListView from './WidgetListView'
 import WidgetDetailView from './WidgetDetailView'
-import AgentsSetup from '../../../pages/workflows/agents-run/AgentsSetup'
-import { makeAgents, REVIEW_PATH } from '../../../pages/workflows/agents-run/data'
+import { WORKFLOW_PATH } from '../../../pages/workflows/agents-run/data'
 
 const DAYS_OF_WEEK = [
   { value: '0', label: 'Sunday' },
@@ -201,15 +199,14 @@ const PHASE = {
 
 // Wizard steps. "Verify" (per-widget review) is the first step; "Review" is
 // the mandatory agentic check that gates publishing.
-const STEP = { WORKFLOW: 'workflow', VERIFY: 'verify', OUTPUTS: 'outputs', FREQUENCY: 'frequency', REVIEW: 'review', CONFIRM: 'confirm' }
+const STEP = { WORKFLOW: 'workflow', VERIFY: 'verify', FREQUENCY: 'frequency', REVIEW: 'review', CONFIRM: 'confirm' }
 // Verify hosts two sub-steps (User Review + Agentic Review); the agentic review
 // is the gate. Publish runs the remaining 4-screen sequence.
-const STEP_ORDER = [STEP.WORKFLOW, STEP.OUTPUTS, STEP.FREQUENCY]
+const STEP_ORDER = [STEP.WORKFLOW, STEP.FREQUENCY]
 const TAB = { VERIFY: 'verify', PUBLISH: 'publish' }
 const STEP_LABELS = {
-  [STEP.WORKFLOW]: 'Workflow',
+  [STEP.WORKFLOW]: 'Dashboard',
   [STEP.VERIFY]: 'Verify',
-  [STEP.OUTPUTS]: 'Outputs',
   [STEP.FREQUENCY]: 'Schedule',
   [STEP.REVIEW]: 'Review',
   [STEP.CONFIRM]: 'Configure',
@@ -448,21 +445,6 @@ export default function PublishView({
   // Publish artifacts & summary destinations. The summary is a first-class output;
   // Slack and Folder are independent destinations it fans out to (a small workflow).
   const [summaryEnabled, setSummaryEnabled] = useState(false)
-  // Agents (replaces the single AI summary step on the Outputs screen)
-  const [agentsEnabled, setAgentsEnabled] = useState(false)
-  const [wfAgents, setWfAgents] = useState(makeAgents)
-  const [wfReview, setWfReview] = useState('pause') // 'pause' | 'publish'
-  const [wfSlackEnabled, setWfSlackEnabled] = useState(false)
-  // Where the Slack message goes: any mix of channels and direct messages.
-  const [wfSlackChannels, setWfSlackChannels] = useState([{ id: 'C-marketing-ops', name: 'marketing-ops' }])
-  const [wfSlackDmUsers, setWfSlackDmUsers] = useState([])
-  const [wfSlackError, setWfSlackError] = useState(false)
-  const wfSlackTargets = [...wfSlackChannels.map(c => `#${c.name}`), ...wfSlackDmUsers.map(u => `@${u.real_name || u.name}`)]
-  const wfSlackWhere = wfSlackTargets.length === 0 ? 'a channel you choose'
-    : wfSlackTargets.length <= 2 ? wfSlackTargets.join(' and ')
-    : `${wfSlackTargets[0]} and ${wfSlackTargets.length - 1} more`
-  // Slack sends the last reasoning agent's write-up.
-  const wfSlackWriter = [...wfAgents].reverse().find(a => a.kind === 'reasoning')
   const [summaryToFolder, setSummaryToFolder] = useState(true) // accessible to agents now; webhooks/API later
   const [slackEnabled, setSlackEnabled] = useState(false)
   const [emailEnabled, setEmailEnabled] = useState(false)
@@ -768,7 +750,7 @@ export default function PublishView({
   // Legacy alias used by renderExistingBanner (hide banner only while reviewing).
   const isVerifying = isReviewRunning
   const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
-  const hasOutput = publishDashboardEnabled || summaryEnabled || (agentsEnabled && wfAgents.length > 0)
+  const hasOutput = publishDashboardEnabled || summaryEnabled
 
   // ── Helper: create Pusher instance ──
   const createPusher = useCallback(() => {
@@ -2049,6 +2031,15 @@ export default function PublishView({
             className="w-full text-[14px] border border-[var(--border-primary)] rounded-lg px-3 py-2 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-[var(--bg-primary)] focus:border-[var(--accent)] transition-colors"
           />
           <p className="text-[12px] text-[var(--text-muted)] mt-1.5">This names the automation, not the dashboard itself.</p>
+
+          <label className="text-[12px] font-semibold uppercase tracking-wider text-[var(--text-muted)] block mt-5 mb-1.5">Dashboard name</label>
+          <input
+            value={dashboardTitle}
+            onChange={(e) => setDashboardTitle && setDashboardTitle(e.target.value)}
+            placeholder="Name this dashboard…"
+            className="w-full text-[14px] border border-[var(--border-primary)] rounded-lg px-3 py-2 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-[var(--bg-primary)] focus:border-[var(--accent)] transition-colors"
+          />
+          <p className="text-[12px] text-[var(--text-muted)] mt-1.5">The name it gets on your Dashboards page.</p>
         </div>
       ) : (
         <div className="mt-5">
@@ -2059,7 +2050,7 @@ export default function PublishView({
             options={existingWorkflows.map((w) => ({ value: w.workflow_id, label: w.name }))}
             className="w-full"
           />
-          <p className="text-[12px] text-[var(--text-muted)] mt-1.5">Its outputs and schedule will pre-fill the next steps.</p>
+          <p className="text-[12px] text-[var(--text-muted)] mt-1.5">Its schedule will pre-fill the next step.</p>
         </div>
       )}
       </div>
@@ -2105,7 +2096,7 @@ export default function PublishView({
     )
   )
 
-  // ── STEP 1 — Outputs ──
+  // A choice card: a radio or a checkbox with an icon, a title and a line of help.
   const OutputCard = ({ active, onToggle, icon, title, desc, radio }) => (
     <button type="button" onClick={onToggle} disabled={isAgentBusy} className={`w-full flex items-center gap-3.5 p-4 rounded-xl border text-left transition-colors cursor-pointer disabled:cursor-not-allowed ${active ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-primary)] bg-[var(--bg-primary)] hover:border-[var(--accent)]/40'}`}>
       <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${active ? 'bg-[var(--accent)]/10' : 'bg-[var(--bg-hover)]'}`}>{icon}</div>
@@ -2125,131 +2116,10 @@ export default function PublishView({
     </button>
   )
 
-  // ── STEP 1 — Outputs ──
-  const renderOutputsStep = () => (
-    <div className="h-full flex flex-col">
-      {stepHeader('What do you want to publish?', 'Toggle on what you want. Set each one up right where you turn it on.')}
-      <div className="flex-1 min-h-0 flex flex-col gap-4 px-6 py-4 overflow-y-auto [scrollbar-gutter:stable] bg-[#FCFCFC]">
-
-        {/* Dashboard — toggle + its name field clubbed together */}
-        <div className="shrink-0 bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => !isAgentBusy && setPublishDashboardEnabled(v => !v)}>
-            <div className="shrink-0 w-9 h-9 rounded-lg bg-[var(--accent)]/8 flex items-center justify-center"><DashboardMark size={18} className={publishDashboardEnabled ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'} /></div>
-            <div className="flex-1 min-w-0">
-              <span className="text-[14px] font-semibold text-[#2D3044] block">Dashboard</span>
-              <span className="text-[12px] text-[var(--text-muted)] block leading-snug">Your Measurement agent: this chat’s verified steps, repeated on every run.</span>
-            </div>
-            <Toggle checked={publishDashboardEnabled} onChange={() => !isAgentBusy && setPublishDashboardEnabled(v => !v)} size="lg" />
-          </div>
-          <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${publishDashboardEnabled ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-            <div className="overflow-hidden">
-              <div className="px-4 pb-3.5 pt-3 border-t border-[var(--border-primary)]">
-                <input value={dashboardTitle} onChange={(e) => setDashboardTitle && setDashboardTitle(e.target.value)} placeholder="Name this dashboard…" className="w-full text-[14px] border border-[var(--border-primary)] rounded-lg px-3 py-2 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-[var(--bg-primary)] focus:border-[var(--accent)] transition-colors" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Agents — replaces the single AI summary step. Like the Dashboard
-            card above: on shows its settings, off hides them. */}
-        <div className="shrink-0 bg-white rounded-lg shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-3 shrink-0 cursor-pointer" onClick={() => !isAgentBusy && setAgentsEnabled(v => !v)}>
-            <div className="shrink-0 w-9 h-9 rounded-lg bg-[var(--accent)]/8 flex items-center justify-center"><Cpu size={18} className={agentsEnabled ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'} /></div>
-            <div className="flex-1 min-w-0">
-              <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[#2D3044]">
-                Agents
-                {/* How agents run, on demand: it explains the list, so it sits
-                    with the title and stays out of the way. */}
-                <Tooltip
-                  placement="right"
-                  title="Agents run in the order shown, after every refresh. Each one starts with what the agents before it said and did, so a later agent can check or build on an earlier one. Open an agent to change what it does and preview its result."
-                >
-                  <span
-                    tabIndex={0}
-                    role="img"
-                    aria-label="How agents run"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex text-[var(--text-muted)] hover:text-[var(--accent)] cursor-help rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
-                  >
-                    <Info size={15} />
-                  </span>
-                </Tooltip>
-              </span>
-              <span className="text-[12px] text-[var(--text-muted)] block leading-snug">After each refresh, agents study the numbers and draft recommendations for you.</span>
-            </div>
-            <Toggle checked={agentsEnabled} onChange={() => !isAgentBusy && setAgentsEnabled(v => !v)} size="lg" />
-          </div>
-          {agentsEnabled && (
-            <div className="px-4 pb-4 pt-3.5 border-t border-[var(--border-primary)]">
-              <AgentsSetup
-                agents={wfAgents}
-                setAgents={setWfAgents}
-                reviewChoice={
-                  <div className="flex gap-3 [&>button]:flex-1 [&>button]:min-w-0">
-                    <OutputCard
-                      radio
-                      active={wfReview === 'pause'}
-                      onToggle={() => !isAgentBusy && setWfReview('pause')}
-                      icon={<Eye size={20} weight="duotone" className={wfReview === 'pause' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'} />}
-                      title="Pause for my review"
-                      desc="Recommendations stay private until you approve them. You get a Slack message with a link."
-                    />
-                    <OutputCard
-                      radio
-                      active={wfReview === 'publish'}
-                      onToggle={() => !isAgentBusy && setWfReview('publish')}
-                      icon={<UsersThree size={20} weight="duotone" className={wfReview === 'publish' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'} />}
-                      title="Publish straight"
-                      desc="Each run goes to the Recommendations page without a review."
-                    />
-                  </div>
-                }
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Slack — on its own switch. With a reasoning agent it sends that
-            agent's write-up; without one it posts a link to the dashboard. */}
-        <div className="shrink-0 bg-white rounded-lg shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => !isAgentBusy && setWfSlackEnabled(v => !v)}>
-            <div className="shrink-0 w-9 h-9 rounded-lg bg-[var(--accent)]/8 flex items-center justify-center"><Hash size={18} weight="bold" className={wfSlackEnabled ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'} /></div>
-            <div className="flex-1 min-w-0">
-              <span className="text-[14px] font-semibold text-[#2D3044] block">Send to Slack</span>
-              <span className="text-[12px] text-[var(--text-muted)] block leading-snug">
-                {agentsEnabled && wfSlackWriter
-                  ? `Sends analysis.md, as checked by "${wfSlackWriter.name}", to ${wfSlackWhere} every time the data refreshes.`
-                  : `Posts a link to the refreshed dashboard to ${wfSlackWhere} every time the data refreshes.`}
-              </span>
-            </div>
-            <Toggle checked={wfSlackEnabled} onChange={() => !isAgentBusy && setWfSlackEnabled(v => !v)} size="lg" />
-          </div>
-          {wfSlackEnabled && (
-            <div className="px-4 pb-4 pt-3.5 border-t border-[var(--border-primary)]">
-              <p className="text-[12px] font-medium text-[var(--text-secondary)] m-0 mb-2">Where should it go?</p>
-              <SlackChannelPicker
-                selectedChannels={wfSlackChannels}
-                onChannelsChange={(c) => { setWfSlackChannels(c); setWfSlackError(false) }}
-                selectedDmUsers={wfSlackDmUsers}
-                onDmUsersChange={(u) => { setWfSlackDmUsers(u); setWfSlackError(false) }}
-                disabled={isAgentBusy}
-              />
-              {wfSlackError && wfSlackTargets.length === 0 && (
-                <p className="text-[12px] text-amber-600 m-0 mt-2">Choose at least one channel or person, or turn Send to Slack off.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
-  // ── STEP 3 (final) — Schedule + publish / post-publish ──
+  // ── STEP 2 (final) — Schedule + publish / post-publish ──
   const renderFrequencyStep = () => {
     if (phase === PHASE.DONE) {
-      const hasAgents = agentsEnabled && wfAgents.length > 0
       const openDashboard = () => { onClose?.(); if (dashboardId) navigate(`/dashboards/${dashboardId}`); else if (workflowId) navigate(`/workflows/${workflowId}`) }
-      const waiting = wfReview === 'pause'
       return (
         <div className="flex flex-col items-center justify-center min-h-full px-6 py-10 gap-6">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -2258,55 +2128,12 @@ export default function PublishView({
               <h3 className="text-[16px] font-semibold text-[var(--text-primary)] m-0">{wasUpdate ? 'Dashboard updated!' : 'Dashboard published!'}</h3>
               <p className="text-[12px] text-[var(--text-muted)] mt-1 mb-0">{completedSteps} checks passed{autoRefresh ? ` · ${scheduleSummary.toLowerCase()}` : ''}</p>
             </div>
-            {/* With agents, the next thing to do is the review below; the
-                dashboard link steps back to a secondary button. */}
-            <PvButton variant={hasAgents ? 'secondary' : 'primary'} size="md" label="View dashboard" onClick={openDashboard} />
-          </div>
-
-          {/* What the agents did on the first run: who ran, in order, and
-              what is waiting as a result. */}
-          {hasAgents && (
-            <div className="w-full max-w-[460px] rounded-xl border border-[var(--border-primary)] bg-white text-left overflow-hidden">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
-                <span className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text-primary)]">
-                  <Cpu size={16} className="text-[var(--accent)]" />
-                  {wfAgents.length} agent{wfAgents.length !== 1 ? 's' : ''} ran on the fresh data
-                </span>
-                <span className="inline-flex items-center gap-1 text-[12px] font-medium text-green-600">
-                  <CheckCircle size={13} weight="fill" /> All finished
-                </span>
-              </div>
-              <ol className="m-0 px-4 py-2 list-none">
-                {wfAgents.map((a, i) => (
-                  <li key={a.uid} className="flex items-center gap-2.5 py-1.5">
-                    <span className="shrink-0 w-[22px] h-[22px] rounded-full bg-[#eef0f7] flex items-center justify-center text-[11px] font-semibold text-[var(--text-primary)]">{i + 1}</span>
-                    <span className="flex-1 min-w-0 truncate text-[12px] text-[var(--text-primary)]">{a.name}</span>
-                    <span className="shrink-0 text-[12px] text-[var(--text-muted)]">{a.kind === 'recommendation' ? 'Recommendation' : 'Reasoning'}</span>
-                    <CheckCircle size={14} weight="fill" className="shrink-0 text-green-500" />
-                  </li>
-                ))}
-              </ol>
-              <div className="flex items-center justify-between gap-4 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]/50">
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-[var(--text-primary)] m-0">6 changes drafted</p>
-                  <p className="text-[12px] text-[var(--text-muted)] m-0 leading-snug">
-                    {waiting ? 'Private until you approve the run.' : 'Sent straight to the Recommendations page.'}
-                  </p>
-                </div>
-                <div className="shrink-0">
-                  <PvButton
-                    variant="primary"
-                    size="md"
-                    label={waiting ? 'Review the run' : 'Open Recommendations'}
-                    icon={CaretRight}
-                    iconPosition="suffix"
-                    iconWeight="bold"
-                    onClick={() => { onClose?.(); navigate(waiting ? REVIEW_PATH : '/recommendations') }}
-                  />
-                </div>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <PvButton variant="secondary" size="md" label="View dashboard" onClick={openDashboard} />
+              {/* Agents and alerts are set up on the workflow's own page. */}
+              <PvButton variant="primary" size="md" label="Open workflow" icon={CaretRight} iconPosition="suffix" iconWeight="bold" onClick={() => { onClose?.(); navigate(WORKFLOW_PATH) }} />
             </div>
-          )}
+          </div>
         </div>
       )
     }
@@ -2547,14 +2374,15 @@ export default function PublishView({
       <div className="shrink-0 flex items-center justify-between gap-5 px-6 py-3.5 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
         <div className="flex items-center gap-0.5 overflow-x-auto min-w-0">{renderStepNavItems(publishNavItems, step, (id) => setStep(id))}</div>
         <div className="flex items-center gap-5 shrink-0">
-        {step === STEP.OUTPUTS && backBtn(STEP.WORKFLOW)}
-        {step === STEP.FREQUENCY && phase !== PHASE.DONE && !isPublishing && backBtn(STEP.OUTPUTS)}
+        {step === STEP.FREQUENCY && phase !== PHASE.DONE && !isPublishing && backBtn(STEP.WORKFLOW)}
         <div>
           {step === STEP.WORKFLOW && (
-            <PvButton variant="primary" size="md" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={isEditing && !updateMode?.workflow_id} onClick={() => setStep(STEP.OUTPUTS)} />
-          )}
-          {step === STEP.OUTPUTS && (
-            <PvButton variant="primary" size="md" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold" disabled={!canPublish} title={publishReason} onClick={() => { if (summaryEnabled && slackEnabled && slackChannels.length === 0 && slackDmUsers.length === 0) { setSlackTargetError(true); return } if (wfSlackEnabled && wfSlackTargets.length === 0) { setWfSlackError(true); return } setStep(STEP.FREQUENCY) }} />
+            <PvButton
+              variant="primary" size="md" label="Continue" icon={CaretRight} iconPosition="suffix" iconWeight="bold"
+              disabled={(isEditing && !updateMode?.workflow_id) || (!isEditing && !canPublish)}
+              title={isEditing ? '' : publishReason}
+              onClick={() => { if (summaryEnabled && slackEnabled && slackChannels.length === 0 && slackDmUsers.length === 0) { setSlackTargetError(true); return } setStep(STEP.FREQUENCY) }}
+            />
           )}
           {step === STEP.FREQUENCY && (
             reviewPassed ? (
@@ -2991,7 +2819,6 @@ export default function PublishView({
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             <div className="flex-1 min-h-0 overflow-y-auto">
               {step === STEP.WORKFLOW && renderWorkflowStep()}
-              {step === STEP.OUTPUTS && renderOutputsStep()}
               {step === STEP.FREQUENCY && renderFrequencyStep()}
             </div>
             {phase !== PHASE.DONE && renderFooter()}

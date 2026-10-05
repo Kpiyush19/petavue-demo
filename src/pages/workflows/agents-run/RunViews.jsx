@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ArrowBendDownRight, Check, CheckCircle, Eye, Lightning, ListChecks, PencilSimple, Warning, WarningCircle } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
 import { Button, Dialog } from "@/ui";
 import SourceIcon from "../../../components/SourceIcon";
 import useRunReviewStore from "./useRunReviewStore";
@@ -65,7 +66,8 @@ function ChangeCard({ r, left, locked, flash, onToggle }) {
         <Tick on={!left} disabled={locked} onChange={onToggle} label={`Include ${r.title}`} />
         <h3 className="run-change__title">{r.title}</h3>
         <span className="run-change__meta">
-          {advice ? <span className="rec-card-tag">Advice only</span> : <SourceIcon name="LinkedIn Ads" size={14} />}
+          {advice && <span className="rec-card-tag">Advice only</span>}
+          {r.sys && <SourceIcon name={r.sys} size={14} named />}
           <Urgency label={r.urg} />
         </span>
       </header>
@@ -298,9 +300,9 @@ function ConfirmDialog({ kind, items, onCancel, onConfirm }) {
       <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <Dialog
           size="md"
-          title={approve ? `Approve ${plural(items.length, "change")}?` : "Reject this run?"}
+          title={approve ? `Publish ${plural(items.length, "change")}?` : "Reject this run?"}
           cancelLabel="Cancel"
-          confirmLabel={approve ? "Approve" : "Reject run"}
+          confirmLabel={approve ? "Publish" : "Reject run"}
           onClose={onCancel}
           onCancel={onCancel}
           onConfirm={onConfirm}
@@ -320,7 +322,7 @@ function ConfirmDialog({ kind, items, onCancel, onConfirm }) {
           )}
           <p className="run-dialog__text">
             {approve
-              ? "They go to the Recommendations page for everyone who can see this workflow. Nothing changes on LinkedIn until someone applies a recommendation."
+              ? "They go to the Recommendations page for everyone who can see this workflow. Nothing changes in your ad accounts until someone applies a recommendation."
               : "None of this run's recommendations are published. The Recommendations page stays as it is, and the next scheduled run prepares a new draft."}
           </p>
         </Dialog>
@@ -338,6 +340,7 @@ export function RunReviewActions({ panelOpen = true, onShowPanel }) {
   const approvedCount = useRunReviewStore((s) => s.approvedCount);
   const decide = useRunReviewStore((s) => s.decide);
   const [dialog, setDialog] = useState(null);
+  const navigate = useNavigate();
 
   const kept = recs.filter((r) => r.pending && !left[r.id]);
 
@@ -353,7 +356,7 @@ export function RunReviewActions({ panelOpen = true, onShowPanel }) {
         {showChanges}
         <span className={`run-outcome run-outcome--${outcome}`}>
           {outcome === "approved" && <CheckCircle size={14} weight="fill" aria-hidden="true" />}
-          {outcome === "approved" ? `Approved · ${plural(approvedCount, "change")} sent to Recommendations` : "Rejected · nothing was sent"}
+          {outcome === "approved" ? `Published · ${plural(approvedCount, "change")} sent to Recommendations` : "Rejected · nothing was sent"}
         </span>
       </div>
     );
@@ -363,13 +366,20 @@ export function RunReviewActions({ panelOpen = true, onShowPanel }) {
     <div className="run-actions">
       {showChanges}
       <Button variant="secondary" size="md" label="Reject" onClick={() => setDialog("reject")} />
-      <Button variant="primary" size="md" icon={CheckCircle} iconWeight="fill" label={`Approve ${plural(kept.length, "change")}`} disabled={kept.length === 0} onClick={() => setDialog("approve")} />
+      <Button variant="primary" size="md" icon={CheckCircle} iconWeight="fill" label={`Publish ${plural(kept.length, "change")}`} disabled={kept.length === 0} onClick={() => setDialog("approve")} />
       {dialog && (
         <ConfirmDialog
           kind={dialog}
           items={kept}
           onCancel={() => setDialog(null)}
-          onConfirm={() => { decide(dialog === "approve" ? "approved" : "rejected"); setDialog(null); }}
+          onConfirm={() => {
+            const publish = dialog === "approve";
+            decide(publish ? "approved" : "rejected");
+            setDialog(null);
+            // Publishing ends the review: the team picks the changes up on
+            // the Recommendations page.
+            if (publish) navigate("/recommendations");
+          }}
         />
       )}
     </div>

@@ -157,7 +157,7 @@ function Preview({ a }) {
           <ChangeCard
             key={r.id}
             // The preview is this agent's own draft, before the final check lowers it.
-            r={r.id === "REC-21" ? { ...r, d: { ...r.d, to: "$90" }, warn: "LinkedIn check: spend can rise by up to $40 a day." } : r}
+            r={r.id === "REC-21" ? { ...r, d: { ...r.d, to: "$350" }, warn: "Google Ads check: spend can rise by up to $290 a day." } : r}
           />
         ))
       ) : (

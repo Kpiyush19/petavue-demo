@@ -1169,7 +1169,8 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
   const u = URGENCY[item.urgency] || URGENCY.monitor;
   const d = item.decision ? DECISION[item.decision.status] : null;
   const t = TYPE[item.type] || TYPE.change;
-  const platform = workflow ? platformOf(workflow.platform).short : null;
+  const platformId = item.platform || workflow?.platform;
+  const platform = platformId ? platformOf(platformId).short : null;
   const specialist = workflow?.found?.find((f) => f.agent === item.agent)?.specialist;
   const onHold = item.decision?.status === "on-hold";
   const applied = item.decision?.status === "accepted";
@@ -1201,7 +1202,7 @@ function Detail({ item, workflow, onDecide, onComment, commentPosting, onOpenWor
               <WorkflowGlyph size={13} />
               {workflow?.name || item.workflowId}
             </button>
-            {workflow && (
+            {platform && (
               <span className="rec-card-tag">
                 <SourceIcon name={platform} size={13} />
                 {platform}
@@ -1510,7 +1511,10 @@ export default function RecommendationsPage() {
   });
 
   // Channel is secondary metadata, so it filters what everything else counts.
-  const channelOf = (it) => platformOf(wfById[it.workflowId]?.platform).short;
+  const channelOf = (it) => {
+    const id = it.platform || wfById[it.workflowId]?.platform;
+    return id ? platformOf(id).short : null;
+  };
   const channels = [...new Set(items.map(channelOf).filter(Boolean))].sort();
   const byChannel = channel === "all" ? items : items.filter((it) => channelOf(it) === channel);
 

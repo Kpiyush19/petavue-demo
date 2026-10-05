@@ -13,7 +13,7 @@ import { useScrollCleanup } from "@/hooks/useScrollCleanup";
 import { formatSkillName } from "./utils/formatSkillName";
 import { SparkleIcon } from "./SparkleIcon";
 import { SKILLS_CATALOG } from "../../../skills/skillsCatalog";
-import { LCH_PROMPT } from "../../../mocks/linkedinHealth";
+import { ROI_PROMPT, ROI_REPORT_SESSION_ID } from "../../../mocks/paidMediaRoi";
 
 // Connector logos (src/assets/integrations). Glob handles filenames with spaces.
 const CONNECTOR_ICON_MODULES = import.meta.glob("../../../assets/integrations/*.svg", {
@@ -123,18 +123,18 @@ export default function HomePage() {
     if (!trimmed && files.length === 0) return;
     // The demo answers one question. Whatever was typed, that question is what
     // is sent, so the message on screen and the reply always match.
-    const state = { initialMessage: LCH_PROMPT, initialFiles: files.length > 0 ? files : null };
+    const state = { initialMessage: ROI_PROMPT, initialFiles: files.length > 0 ? files : null };
     try {
       // Mint a fresh empty session (direct API call — don't touch the shared
       // session hook, so WorkspacePage resumes it clean). Whatever was typed,
-      // the first turn builds the LinkedIn Campaign Health report and dashboard.
+      // the first turn builds the Paid Media ROI report and dashboard.
       const data = await apiPost("/api/sessions", {});
       const sid = data?.session?.session_id;
       if (!sid) throw new Error("no session id");
       navigate(`/chat/${sid}`, { state });
     } catch {
       // Fallback: land in the pre-loaded demo session.
-      navigate("/chat/linkedin-campaign-health", { state });
+      navigate(`/chat/${ROI_REPORT_SESSION_ID}`, { state });
     }
   };
   const handleKeyDown = (e) => {
@@ -210,7 +210,7 @@ export default function HomePage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="How are our LinkedIn campaigns doing against target?"
+                  placeholder="Which paid channels are actually driving revenue?"
                   autoFocus
                   className={{
                     wrapper: "w-full",

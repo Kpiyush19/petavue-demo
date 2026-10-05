@@ -138,6 +138,7 @@ export const NODE_KINDS = {
 const PLATFORMS = {
   "google-search": { label: "Google Ads", short: "Google Ads" },
   linkedin: { label: "LinkedIn Ads", short: "LinkedIn Ads" },
+  meta: { label: "Meta Ads", short: "Meta Ads" },
   "linkedin-web": { label: "LinkedIn Ads", short: "LinkedIn Ads" },
 };
 // The five agents as the sales deck names them. This is the vocabulary the

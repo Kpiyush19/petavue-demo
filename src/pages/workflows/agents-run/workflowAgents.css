@@ -233,6 +233,8 @@
 .wfa-preview { position: sticky; top: 12px; min-height: 0; height: 420px; }
 .wfa-preview-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 12px; }
 .wfa-preview-b { min-height: 0; overflow-y: auto; }
+/* Cards keep their own height; the preview scrolls instead of squeezing them. */
+.wfa-preview-b > .run-change { flex: none; }
 
 /* Review composer and grouped change cards. */
 .wfa-ask { width: 100%; border: 0; outline: none; background: transparent; font: inherit; font-size: 14px; color: var(--text); padding: 2px 0 10px; }
