@@ -8,6 +8,10 @@
    ========================================================================== */
 
 .toggle {
+  /* Positioned so the visually-hidden input below anchors to the toggle —
+     otherwise it resolves against the document and extends the page's
+     scrollable area from wherever the toggle sits. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-8);

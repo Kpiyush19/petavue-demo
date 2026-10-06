@@ -94,6 +94,15 @@
   --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* App shell: every page scrolls inside its own pane, so the document itself
+   must never scroll — otherwise the sidebar and page headers slide away and
+   blank space shows past the layout. `clip` removes the window scroll range. */
+html,
+body {
+  height: 100%;
+  overflow: clip;
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
